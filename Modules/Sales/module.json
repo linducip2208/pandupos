@@ -1,0 +1,16 @@
+{
+    "name": "Sales",
+    "slug": "sales",
+    "version": "1.0.0",
+    "description": "Sales",
+    "dependencies": [
+        "inventory"
+    ],
+    "permissions": [
+        "sales.view"
+    ],
+    "entitlements": [
+        "sales.access"
+    ],
+    "navigation": []
+}

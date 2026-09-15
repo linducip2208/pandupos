@@ -1,0 +1,17 @@
+{
+    "name": "Inventory",
+    "slug": "inventory",
+    "version": "1.0.0",
+    "description": "Inventory with immutable stock ledger",
+    "dependencies": [],
+    "permissions": [
+        "inventory.view",
+        "inventory.adjust",
+        "inventory.transfer"
+    ],
+    "entitlements": [
+        "inventory.access",
+        "inventory.multi_warehouse"
+    ],
+    "navigation": []
+}

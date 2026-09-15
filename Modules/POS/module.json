@@ -1,0 +1,24 @@
+{
+    "name": "POS",
+    "slug": "pos",
+    "version": "1.0.0",
+    "description": "Point of Sale",
+    "dependencies": [
+        "inventory"
+    ],
+    "permissions": [
+        "pos.sale.create",
+        "pos.sale.void"
+    ],
+    "entitlements": [
+        "pos.access",
+        "pos.multi_register"
+    ],
+    "navigation": [
+        {
+            "label": "POS",
+            "route": "pos.index",
+            "icon": "cart"
+        }
+    ]
+}

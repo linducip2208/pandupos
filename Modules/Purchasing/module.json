@@ -1,0 +1,17 @@
+{
+    "name": "Purchasing",
+    "slug": "purchasing",
+    "version": "1.0.0",
+    "description": "Purchasing",
+    "dependencies": [
+        "inventory"
+    ],
+    "permissions": [
+        "purchase.create",
+        "purchase.approve"
+    ],
+    "entitlements": [
+        "purchase.access"
+    ],
+    "navigation": []
+}
