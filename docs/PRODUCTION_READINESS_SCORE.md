@@ -4,10 +4,10 @@ Updated: 2026-09-17.
 
 | Dimension | Score | Evidence |
 |---|---:|---|
-| Core parity | 24% | Catalog/ledger/purchase receipt/checkout foundations; major workflows missing |
+| Core parity | 26% | Product/conversion and transaction foundations improved; major workflows missing |
 | SaaS parity | 46% | Functional control-plane foundations; billing and automation incomplete |
 | Addon parity | 1% | No requested addon meets the completeness rule |
-| Test readiness | 31% | Passing suite covers foundations, not the mandatory final matrix |
+| Test readiness | 33% | Unit conversion flow added; suite still does not cover most final-matrix items |
 | Security readiness | 58% | Representative isolation/auth/webhook controls; full audit absent |
 | Operations readiness | 27% | CI green; staging/load/restore/monitoring evidence absent |
 | Production readiness | 26% | Weighted mandatory release-gate completion |

@@ -9,11 +9,11 @@ class ProductVariant extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'product_id', 'name', 'sku', 'purchase_price', 'sell_price'];
+    protected $fillable = ['tenant_id', 'product_id', 'name', 'sku', 'barcode', 'attributes', 'purchase_price', 'sell_price'];
 
     protected function casts(): array
     {
-        return ['purchase_price' => 'decimal:2', 'sell_price' => 'decimal:2'];
+        return ['attributes' => 'array', 'purchase_price' => 'decimal:2', 'sell_price' => 'decimal:2'];
     }
 
     public function product()

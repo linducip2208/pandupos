@@ -36,9 +36,9 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Area | Backend | UI | API | Permission | Tenant | Tests | Docs | Status |
 |---|---|---|---|---|---|---|---|---|
 | Tenant context/scoping | Present | Present | Present | Membership/platform gates | Representative isolation proven | Present | Present | DONE |
-| Product master basics | Product/variant/category/brand/unit | No complete tenant CRUD | Partial | Coarse | Scoped | Basic only | Basic | PARTIAL |
-| Unit conversion | Base unit only | None | None | None | N/A | None | Target only | MISSING |
-| SKU/normal barcode | Product SKU/barcode; variant SKU | POS lookup | Partial | Coarse | Scoped | Incidental | Basic | PARTIAL |
+| Product master basics | Types, tracking, image/tax/reorder metadata, variant attributes, warehouse assignments | No complete tenant CRUD | Create/list/show | Product policy | Scoped and validated | Feature/basic flow | Present | PARTIAL |
+| Unit conversion | Direct/inverse/chained tenant-safe conversion service | None | List/create definitions | Product policy | Cross-tenant rejection tested | Carton→pcs stock flow | Present | PARTIAL |
+| SKU/normal barcode | Product and variant SKU/barcode | POS lookup | Partial | Product policy | Scoped | Variant/unit flow | Basic | PARTIAL |
 | Weighing barcode/labels | None | None | None | None | N/A | None | Reference only | MISSING |
 | Price lists | None | None | None | None | N/A | None | Reference only | MISSING |
 | Bundle/combo | None | None | None | None | N/A | None | Reference only | MISSING |
@@ -86,10 +86,10 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 24% | Most advanced catalog, inventory, document, register and report workflows are absent |
+| Core parity | 26% | Product/conversion foundations improved; most advanced inventory, document, register and report workflows are absent |
 | SaaS parity | 46% | Billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 31% | Most mandatory final-matrix workflows lack implementation/tests |
+| Test readiness | 33% | Unit conversion is proven; most mandatory final-matrix workflows still lack implementation/tests |
 | Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
 | Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
 | Production readiness | 26% | Mandatory production gates are not satisfied |

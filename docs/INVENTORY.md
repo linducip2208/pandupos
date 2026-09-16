@@ -1,11 +1,13 @@
 # Inventory & POS — PanduPOS Enterprise
 
 ## Inventory
-- Master: `categories`, `brands`, `units`, `products`, `product_variants`.
+- Master: `categories`, `brands`, `units`, `products`, `product_variants`, and `product_locations`.
+- Products distinguish `stock`, `service`, and `bundle`; carry inventory-active, image, tax and reorder metadata. Variant barcode and attributes are stored separately from the product master.
+- `unit_conversions` stores tenant-owned directed factors. `UnitConversionService` resolves direct, inverse, and chained conversion paths and rejects cross-tenant units. Stock remains expressed in the product base unit.
 - Truth: `stock_movements(tenant, warehouse, variant, ref_type/id, in/out, qty, unit_cost, occurred_at)` append-only.
 - `StockService::increase/decrease/onHand/transfer`; oversell rejected (no auto-adjust).
 - Transfers: `transfer_orders(draft/shipped/received/cancelled)` + `transfer_lines`; atomic out+in.
-- Future: lots/batches/expiry/serials as entities, FEFO.
+- Still missing: bundle component workflow, lots/batches/expiry/serials, FEFO, reservations, stock count, governed adjustments and advanced transfer receiving.
 
 ## POS / Sales
 - `cash_sessions`, `sales_invoices(uuid, idempotency_key unique per tenant)`, `sales_lines`, `sale_payments(method cash/transfer/qris/ewallet/card)`, `sales_returns`.

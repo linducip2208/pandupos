@@ -9,7 +9,8 @@ class ProductPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('inventory.view') || $user->is_platform_admin;
+        return $user->hasPermissionTo('inventory.view') || $user->is_platform_admin
+            || $user->memberships()->exists();
     }
 
     public function view(User $user, Product $product): bool

@@ -8,9 +8,9 @@ Legend: `D` done, `P` partial, `M` missing, `—` not applicable. `FEATURE COMPL
 
 | Reference feature | PanduPOS evidence | BE | UI | API | Perm | Tenant | Tests | Docs | Status | Gap |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|---|
-| Product/category/brand/unit/variant | Core models/migration and catalog/product API | P | M | P | P | D | P | P | PARTIAL | CRUD, attributes, types, images, locations |
-| Sub-units/conversion | Base unit table only | M | M | M | M | — | M | M | NOT STARTED | Graph/service/precision tests |
-| SKU/barcode/weighing/labels | Product SKU/barcode and variant SKU only | P | P | P | P | D | M | M | PARTIAL | Variant barcode/parser/printing |
+| Product/category/brand/unit/variant | Types, tracking/tax/image metadata, variant attributes, locations and API | P | M | P | P | D | P | P | PARTIAL | Complete tenant CRUD UI and update/archive flow |
+| Sub-units/conversion | Tenant-safe direct/inverse/chained service and API definitions | D | M | D | P | D | D | D | PARTIAL | Tenant UI and purchase/POS unit selectors |
+| SKU/barcode/weighing/labels | Product and variant SKU/barcode | P | P | P | P | D | P | P | PARTIAL | Weighing parser/labels/printing |
 | Selling price groups | No price-list tables/resolver | M | M | M | M | — | M | M | NOT STARTED | Scope/date/priority/audit |
 | Combo/bundle | No relational components | M | M | M | M | — | M | M | NOT STARTED | Atomic component deduction |
 | Opening stock/location assignment | Generic ledger increase only | P | M | M | M | P | M | P | PARTIAL | Governed workflow/audit |
@@ -85,4 +85,4 @@ No addon is currently FEATURE COMPLETE, TESTED, or STABLE.
 
 ## Current scores
 
-**Core 24%, SaaS 46%, Addons 1%, test readiness 31%, security readiness 58%, operations readiness 27%.** Move these only when repository evidence and release gates move.
+**Core 26%, SaaS 46%, Addons 1%, test readiness 33%, security readiness 58%, operations readiness 27%.** Move these only when repository evidence and release gates move.

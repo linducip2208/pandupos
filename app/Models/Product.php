@@ -9,11 +9,20 @@ class Product extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'name', 'sku', 'barcode', 'category_id', 'brand_id', 'unit_id', 'alert_quantity', 'is_active'];
+    protected $fillable = [
+        'tenant_id', 'name', 'product_type', 'sku', 'barcode', 'image_path',
+        'category_id', 'brand_id', 'unit_id', 'alert_quantity', 'tax_rate',
+        'tax_method', 'track_inventory', 'is_active',
+    ];
 
     protected function casts(): array
     {
-        return ['alert_quantity' => 'decimal:3', 'is_active' => 'boolean'];
+        return [
+            'alert_quantity' => 'decimal:3',
+            'tax_rate' => 'decimal:4',
+            'track_inventory' => 'boolean',
+            'is_active' => 'boolean',
+        ];
     }
 
     public function variants()
@@ -34,5 +43,10 @@ class Product extends Model
     public function unit()
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    public function locations()
+    {
+        return $this->hasMany(ProductLocation::class);
     }
 }

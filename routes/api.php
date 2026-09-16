@@ -40,6 +40,8 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     Route::post('brands', [CatalogController::class, 'storeBrand']);
     Route::get('units', [CatalogController::class, 'units']);
     Route::post('units', [CatalogController::class, 'storeUnit']);
+    Route::get('unit-conversions', [CatalogController::class, 'unitConversions']);
+    Route::post('unit-conversions', [CatalogController::class, 'storeUnitConversion']);
 
     // Purchasing: stock increases ONLY on receive
     Route::apiResource('purchases', PurchaseController::class)->only(['index', 'store']);

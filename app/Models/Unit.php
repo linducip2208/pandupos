@@ -15,4 +15,14 @@ class Unit extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    public function conversionsFrom()
+    {
+        return $this->hasMany(UnitConversion::class, 'from_unit_id');
+    }
+
+    public function conversionsTo()
+    {
+        return $this->hasMany(UnitConversion::class, 'to_unit_id');
+    }
 }
