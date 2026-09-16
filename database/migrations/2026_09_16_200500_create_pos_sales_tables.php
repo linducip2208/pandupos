@@ -11,8 +11,8 @@ return new class extends Migration
         Schema::create('cash_sessions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('register_id')->constrained('registers')->cascadeOnDelete();
-            $table->foreignId('opened_by')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('register_id')->constrained('registers')->restrictOnDelete();
+            $table->foreignId('opened_by')->constrained('users')->restrictOnDelete();
             $table->decimal('opening_amount', 15, 2)->default(0);
             $table->decimal('closing_amount', 15, 2)->nullable();
             $table->string('status', 16)->default('open');
@@ -26,8 +26,8 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('branch_id')->constrained('branches')->cascadeOnDelete();
-            $table->foreignId('warehouse_id')->constrained('warehouses')->cascadeOnDelete();
+            $table->foreignId('branch_id')->constrained('branches')->restrictOnDelete();
+            $table->foreignId('warehouse_id')->constrained('warehouses')->restrictOnDelete();
             $table->foreignId('contact_id')->nullable()->constrained('contacts')->nullOnDelete();
             $table->string('invoice_no')->nullable();
             $table->string('status', 16)->default('final'); // draft, final, void
@@ -46,7 +46,7 @@ return new class extends Migration
         Schema::create('sales_lines', function (Blueprint $table) {
             $table->id();
             $table->foreignId('sales_invoice_id')->constrained('sales_invoices')->cascadeOnDelete();
-            $table->foreignId('product_variant_id')->constrained('product_variants')->cascadeOnDelete();
+            $table->foreignId('product_variant_id')->constrained('product_variants')->restrictOnDelete();
             $table->decimal('quantity', 15, 3);
             $table->decimal('unit_price', 15, 2);
             $table->decimal('discount', 15, 2)->default(0);
@@ -56,7 +56,7 @@ return new class extends Migration
         Schema::create('sale_payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('sales_invoice_id')->constrained('sales_invoices')->cascadeOnDelete();
+            $table->foreignId('sales_invoice_id')->constrained('sales_invoices')->restrictOnDelete();
             $table->string('method', 32); // cash, transfer, qris, ewallet, card
             $table->decimal('amount', 15, 2);
             $table->string('reference')->nullable();
@@ -67,7 +67,7 @@ return new class extends Migration
         Schema::create('sales_returns', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('sales_invoice_id')->constrained('sales_invoices')->cascadeOnDelete();
+            $table->foreignId('sales_invoice_id')->constrained('sales_invoices')->restrictOnDelete();
             $table->decimal('total', 15, 2)->default(0);
             $table->string('status', 16)->default('completed');
             $table->timestamps();

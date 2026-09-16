@@ -7,11 +7,14 @@ use App\Models\Plan;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class PlatformSeeder extends Seeder
 {
     public function run(): void
     {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         $modules = [
             ['slug' => 'pos', 'name' => 'POS', 'is_core' => true, 'metadata' => ['dependencies' => ['inventory']]],
             ['slug' => 'inventory', 'name' => 'Inventory', 'is_core' => true, 'metadata' => ['dependencies' => []]],
@@ -93,6 +96,7 @@ class PlatformSeeder extends Seeder
             Permission::findOrCreate($perm, 'web');
         }
 
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
         $platformAdmin = Role::findOrCreate('platform-admin', 'web');
         $platformAdmin->givePermissionTo([
             'platform.dashboard.view',

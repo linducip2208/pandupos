@@ -12,4 +12,14 @@ class SalesLine extends Model
     {
         return ['quantity' => 'decimal:3', 'unit_price' => 'decimal:2', 'discount' => 'decimal:2'];
     }
+
+    public function invoice()
+    {
+        return $this->belongsTo(SalesInvoice::class, 'sales_invoice_id');
+    }
+
+    public function variant()
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
 }

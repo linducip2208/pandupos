@@ -55,7 +55,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
             $table->foreignId('billing_invoice_id')->nullable()->constrained('billing_invoices')->nullOnDelete();
-            $table->string('gateway', 32); // manual, midtrans, xendit, etc
+            $table->string('gateway', 120); // operator-defined provider name
             $table->string('gateway_ref', 128)->nullable();
             $table->decimal('amount', 15, 2);
             $table->string('currency', 8)->default('IDR');
@@ -69,7 +69,7 @@ return new class extends Migration
 
         Schema::create('payment_webhooks', function (Blueprint $table) {
             $table->id();
-            $table->string('gateway', 32);
+            $table->string('gateway', 120);
             $table->string('gateway_ref', 128)->nullable();
             $table->json('payload')->nullable();
             $table->string('status', 32)->default('received');

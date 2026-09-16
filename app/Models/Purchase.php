@@ -20,4 +20,14 @@ class Purchase extends Model
     {
         return $this->hasMany(PurchaseLine::class);
     }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function contact()
+    {
+        return $this->belongsTo(Contact::class);
+    }
 }

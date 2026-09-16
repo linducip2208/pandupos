@@ -20,7 +20,9 @@ Schedule::call(function () {
     }
 })->daily()->name('subscriptions-expire');
 
-Schedule::call(function () {
-    // Mark queued announcement deliveries as sent (email channel handled by queue workers in prod).
-    DB::table('announcement_deliveries')->where('status', 'queued')->limit(500)->update(['status' => 'sent', 'updated_at' => now()]);
-})->everyFiveMinutes()->name('announcements-dispatch');
+Schedule::command('business:escalate-overdue')->hourly()->withoutOverlapping()->name('business-escalate-overdue');
+Schedule::command('notifications:send-pending')->everyFiveMinutes()->withoutOverlapping()->name('notifications-send-pending');
+Schedule::command('business:send-reminders')->dailyAt('08:00')->withoutOverlapping()->name('business-send-reminders');
+Schedule::command('backup:database')->dailyAt('01:30')->withoutOverlapping()->name('backup-database');
+
+Schedule::command('seo:indexnow')->dailyAt('02:45')->withoutOverlapping()->name('seo-indexnow');

@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
 
         if (! app()->isProduction()) {
             $this->call(DemoTenantSeeder::class);
+            $this->call(BlogSeeder::class);
         }
     }
 }

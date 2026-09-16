@@ -15,4 +15,9 @@ class ProductVariant extends Model
     {
         return ['purchase_price' => 'decimal:2', 'sell_price' => 'decimal:2'];
     }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
 }

@@ -1,0 +1,7 @@
+@extends('layouts.public')
+@section('title', ($activeCategory ? $activeCategory->name.' — ' : '').'Blog PanduPOS')
+@section('description', 'Panduan praktis kasir, inventory, pembelian, dan pengelolaan bisnis untuk pelaku usaha Indonesia.')
+@section('content')
+<section class="page-hero"><div class="public-container"><span class="eyebrow">PANDUAN BISNIS</span><h1>{{ $activeCategory ? $activeCategory->name : 'Catatan untuk operasi yang lebih rapi.' }}</h1><p>Insight praktis seputar POS, stok, pembelian, dan pengambilan keputusan berbasis data.</p></div></section>
+<section class="section"><div class="public-container content-grid"><div><form class="search-form"><input name="q" value="{{ request('q') }}" placeholder="Cari artikel..." aria-label="Cari artikel"><button>Cari</button></form><div class="article-list">@forelse($posts as $post)<a class="article-card card-lift" href="{{ route('blog.show', $post->slug) }}"><span class="eyebrow">{{ $post->category?->name ?? 'PanduPOS' }}</span><h2>{{ $post->title }}</h2><p>{{ $post->excerpt ?: Str::limit(strip_tags($post->content), 150) }}</p><small>{{ $post->published_at->translatedFormat('d M Y') }}</small></a>@empty<div class="content-card"><h2>Belum ada artikel</h2><p>Artikel pertama sedang disiapkan. Gunakan pencarian lain atau kembali lagi nanti.</p></div>@endforelse</div><div class="mt-4">{{ $posts->links() }}</div></div>@include('public.blog.sidebar')</div></section>
+@endsection

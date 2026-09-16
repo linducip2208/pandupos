@@ -40,4 +40,14 @@ class Subscription extends Model
     {
         return in_array($this->status, self::ACTIVE_STATUSES, true);
     }
+
+    public function events()
+    {
+        return $this->hasMany(SubscriptionEvent::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(BillingInvoice::class);
+    }
 }

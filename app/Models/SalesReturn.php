@@ -15,4 +15,9 @@ class SalesReturn extends Model
     {
         return ['total' => 'decimal:2'];
     }
+
+    public function invoice()
+    {
+        return $this->belongsTo(SalesInvoice::class, 'sales_invoice_id');
+    }
 }

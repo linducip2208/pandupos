@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 /** Atomic checkout: sale + payments + stock mutation. Idempotent via idempotency_key. */
 final class SaleService
 {
-    public function __construct(private StockService $stock) {}
+    public function __construct(private StockService $stock, private ApprovalService $approvals) {}
 
     /**
      * @param  array  $lines  [['variant_id'=>int,'quantity'=>float,'unit_price'=>float,'discount'=>float]]
@@ -59,13 +59,15 @@ final class SaleService
                     abort(422, "Split payment total ({$paid}) must equal invoice total ({$subtotal}).");
                 }
 
+                $requiresApproval = $this->approvals->requiresApproval($tenantId, (float) $subtotal);
+
                 $invoice = SalesInvoice::withoutGlobalScopes()->create([
                     'uuid' => (string) Str::uuid(),
                     'tenant_id' => $tenantId, 'branch_id' => $branchId, 'warehouse_id' => $warehouseId,
                     'contact_id' => $contactId, 'invoice_no' => 'S-'.now()->format('YmdHis').'-'.Str::upper(Str::random(4)),
-                    'status' => 'final',
-                    'payment_status' => $paid > 0 ? ($paid < $subtotal - 0.01 ? 'partial' : 'paid') : 'unpaid',
-                    'fulfillment_status' => 'fulfilled',
+                    'status' => $requiresApproval ? 'pending_approval' : 'final',
+                    'payment_status' => $requiresApproval ? 'unpaid' : ($paid > 0 ? ($paid < $subtotal - 0.01 ? 'partial' : 'paid') : 'unpaid'),
+                    'fulfillment_status' => $requiresApproval ? 'pending' : 'fulfilled',
                     'subtotal' => $subtotal, 'total' => $subtotal,
                     'idempotency_key' => $idempotencyKey,
                 ]);
@@ -75,14 +77,20 @@ final class SaleService
                         'product_variant_id' => $l['variant_id'], 'quantity' => $l['quantity'],
                         'unit_price' => $l['unit_price'], 'discount' => $l['discount'] ?? 0,
                     ]);
-                    $this->stock->decrease($tenantId, $warehouseId, $l['variant_id'], (float) $l['quantity'], 'sale', $invoice->id);
+                    if (! $requiresApproval) {
+                        $this->stock->decrease($tenantId, $warehouseId, $l['variant_id'], (float) $l['quantity'], 'sale', $invoice->id);
+                    }
                 }
 
-                foreach ($payments as $p) {
-                    $invoice->payments()->create([
-                        'tenant_id' => $tenantId, 'method' => $p['method'],
-                        'amount' => $p['amount'], 'reference' => $p['reference'] ?? null,
-                    ]);
+                if ($requiresApproval) {
+                    $this->approvals->requestForSale($invoice, $payments, auth()->id());
+                } else {
+                    foreach ($payments as $p) {
+                        $invoice->payments()->create([
+                            'tenant_id' => $tenantId, 'method' => $p['method'],
+                            'amount' => $p['amount'], 'reference' => $p['reference'] ?? null,
+                        ]);
+                    }
                 }
 
                 return $invoice;

@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'indexnow' => [
+        'key' => env('INDEXNOW_KEY'),
+        'endpoints' => array_values(array_filter(array_map('trim', explode(',', (string) env('INDEXNOW_ENDPOINTS', ''))))),
+    ],
+
 ];

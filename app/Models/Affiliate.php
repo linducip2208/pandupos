@@ -12,4 +12,9 @@ class Affiliate extends Model
     {
         return ['tc_accepted_at' => 'datetime'];
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

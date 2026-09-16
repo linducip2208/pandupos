@@ -15,4 +15,19 @@ class ImpersonationSession extends Model
     {
         return ['started_at' => 'datetime', 'ended_at' => 'datetime'];
     }
+
+    public function platformUser()
+    {
+        return $this->belongsTo(User::class, 'platform_user_id');
+    }
+
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    public function targetUser()
+    {
+        return $this->belongsTo(User::class, 'target_user_id');
+    }
 }

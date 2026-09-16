@@ -18,4 +18,9 @@ class BillingTransaction extends Model
     {
         return ['amount' => 'decimal:2', 'metadata' => 'array'];
     }
+
+    public function invoice()
+    {
+        return $this->belongsTo(BillingInvoice::class, 'billing_invoice_id');
+    }
 }

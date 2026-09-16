@@ -16,4 +16,9 @@ class Warehouse extends Model
     {
         return ['is_active' => 'boolean'];
     }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
 }

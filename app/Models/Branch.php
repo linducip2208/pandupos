@@ -16,4 +16,14 @@ class Branch extends Model
     {
         return ['is_active' => 'boolean', 'settings' => 'array'];
     }
+
+    public function warehouses()
+    {
+        return $this->hasMany(Warehouse::class);
+    }
+
+    public function registers()
+    {
+        return $this->hasMany(Register::class);
+    }
 }

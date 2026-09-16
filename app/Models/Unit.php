@@ -10,4 +10,9 @@ class Unit extends Model
     use BelongsToTenant;
 
     protected $fillable = ['tenant_id', 'name', 'short_name'];
+
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
 }

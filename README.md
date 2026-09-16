@@ -1,5 +1,7 @@
 # PanduPOS
 
+Public growth surface tersedia di `/`, `/docs`, `/blog`, FAQ, kontak, katalog programmatic SEO 1,1 juta URL, RSS, serta sitemap dinamis di `/sitemap.xml`. Sitemap pSEO otomatis dibagi menjadi 110 berkas berisi maksimal 10.000 URL agar tetap ringan. Setelah deploy, validasi domain production lalu submit sitemap tersebut melalui Google Search Console. IndexNow dapat diaktifkan dengan mengisi `INDEXNOW_KEY` dan `INDEXNOW_ENDPOINTS`; daftar endpoint sepenuhnya dikendalikan operator melalui environment.
+
 Modern modular multi-tenant SaaS POS & business platform.
 
 Independent application. UltimatePOS is used only as a feature/workflow reference — no proprietary code is copied, and PanduPOS is not a fork.
@@ -14,6 +16,11 @@ PanduPOS is a multi-tenant SaaS for retail/SME operations:
 - Sales (quotation → order → invoice → payment → fulfillment → return/refund)
 - Platform Admin (tenants, plans, subscriptions, billing, modules, entitlements)
 - API v1 + offline-sync foundation for future Flutter client
+- Three role-aware business reports with CSV/XLSX/PDF export
+- Threshold-based approval workflow for high-value sales
+- Operator-defined integration providers with encrypted credentials and format-based adapters
+- Customer self-service portal for orders, invoices, PDF downloads, and payment-proof uploads
+- Public marketing, documentation, blog, pSEO, sitemap, RSS, and IndexNow surfaces
 
 ## Architecture
 
@@ -70,7 +77,7 @@ php artisan platform:module:list
 php artisan platform:module:health
 ```
 
-Working branch for hardening: `feat/platform-hardening`.
+Branch rilis: `main`.
 
 ## Tenant Architecture
 
@@ -122,7 +129,7 @@ See `docs/API.md`.
 php artisan test
 ```
 
-Coverage: `TenantIsolationTest`, `EntitlementTest`, `ModuleAccessTest`, `BusinessFlowTest` (purchase receive → stock, sale → stock, return, split-payment idempotency, void RBAC, usage limits).
+Coverage mencakup isolasi tenant, entitlement/modul, alur pembelian dan penjualan, approval, API, customer portal, public SEO, integrasi dinamis, ekspor laporan, serta audit relationship database.
 
 Critical invariants (must always hold):
 
@@ -138,11 +145,14 @@ Default `database` locally; use Redis in production. Long sends (announcements) 
 
 ## Scheduler
 
-Enable cron for subscription expiry/renewal, trial-ending reminders, queued jobs, and health checks.
+Enable cron for subscription expiry, overdue escalation, queued notification delivery, business reminders, database backup, and IndexNow submission.
 
 ```bash
 php artisan schedule:run
+php artisan schedule:list
 ```
+
+The default schedule runs pending notifications every five minutes, overdue escalation hourly, reminders at 08:00, database backup at 01:30, and IndexNow at 02:45. All integration endpoints and credentials are supplied by the operator; the application does not select a vendor automatically.
 
 ## Deployment
 

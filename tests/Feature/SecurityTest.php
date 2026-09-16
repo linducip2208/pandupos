@@ -2,7 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Payments\Gateways\MidtransGateway;
+use App\Models\IntegrationProvider;
+use App\Payments\Adapters\FormatPaymentAdapter;
 use Database\Seeders\PlatformSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -13,7 +14,12 @@ class SecurityTest extends TestCase
 
     public function test_webhook_signature_verification(): void
     {
-        $gw = new MidtransGateway;
+        $gw = new FormatPaymentAdapter(new IntegrationProvider([
+            'integration_type' => 'payment',
+            'name' => 'Provider Uji',
+            'api_format' => 'redirect',
+            'is_active' => true,
+        ]));
         $secret = 's3cr3t';
         $payload = '{"order_id":"1"}';
         $sig = hash_hmac('sha256', $payload, $secret);

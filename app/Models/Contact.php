@@ -15,4 +15,14 @@ class Contact extends Model
     {
         return ['credit_limit' => 'decimal:2', 'opening_balance' => 'decimal:2'];
     }
+
+    public function customerLogin()
+    {
+        return $this->hasOne(CustomerLogin::class);
+    }
+
+    public function salesInvoices()
+    {
+        return $this->hasMany(SalesInvoice::class);
+    }
 }

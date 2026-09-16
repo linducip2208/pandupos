@@ -22,4 +22,19 @@ class BillingInvoice extends Model
             'issued_at' => 'datetime', 'paid_at' => 'datetime',
         ];
     }
+
+    public function subscription()
+    {
+        return $this->belongsTo(Subscription::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(BillingTransaction::class);
+    }
+
+    public function items()
+    {
+        return $this->hasMany(BillingInvoiceItem::class);
+    }
 }

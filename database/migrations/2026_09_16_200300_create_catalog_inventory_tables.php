@@ -69,8 +69,8 @@ return new class extends Migration
         Schema::create('stock_movements', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('warehouse_id')->constrained('warehouses')->cascadeOnDelete();
-            $table->foreignId('product_variant_id')->constrained('product_variants')->cascadeOnDelete();
+            $table->foreignId('warehouse_id')->constrained('warehouses')->restrictOnDelete();
+            $table->foreignId('product_variant_id')->constrained('product_variants')->restrictOnDelete();
             $table->string('reference_type', 64); // purchase_receipt, sale, adjustment, transfer
             $table->unsignedBigInteger('reference_id')->nullable();
             $table->string('movement_type', 16); // in, out
@@ -86,8 +86,8 @@ return new class extends Migration
         Schema::create('transfer_orders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('from_warehouse_id')->constrained('warehouses')->cascadeOnDelete();
-            $table->foreignId('to_warehouse_id')->constrained('warehouses')->cascadeOnDelete();
+            $table->foreignId('from_warehouse_id')->constrained('warehouses')->restrictOnDelete();
+            $table->foreignId('to_warehouse_id')->constrained('warehouses')->restrictOnDelete();
             $table->string('status', 16)->default('draft'); // draft, shipped, received, cancelled
             $table->timestamps();
             $table->index(['tenant_id', 'status']);

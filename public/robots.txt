@@ -1,2 +1,21 @@
 User-agent: *
-Disallow:
+Allow: /$
+Allow: /docs
+Allow: /marketing/
+Allow: /best-
+Allow: /alternatives-to-
+Allow: /compare/
+Allow: /blog
+Allow: /faq
+Allow: /contact
+Allow: /aplikasi-pos-
+Allow: /software-pos-
+Allow: /sistem-pos-
+Allow: /source-code-pos-
+Disallow: /dashboard
+Disallow: /platform
+Disallow: /api
+Disallow: /portal
+Disallow: /__pair
+Disallow: /webhooks
+Sitemap: /sitemap.xml

@@ -12,4 +12,9 @@ class Announcement extends Model
     {
         return ['scheduled_at' => 'datetime', 'sent_at' => 'datetime'];
     }
+
+    public function deliveries()
+    {
+        return $this->hasMany(AnnouncementDelivery::class);
+    }
 }

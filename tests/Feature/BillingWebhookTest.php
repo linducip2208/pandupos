@@ -21,10 +21,10 @@ class BillingWebhookTest extends TestCase
         $svc = app(BillingService::class);
 
         $inv = $svc->createInvoice($tenant->id, null, 100000);
-        $svc->recordAttempt($tenant->id, $inv->id, 'midtrans', 'ref-123', 100000);
+        $svc->recordAttempt($tenant->id, $inv->id, 'operator-gateway', 'ref-123', 100000);
 
-        $t1 = $svc->handleWebhook('midtrans', 'ref-123', ['tenant_id' => $tenant->id, 'invoice_id' => $inv->id, 'amount' => 100000], 'success');
-        $t2 = $svc->handleWebhook('midtrans', 'ref-123', ['tenant_id' => $tenant->id, 'invoice_id' => $inv->id, 'amount' => 100000], 'success');
+        $t1 = $svc->handleWebhook('operator-gateway', 'ref-123', ['tenant_id' => $tenant->id, 'invoice_id' => $inv->id, 'amount' => 100000], 'success');
+        $t2 = $svc->handleWebhook('operator-gateway', 'ref-123', ['tenant_id' => $tenant->id, 'invoice_id' => $inv->id, 'amount' => 100000], 'success');
 
         $this->assertEquals($t1->id, $t2->id);
         $this->assertEquals('paid', $inv->refresh()->status);

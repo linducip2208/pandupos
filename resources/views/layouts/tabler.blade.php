@@ -7,9 +7,9 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body>
+<body class="admin-shell">
 <div class="page">
-    <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
+    <aside id="admin-sidebar" class="navbar navbar-vertical admin-sidebar" data-bs-theme="dark">
         <div class="container-fluid">
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-menu">
                 <span class="navbar-toggler-icon"></span>
@@ -19,26 +19,38 @@
             </h1>
             <div class="collapse navbar-collapse" id="sidebar-menu">
                 <ul class="navbar-nav pt-lg-3">
-                    <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ route('pos.index') }}">POS Kasir</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url('/api/v1/reports/sales?from='.now()->startOfMonth()->toDateString().'&to='.now()->toDateString()) }}">Laporan</a></li>
+                    <li class="nav-group"><button class="nav-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#nav-transactions" aria-expanded="true"><x-nav-icon name="transaction-group"/><span>🧾 Transaksi</span><span class="nav-chevron">⌄</span></button><ul class="collapse show nav-submenu" id="nav-transactions">
+                        <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}"><x-nav-icon name="dashboard"/><span class="nav-link-title">Dashboard</span></a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ route('pos.index') }}"><x-nav-icon name="pos"/><span class="nav-link-title">POS Kasir</span></a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ route('approvals.index') }}"><x-nav-icon name="approval"/><span class="nav-link-title">Approval</span></a></li>
+                    </ul></li>
+                    <li class="nav-group"><button class="nav-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#nav-reports" aria-expanded="true"><x-nav-icon name="report-group"/><span>📊 Laporan</span><span class="nav-chevron">⌄</span></button><ul class="collapse show nav-submenu" id="nav-reports">
+                        <li class="nav-item"><a class="nav-link" href="{{ route('reports.show','bisnis') }}"><x-nav-icon name="business"/><span class="nav-link-title">Bisnis Utama</span></a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ route('reports.show','keuangan') }}"><x-nav-icon name="finance"/><span class="nav-link-title">Keuangan</span></a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ route('reports.show','operasional') }}"><x-nav-icon name="operations"/><span class="nav-link-title">Operasional</span></a></li>
+                    </ul></li>
                     @auth
                         @if(auth()->user()->is_platform_admin)
-                            <li class="nav-item mt-2"><span class="nav-link text-muted">PLATFORM ADMIN</span></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ route('platform.dashboard') }}">Platform Dashboard</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ route('platform.tenants.index') }}">Tenants</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ route('platform.plans.index') }}">Plans</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ route('platform.modules.index') }}">Modules</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ route('platform.audit.index') }}">Audit</a></li>
+                            <li class="nav-group"><button class="nav-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#nav-platform" aria-expanded="false"><x-nav-icon name="platform-group"/><span>⚙️ Platform</span><span class="nav-chevron">⌄</span></button><ul class="collapse nav-submenu" id="nav-platform">
+                                <li class="nav-item"><a class="nav-link" href="{{ route('platform.dashboard') }}"><x-nav-icon name="platform-dashboard"/><span class="nav-link-title">Platform Dashboard</span></a></li>
+                                <li class="nav-item"><a class="nav-link" href="{{ route('platform.tenants.index') }}"><x-nav-icon name="tenants"/><span class="nav-link-title">Tenant</span></a></li>
+                                <li class="nav-item"><a class="nav-link" href="{{ route('platform.plans.index') }}"><x-nav-icon name="plans"/><span class="nav-link-title">Paket</span></a></li>
+                                <li class="nav-item"><a class="nav-link" href="{{ route('platform.modules.index') }}"><x-nav-icon name="modules"/><span class="nav-link-title">Modul</span></a></li>
+                                <li class="nav-item"><a class="nav-link" href="{{ route('platform.audit.index') }}"><x-nav-icon name="audit"/><span class="nav-link-title">Audit</span></a></li>
+                                <li class="nav-item"><a class="nav-link" href="{{ route('platform.blog.index') }}"><x-nav-icon name="blog"/><span class="nav-link-title">Blog</span></a></li>
+                                <li class="nav-item"><a class="nav-link" href="{{ route('platform.integrations.index') }}"><x-nav-icon name="integrations"/><span class="nav-link-title">Integrasi</span></a></li>
+                                <li class="nav-item"><a class="nav-link" href="{{ route('platform.health') }}"><x-nav-icon name="health"/><span class="nav-link-title">Kesehatan Sistem</span></a></li>
+                            </ul></li>
                         @endif
                     @endauth
-                    <li class="nav-item"><a class="nav-link" href="{{ route('platform.health') }}">System Health</a></li>
                 </ul>
             </div>
         </div>
     </aside>
+    <button class="admin-sidebar-overlay" type="button" aria-label="Tutup navigasi" onclick="document.body.classList.remove('sidebar-open')"></button>
     <header class="navbar navbar-expand-md d-print-none">
         <div class="container-xl">
+            <button class="admin-menu-toggle" type="button" aria-label="Buka navigasi" onclick="document.body.classList.toggle('sidebar-open')"><span></span><span></span><span></span></button>
             <h1 class="navbar-brand">@yield('header', 'Dashboard')</h1>
             <div class="navbar-nav flex-row order-md-last">
                 <button class="btn btn-icon" onclick="document.documentElement.dataset.bsTheme=document.documentElement.dataset.bsTheme==='dark'?'light':'dark'" title="Dark mode">◐</button>
@@ -69,5 +81,6 @@
 </div>
 @livewireScripts
 @stack('scripts')
+<script>document.querySelectorAll('#admin-sidebar a').forEach(link=>link.addEventListener('click',()=>document.body.classList.remove('sidebar-open')));</script>
 </body>
 </html>

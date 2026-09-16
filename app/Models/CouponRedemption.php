@@ -15,4 +15,14 @@ class CouponRedemption extends Model
     {
         return ['discount_amount' => 'decimal:2'];
     }
+
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
+    }
+
+    public function subscription()
+    {
+        return $this->belongsTo(Subscription::class);
+    }
 }

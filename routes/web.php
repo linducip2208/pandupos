@@ -1,30 +1,91 @@
 <?php
 
+use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocsController;
 use App\Http\Controllers\Platform\AffiliateController;
 use App\Http\Controllers\Platform\AnnouncementController;
 use App\Http\Controllers\Platform\AuditController;
 use App\Http\Controllers\Platform\BillingController;
+use App\Http\Controllers\Platform\BlogAdminController;
 use App\Http\Controllers\Platform\CouponController;
 use App\Http\Controllers\Platform\HealthController;
 use App\Http\Controllers\Platform\ImpersonationController;
+use App\Http\Controllers\Platform\IntegrationProviderController;
 use App\Http\Controllers\Platform\ModuleController;
 use App\Http\Controllers\Platform\PlanController;
 use App\Http\Controllers\Platform\SubscriptionAdminController;
 use App\Http\Controllers\Platform\TenantController;
+use App\Http\Controllers\Portal\AuthController as PortalAuthController;
+use App\Http\Controllers\Portal\DashboardController as PortalDashboardController;
+use App\Http\Controllers\Portal\InvoiceController as PortalInvoiceController;
+use App\Http\Controllers\Portal\OrderController as PortalOrderController;
+use App\Http\Controllers\Portal\PaymentProofController as PortalPaymentProofController;
+use App\Http\Controllers\ProgrammaticSeoController;
+use App\Http\Controllers\ReportPageController;
+use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => view('welcome'))->name('home');
+Route::get('/', fn () => auth()->check() ? redirect()->route('dashboard') : view('welcome'))->name('home');
+Route::get('/docs', [DocsController::class, 'index'])->name('docs');
+Route::view('/faq', 'public.faq')->name('faq');
+Route::view('/contact', 'public.contact')->name('contact');
+Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/feed.xml', [BlogController::class, 'feed'])->name('blog.feed');
+Route::get('/blog/category/{category:slug}', [BlogController::class, 'index'])->name('blog.category');
+Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('/sitemap/content.xml', [SitemapController::class, 'content'])->name('sitemap.content');
+Route::get('/sitemap/pseo-{chunk}.xml', [SitemapController::class, 'pseo'])->whereNumber('chunk')->name('sitemap.pseo');
+
+Route::get('/best-{category}-{year}', [ProgrammaticSeoController::class, 'best'])
+    ->where(['category' => '[a-z0-9-]+', 'year' => '[0-9]{4}'])->name('pseo.best.year');
+Route::get('/best-{category}', [ProgrammaticSeoController::class, 'best'])
+    ->where('category', '[a-z0-9-]+')->name('pseo.best');
+Route::get('/alternatives-to-{slug}', [ProgrammaticSeoController::class, 'alternatives'])
+    ->where('slug', '[a-z0-9-]+')->name('pseo.alternatives');
+Route::get('/compare/{a}-vs-{b}', [ProgrammaticSeoController::class, 'compare'])
+    ->where(['a' => '[a-z0-9-]+', 'b' => '[a-z0-9-]+'])->name('pseo.compare');
+Route::get('/source-code-pos/{industry}/{city}/{feature}', [ProgrammaticSeoController::class, 'sourceCode'])
+    ->where(['industry' => '[a-z0-9-]+', 'city' => '[a-z0-9-]+', 'feature' => '[a-z0-9-]+'])->name('pseo.source-code');
+Route::get('/{intent}-pos/{industry}/{city}/{feature}', [ProgrammaticSeoController::class, 'growth'])
+    ->where(['intent' => 'aplikasi|software|sistem|platform|solusi|rekomendasi|panduan|otomasi|digitalisasi|manajemen', 'industry' => '[a-z0-9-]+', 'city' => '[a-z0-9-]+', 'feature' => '[a-z0-9-]+'])->name('pseo.growth');
 
 Route::get('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/login', [AuthController::class, 'attempt'])->name('login.attempt');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+Route::prefix('portal')->name('portal.')->group(function () {
+    Route::middleware('guest:customer')->group(function () {
+        Route::get('/login', [PortalAuthController::class, 'create'])->name('login');
+        Route::post('/login', [PortalAuthController::class, 'store'])->name('login.attempt');
+    });
+    Route::middleware(['auth:customer', 'portal.tenant'])->group(function () {
+        Route::post('/logout', [PortalAuthController::class, 'destroy'])->name('logout');
+        Route::get('/', PortalDashboardController::class)->name('dashboard');
+        Route::get('/orders', [PortalOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{invoice}', [PortalOrderController::class, 'show'])->whereNumber('invoice')->name('orders.show');
+        Route::get('/invoices', [PortalInvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('/invoices/{invoice}', [PortalInvoiceController::class, 'show'])->whereNumber('invoice')->name('invoices.show');
+        Route::get('/invoices/{invoice}/pdf', [PortalInvoiceController::class, 'pdf'])->whereNumber('invoice')->name('invoices.pdf');
+        Route::post('/invoices/{invoice}/payment-proof', [PortalPaymentProofController::class, 'store'])->whereNumber('invoice')->name('payment-proofs.store');
+    });
+});
+
 Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/pos', fn () => view('pos.index'))->name('pos.index')
         ->middleware(['entitlement:pos.access', 'module:pos']);
+    Route::get('/reports/{type}', [ReportPageController::class, 'show'])->name('reports.show');
+    Route::get('/reports/{type}/csv', [ReportPageController::class, 'csv'])->name('reports.csv');
+    Route::get('/reports/{type}/xlsx', [ReportPageController::class, 'xlsx'])->name('reports.xlsx');
+    Route::get('/reports/{type}/pdf', [ReportPageController::class, 'pdf'])->name('reports.pdf');
+    Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+    Route::post('/approvals/settings', [ApprovalController::class, 'setting'])->name('approvals.setting');
+    Route::post('/approvals/{approval}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
+    Route::post('/approvals/{approval}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
 });
 
 Route::prefix('platform')->name('platform.')->middleware(['auth', 'can:platform-admin'])->group(function () {
@@ -53,6 +114,16 @@ Route::prefix('platform')->name('platform.')->middleware(['auth', 'can:platform-
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
     Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
     Route::post('/announcements/{announcement}/send', [AnnouncementController::class, 'send'])->name('announcements.send');
+    Route::get('/blog', [BlogAdminController::class, 'index'])->name('blog.index');
+    Route::post('/blog', [BlogAdminController::class, 'store'])->name('blog.store');
+    Route::put('/blog/{post}', [BlogAdminController::class, 'update'])->name('blog.update');
+    Route::delete('/blog/{post}', [BlogAdminController::class, 'destroy'])->name('blog.destroy');
+    Route::get('/integrations', [IntegrationProviderController::class, 'index'])->name('integrations.index');
+    Route::post('/integrations', [IntegrationProviderController::class, 'store'])->name('integrations.store');
+    Route::put('/integrations/{provider}', [IntegrationProviderController::class, 'update'])->name('integrations.update');
+    Route::delete('/integrations/{provider}', [IntegrationProviderController::class, 'destroy'])->name('integrations.destroy');
+    Route::post('/integrations/{provider}/discover', [IntegrationProviderController::class, 'discover'])->name('integrations.discover');
+    Route::post('/integration-assignments', [IntegrationProviderController::class, 'assign'])->name('integrations.assign');
     Route::get('/settings', fn () => view('platform.simple', ['title' => 'Settings']))->name('settings.index');
     Route::get('/entitlements', fn () => view('platform.simple', ['title' => 'Entitlements']))->name('entitlements.index');
 });

@@ -19,4 +19,9 @@ class TenantModule extends Model
     {
         return ['enabled' => 'boolean', 'settings' => 'array', 'enabled_at' => 'datetime', 'disabled_at' => 'datetime'];
     }
+
+    public function module()
+    {
+        return $this->belongsTo(Module::class);
+    }
 }

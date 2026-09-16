@@ -16,4 +16,9 @@ class Membership extends Model
     {
         return ['branch_ids' => 'array'];
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

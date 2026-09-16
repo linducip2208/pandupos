@@ -15,4 +15,14 @@ class SubscriptionEvent extends Model
     {
         return ['payload' => 'array'];
     }
+
+    public function subscription()
+    {
+        return $this->belongsTo(Subscription::class);
+    }
+
+    public function actor()
+    {
+        return $this->belongsTo(User::class, 'actor_id');
+    }
 }
