@@ -73,7 +73,14 @@ final class UsageLimitService
     {
         $out = [];
         foreach (array_keys(self::METERS) as $key) {
-            $out[$key] = ['used' => $this->count($tenantId, $key), 'limit' => $this->limit($tenantId, $key)];
+            $used = $this->count($tenantId, $key);
+            $limit = $this->limit($tenantId, $key);
+            // Consistent unlimited representation: limit null, percent 0.
+            $percent = $limit === null || $limit <= 0 ? 0 : (int) min(100, round($used / $limit * 100));
+            $short = str_replace(['.max', '.monthly'], '', $key);
+            $entry = ['current' => $used, 'used' => $used, 'limit' => $limit, 'percent' => $percent, 'unlimited' => $limit === null];
+            $out[$key] = $entry;
+            $out[$short] = $entry;
         }
 
         return $out;

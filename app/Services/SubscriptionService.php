@@ -54,6 +54,69 @@ final class SubscriptionService
         });
     }
 
+    public function startTrial(int $tenantId, int $planId, string $cycle = 'monthly'): Subscription
+    {
+        $plan = Plan::findOrFail($planId);
+        if (($plan->trial_days ?? 0) <= 0) {
+            return $this->subscribe($tenantId, $planId, $cycle);
+        }
+
+        return $this->subscribe($tenantId, $planId, $cycle);
+    }
+
+    public function activate(int $subscriptionId): Subscription
+    {
+        return DB::transaction(function () use ($subscriptionId) {
+            $sub = Subscription::withoutGlobalScopes()->findOrFail($subscriptionId);
+            $sub->update(['status' => 'active', 'current_period_start' => now(), 'current_period_end' => $this->periodEnd($sub->billing_cycle)]);
+            $this->log($sub->tenant_id, $sub->id, 'activated', []);
+            $this->entitlements->forget($sub->tenant_id);
+
+            return $sub;
+        });
+    }
+
+    public function upgrade(int $tenantId, int $planId, string $cycle = 'monthly'): Subscription
+    {
+        $sub = $this->subscribe($tenantId, $planId, $cycle);
+        $this->log($tenantId, $sub->id, 'upgraded', ['plan_id' => $planId]);
+
+        return $sub;
+    }
+
+    public function downgrade(int $tenantId, int $planId, string $cycle = 'monthly'): Subscription
+    {
+        $sub = $this->subscribe($tenantId, $planId, $cycle);
+        $this->log($tenantId, $sub->id, 'downgraded', ['plan_id' => $planId]);
+
+        return $sub;
+    }
+
+    public function suspend(int $subscriptionId, string $reason = ''): Subscription
+    {
+        return DB::transaction(function () use ($subscriptionId, $reason) {
+            $sub = Subscription::withoutGlobalScopes()->findOrFail($subscriptionId);
+            $sub->update(['status' => 'suspended']);
+            $this->log($sub->tenant_id, $sub->id, 'suspended', ['reason' => $reason]);
+            $this->entitlements->forget($sub->tenant_id);
+
+            return $sub;
+        });
+    }
+
+    public function expire(int $subscriptionId): Subscription
+    {
+        return DB::transaction(function () use ($subscriptionId) {
+            $sub = Subscription::withoutGlobalScopes()->findOrFail($subscriptionId);
+            // Historical rows are never destroyed — status transition only.
+            $sub->update(['status' => 'expired', 'ends_at' => now()]);
+            $this->log($sub->tenant_id, $sub->id, 'expired', []);
+            $this->entitlements->forget($sub->tenant_id);
+
+            return $sub;
+        });
+    }
+
     public function renew(int $subscriptionId): Subscription
     {
         return DB::transaction(function () use ($subscriptionId) {

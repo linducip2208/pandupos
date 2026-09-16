@@ -2,8 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\Branch;
+use App\Models\Contact;
+use App\Models\ProductVariant;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
+use App\Models\StockMovement;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -26,6 +31,19 @@ final class SaleService
                 ->where('tenant_id', $tenantId)->where('idempotency_key', $idempotencyKey)->first();
             if ($existing) {
                 return $existing;
+            }
+
+            // Validate tenant ownership of all references (prevent IDOR).
+            abort_unless(Branch::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $branchId)->exists(), 422, 'Branch does not belong to tenant.');
+            abort_unless(Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $warehouseId)->exists(), 422, 'Warehouse does not belong to tenant.');
+            if ($contactId) {
+                abort_unless(Contact::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $contactId)->exists(), 422, 'Customer does not belong to tenant.');
+            }
+            foreach ($lines as $l) {
+                abort_unless(ProductVariant::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $l['variant_id'])->exists(), 422, 'Variant does not belong to tenant.');
+                if (($l['quantity'] ?? 0) <= 0) {
+                    abort(422, 'Line quantity must be greater than zero.');
+                }
             }
 
             $subtotal = collect($lines)->sum(fn ($l) => $l['quantity'] * $l['unit_price'] - ($l['discount'] ?? 0));
@@ -69,14 +87,20 @@ final class SaleService
         abort_unless($canVoid, 403, 'Unauthorized to void sale.');
 
         DB::transaction(function () use ($invoiceId) {
-            $invoice = SalesInvoice::withoutGlobalScopes()->findOrFail($invoiceId);
+            $invoice = SalesInvoice::withoutGlobalScopes()->lockForUpdate()->findOrFail($invoiceId);
             if ($invoice->status === 'void') {
                 return;
             }
+            // Completed sales are never hard-deleted; reversal via stock movement + audit.
             foreach ($invoice->lines as $line) {
+                $origCost = StockMovement::withoutGlobalScopes()
+                    ->where('tenant_id', $invoice->tenant_id)
+                    ->where('reference_type', 'sale')->where('reference_id', $invoice->id)
+                    ->where('product_variant_id', $line->product_variant_id)
+                    ->where('movement_type', 'out')->value('unit_cost') ?? 0;
                 $this->stock->increase(
                     $invoice->tenant_id, $invoice->warehouse_id,
-                    $line->product_variant_id, (float) $line->quantity, 0, 'sale_void', $invoice->id
+                    $line->product_variant_id, (float) $line->quantity, (float) $origCost, 'sale_void', $invoice->id
                 );
             }
             $invoice->update(['status' => 'void']);
@@ -86,11 +110,17 @@ final class SaleService
     public function return(int $invoiceId, array $returnLines): void
     {
         DB::transaction(function () use ($invoiceId, $returnLines) {
-            $invoice = SalesInvoice::withoutGlobalScopes()->findOrFail($invoiceId);
+            $invoice = SalesInvoice::withoutGlobalScopes()->lockForUpdate()->findOrFail($invoiceId);
+            abort_if($invoice->status === 'void', 422, 'Cannot return a voided sale.');
             foreach ($returnLines as $rl) {
+                $origCost = StockMovement::withoutGlobalScopes()
+                    ->where('tenant_id', $invoice->tenant_id)
+                    ->where('reference_type', 'sale')->where('reference_id', $invoice->id)
+                    ->where('product_variant_id', $rl['variant_id'])
+                    ->where('movement_type', 'out')->value('unit_cost') ?? 0;
                 $this->stock->increase(
                     $invoice->tenant_id, $invoice->warehouse_id,
-                    $rl['variant_id'], (float) $rl['quantity'], 0, 'sale_return', $invoice->id
+                    $rl['variant_id'], (float) $rl['quantity'], (float) $origCost, 'sale_return', $invoice->id
                 );
             }
             SalesReturn::withoutGlobalScopes()->create([
