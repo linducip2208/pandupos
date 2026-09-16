@@ -39,9 +39,9 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Product master basics | Types, tracking, image/tax/reorder metadata, variant attributes, warehouse assignments | No complete tenant CRUD | Create/list/show | Product policy | Scoped and validated | Feature/basic flow | Present | PARTIAL |
 | Unit conversion | Direct/inverse/chained tenant-safe conversion service | None | List/create definitions | Product policy | Cross-tenant rejection tested | Carton→pcs stock flow | Present | PARTIAL |
 | SKU/normal barcode | Product and variant SKU/barcode | POS lookup | Partial | Product policy | Scoped | Variant/unit flow | Basic | PARTIAL |
-| Weighing barcode/labels | None | None | None | None | N/A | None | Reference only | MISSING |
-| Price lists | None | None | None | None | N/A | None | Reference only | MISSING |
-| Bundle/combo | None | None | None | None | N/A | None | Reference only | MISSING |
+| Weighing barcode/labels | Configurable tenant parser for weight/price barcodes | None | Profile/create/parse | Product policy | Tenant-filtered | Parser workflow | Present | PARTIAL |
+| Price lists | Scope/date/quantity/priority resolver and audit hook | None | List/create | Product policy | Tenant-owned references | Resolver precedence | Present | PARTIAL |
+| Bundle/combo | Relational components; checkout/return/void component stock | None | Component API | Product policy | Tenant validations | Full stock lifecycle | Present | PARTIAL |
 | Batch/expiry/FEFO | None | None | None | None | N/A | None | Reference only | MISSING |
 | Serial lifecycle | None | None | None | None | N/A | None | Reference only | MISSING |
 | Rack/bin | Warehouse only | None | None | None | Scoped warehouse | None | Reference only | MISSING |
@@ -86,10 +86,10 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 26% | Product/conversion foundations improved; most advanced inventory, document, register and report workflows are absent |
+| Core parity | 30% | Product, conversion, pricing, barcode-parser and bundle foundations improved; advanced inventory/documents remain absent |
 | SaaS parity | 46% | Billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 33% | Unit conversion is proven; most mandatory final-matrix workflows still lack implementation/tests |
+| Test readiness | 37% | Unit conversion, price precedence, weighing barcode and bundle lifecycle are proven; most final-matrix workflows remain |
 | Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
 | Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
 | Production readiness | 26% | Mandatory production gates are not satisfied |

@@ -20,4 +20,9 @@ class SalesReturn extends Model
     {
         return $this->belongsTo(SalesInvoice::class, 'sales_invoice_id');
     }
+
+    public function lines()
+    {
+        return $this->hasMany(SalesReturnLine::class);
+    }
 }

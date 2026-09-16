@@ -17,7 +17,11 @@ use Illuminate\Support\Str;
 /** Atomic checkout: sale + payments + stock mutation. Idempotent via idempotency_key. */
 final class SaleService
 {
-    public function __construct(private StockService $stock, private ApprovalService $approvals) {}
+    public function __construct(
+        private StockService $stock,
+        private ApprovalService $approvals,
+        private BundleInventoryService $bundles,
+    ) {}
 
     /**
      * @param  array  $lines  [['variant_id'=>int,'quantity'=>float,'unit_price'=>float,'discount'=>float]]
@@ -78,7 +82,14 @@ final class SaleService
                         'unit_price' => $l['unit_price'], 'discount' => $l['discount'] ?? 0,
                     ]);
                     if (! $requiresApproval) {
-                        $this->stock->decrease($tenantId, $warehouseId, $l['variant_id'], (float) $l['quantity'], 'sale', $invoice->id);
+                        $this->decreaseSoldInventory(
+                            $tenantId,
+                            $warehouseId,
+                            (int) $l['variant_id'],
+                            (float) $l['quantity'],
+                            'sale',
+                            $invoice->id
+                        );
                     }
                 }
 
@@ -125,13 +136,25 @@ final class SaleService
             // Completed sales are never hard-deleted; reversal via stock movement + audit.
             // Restore only net sold (sold - already returned) to avoid double-restore after returns.
             foreach ($invoice->lines as $line) {
-                $alreadyReturned = (float) StockMovement::withoutGlobalScopes()
-                    ->where('tenant_id', $invoice->tenant_id)
-                    ->where('reference_type', 'sale_return')->where('reference_id', $invoice->id)
-                    ->where('product_variant_id', $line->product_variant_id)
-                    ->where('movement_type', 'in')->sum('quantity');
+                $alreadyReturned = (float) $line->returnLines()->sum('quantity');
                 $toRestore = (float) $line->quantity - $alreadyReturned;
                 if ($toRestore <= 0) {
+                    continue;
+                }
+                $variant = ProductVariant::withoutGlobalScopes()->with('product')->findOrFail($line->product_variant_id);
+                if (! $variant->product->track_inventory) {
+                    continue;
+                }
+                if ($variant->product->product_type === 'bundle') {
+                    $this->bundles->increase(
+                        $invoice->tenant_id,
+                        $invoice->warehouse_id,
+                        $variant,
+                        $toRestore,
+                        'sale_void',
+                        $invoice->id
+                    );
+
                     continue;
                 }
                 $origCost = StockMovement::withoutGlobalScopes()
@@ -162,32 +185,67 @@ final class SaleService
             foreach ($invoice->lines as $line) {
                 $soldByVariant[$line->product_variant_id] = ($soldByVariant[$line->product_variant_id] ?? 0) + (float) $line->quantity;
             }
+            $return = SalesReturn::withoutGlobalScopes()->create([
+                'tenant_id' => $invoice->tenant_id,
+                'sales_invoice_id' => $invoice->id,
+                'total' => collect($returnLines)->sum(fn ($row) => $row['quantity'] * ($row['unit_price'] ?? 0)),
+            ]);
             foreach ($returnLines as $rl) {
                 if (($rl['quantity'] ?? 0) <= 0) {
                     abort(422, 'Return quantity must be greater than zero.');
                 }
+                $salesLine = $invoice->lines->firstWhere('product_variant_id', $rl['variant_id']);
                 $sold = $soldByVariant[$rl['variant_id']] ?? 0;
                 abort_if($sold <= 0, 422, 'Variant was not sold on this invoice.');
-                $alreadyReturned = (float) StockMovement::withoutGlobalScopes()
-                    ->where('tenant_id', $invoice->tenant_id)
-                    ->where('reference_type', 'sale_return')->where('reference_id', $invoice->id)
-                    ->where('product_variant_id', $rl['variant_id'])
-                    ->where('movement_type', 'in')->sum('quantity');
+                $alreadyReturned = (float) $salesLine->returnLines()->sum('quantity');
                 abort_if($alreadyReturned + (float) $rl['quantity'] > $sold + 0.000001, 422, 'Return quantity exceeds sold quantity.');
-                $origCost = StockMovement::withoutGlobalScopes()
-                    ->where('tenant_id', $invoice->tenant_id)
-                    ->where('reference_type', 'sale')->where('reference_id', $invoice->id)
-                    ->where('product_variant_id', $rl['variant_id'])
-                    ->where('movement_type', 'out')->value('unit_cost') ?? 0;
-                $this->stock->increase(
-                    $invoice->tenant_id, $invoice->warehouse_id,
-                    $rl['variant_id'], (float) $rl['quantity'], (float) $origCost, 'sale_return', $invoice->id
-                );
+                $variant = ProductVariant::withoutGlobalScopes()->with('product')->findOrFail($rl['variant_id']);
+                if ($variant->product->track_inventory && $variant->product->product_type === 'bundle') {
+                    $this->bundles->increase(
+                        $invoice->tenant_id,
+                        $invoice->warehouse_id,
+                        $variant,
+                        (float) $rl['quantity'],
+                        'sale_return',
+                        $invoice->id
+                    );
+                } elseif ($variant->product->track_inventory) {
+                    $origCost = StockMovement::withoutGlobalScopes()
+                        ->where('tenant_id', $invoice->tenant_id)
+                        ->where('reference_type', 'sale')->where('reference_id', $invoice->id)
+                        ->where('product_variant_id', $rl['variant_id'])
+                        ->where('movement_type', 'out')->value('unit_cost') ?? 0;
+                    $this->stock->increase(
+                        $invoice->tenant_id, $invoice->warehouse_id,
+                        $rl['variant_id'], (float) $rl['quantity'], (float) $origCost, 'sale_return', $invoice->id
+                    );
+                }
+                $return->lines()->create([
+                    'sales_line_id' => $salesLine->id,
+                    'quantity' => $rl['quantity'],
+                    'unit_price' => $rl['unit_price'] ?? $salesLine->unit_price,
+                ]);
             }
-            SalesReturn::withoutGlobalScopes()->create([
-                'tenant_id' => $invoice->tenant_id, 'sales_invoice_id' => $invoice->id,
-                'total' => collect($returnLines)->sum(fn ($r) => $r['quantity'] * ($r['unit_price'] ?? 0)),
-            ]);
         });
+    }
+
+    private function decreaseSoldInventory(
+        int $tenantId,
+        int $warehouseId,
+        int $variantId,
+        float $quantity,
+        string $referenceType,
+        int $referenceId,
+    ): void {
+        $variant = ProductVariant::withoutGlobalScopes()->with('product')->findOrFail($variantId);
+        if (! $variant->product->track_inventory || $variant->product->product_type === 'service') {
+            return;
+        }
+        if ($variant->product->product_type === 'bundle') {
+            $this->bundles->decrease($tenantId, $warehouseId, $variant, $quantity, $referenceType, $referenceId);
+
+            return;
+        }
+        $this->stock->decrease($tenantId, $warehouseId, $variantId, $quantity, $referenceType, $referenceId);
     }
 }

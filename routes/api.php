@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\InventoryConfigurationController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MetaController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -42,6 +43,11 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     Route::post('units', [CatalogController::class, 'storeUnit']);
     Route::get('unit-conversions', [CatalogController::class, 'unitConversions']);
     Route::post('unit-conversions', [CatalogController::class, 'storeUnitConversion']);
+    Route::post('barcode-profiles', [InventoryConfigurationController::class, 'storeBarcodeProfile']);
+    Route::post('barcodes/parse', [InventoryConfigurationController::class, 'parseBarcode']);
+    Route::get('price-lists', [InventoryConfigurationController::class, 'priceLists']);
+    Route::post('price-lists', [InventoryConfigurationController::class, 'storePriceList']);
+    Route::put('products/{product}/bundle-items', [InventoryConfigurationController::class, 'setBundleItems']);
 
     // Purchasing: stock increases ONLY on receive
     Route::apiResource('purchases', PurchaseController::class)->only(['index', 'store']);

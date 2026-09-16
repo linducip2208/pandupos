@@ -49,4 +49,9 @@ class Product extends Model
     {
         return $this->hasMany(ProductLocation::class);
     }
+
+    public function bundleItems()
+    {
+        return $this->hasMany(BundleItem::class, 'bundle_product_id');
+    }
 }

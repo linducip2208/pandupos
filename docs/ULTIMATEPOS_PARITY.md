@@ -10,9 +10,9 @@ Legend: `D` done, `P` partial, `M` missing, `—` not applicable. `FEATURE COMPL
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|---|
 | Product/category/brand/unit/variant | Types, tracking/tax/image metadata, variant attributes, locations and API | P | M | P | P | D | P | P | PARTIAL | Complete tenant CRUD UI and update/archive flow |
 | Sub-units/conversion | Tenant-safe direct/inverse/chained service and API definitions | D | M | D | P | D | D | D | PARTIAL | Tenant UI and purchase/POS unit selectors |
-| SKU/barcode/weighing/labels | Product and variant SKU/barcode | P | P | P | P | D | P | P | PARTIAL | Weighing parser/labels/printing |
-| Selling price groups | No price-list tables/resolver | M | M | M | M | — | M | M | NOT STARTED | Scope/date/priority/audit |
-| Combo/bundle | No relational components | M | M | M | M | — | M | M | NOT STARTED | Atomic component deduction |
+| SKU/barcode/weighing/labels | Normal/variant barcode and configurable weight/price parser | P | M | D | P | D | D | D | PARTIAL | Label templates and print UI |
+| Selling price groups | Global/branch/group/promo/date/quantity/priority resolver | D | M | D | P | D | D | D | PARTIAL | Tenant management UI and edit audit |
+| Combo/bundle | Relational components and atomic sale/return/void stock | D | M | D | P | D | D | D | PARTIAL | Tenant management UI |
 | Opening stock/location assignment | Generic ledger increase only | P | M | M | M | P | M | P | PARTIAL | Governed workflow/audit |
 | Lot/batch/expiry/FEFO | Not found | M | M | M | M | — | M | M | NOT STARTED | Complete allocation/override |
 | Serial tracking | Not found | M | M | M | M | — | M | M | NOT STARTED | Lifecycle/duplicate prevention |
@@ -85,4 +85,4 @@ No addon is currently FEATURE COMPLETE, TESTED, or STABLE.
 
 ## Current scores
 
-**Core 26%, SaaS 46%, Addons 1%, test readiness 33%, security readiness 58%, operations readiness 27%.** Move these only when repository evidence and release gates move.
+**Core 30%, SaaS 46%, Addons 1%, test readiness 37%, security readiness 58%, operations readiness 27%.** Move these only when repository evidence and release gates move.

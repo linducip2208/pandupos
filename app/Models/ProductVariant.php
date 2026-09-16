@@ -20,4 +20,14 @@ class ProductVariant extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function priceListItems()
+    {
+        return $this->hasMany(PriceListItem::class);
+    }
+
+    public function usedInBundles()
+    {
+        return $this->hasMany(BundleItem::class, 'component_variant_id');
+    }
 }

@@ -21,6 +21,11 @@ class Contact extends Model
         return $this->hasOne(CustomerLogin::class);
     }
 
+    public function customerGroup()
+    {
+        return $this->belongsTo(CustomerGroup::class);
+    }
+
     public function salesInvoices()
     {
         return $this->hasMany(SalesInvoice::class);
