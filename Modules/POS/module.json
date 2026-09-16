@@ -20,5 +20,6 @@
             "route": "pos.index",
             "icon": "cart"
         }
-    ]
+    ],
+    "provider": "Modules\\POS\\Providers\\POSServiceProvider"
 }

@@ -13,5 +13,6 @@
     "entitlements": [
         "purchase.access"
     ],
-    "navigation": []
+    "navigation": [],
+    "provider": "Modules\\Purchasing\\Providers\\PurchasingServiceProvider"
 }

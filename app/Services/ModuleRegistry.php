@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Module;
 use App\Models\TenantModule;
+use App\Support\ModuleManifestValidator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 
@@ -45,23 +46,49 @@ final class ModuleRegistry
     /** Validate a manifest array. Returns list of errors (empty = valid). */
     public static function validateManifest(array $manifest): array
     {
-        $errors = [];
+        return ModuleManifestValidator::validate($manifest);
+    }
 
-        foreach (['name', 'slug', 'version'] as $required) {
-            if (empty($manifest[$required])) {
-                $errors[] = "Missing required key: {$required}";
+    /** @return array<string,array> slug => manifest */
+    public function manifests(): array
+    {
+        return Cache::remember('module-manifests', 300, function () {
+            $loaded = ModuleManifestValidator::loadFromDisk(base_path('Modules'));
+
+            return $loaded['manifests'];
+        });
+    }
+
+    /** @return list<array{label:string,route:string,icon:string|null}> */
+    public function navigationFor(int $tenantId): array
+    {
+        $nav = [];
+        foreach ($this->manifests() as $slug => $manifest) {
+            if (! $this->isEnabled($tenantId, $slug)) {
+                continue;
+            }
+            if (! app(EntitlementService::class)->allowed($tenantId, "{$slug}.access")) {
+                // Still show if no explicit entitlement required? Only gate when manifest declares it.
+                if (in_array("{$slug}.access", $manifest['entitlements'] ?? [], true)) {
+                    continue;
+                }
+            }
+            foreach ($manifest['navigation'] ?? [] as $item) {
+                $nav[] = [
+                    'label' => $item['label'] ?? $slug,
+                    'route' => $item['route'] ?? '',
+                    'icon' => $item['icon'] ?? null,
+                    'module' => $slug,
+                ];
             }
         }
 
-        if (isset($manifest['slug']) && ! preg_match('/^[a-z0-9_.-]+$/', $manifest['slug'])) {
-            $errors[] = 'Slug must be lowercase alphanumeric with dashes/underscores/dots.';
-        }
-
-        return $errors;
+        return $nav;
     }
 
     public function forget(): void
     {
         Cache::forget('module-registry');
+        Cache::forget('module-manifests');
     }
 }
