@@ -14,8 +14,8 @@ Legend: `D` done, `P` partial, `M` missing, `—` not applicable. `FEATURE COMPL
 | Selling price groups | Global/branch/group/promo/date/quantity/priority resolver | D | M | D | P | D | D | D | PARTIAL | Tenant management UI and edit audit |
 | Combo/bundle | Relational components and atomic sale/return/void stock | D | M | D | P | D | D | D | PARTIAL | Tenant management UI |
 | Opening stock/location assignment | Generic ledger increase only | P | M | M | M | P | M | P | PARTIAL | Governed workflow/audit |
-| Lot/batch/expiry/FEFO | Not found | M | M | M | M | — | M | M | NOT STARTED | Complete allocation/override |
-| Serial tracking | Not found | M | M | M | M | — | M | M | NOT STARTED | Lifecycle/duplicate prevention |
+| Lot/batch/expiry/FEFO | Lot provenance, expiry report API and controlled FEFO allocation | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and purchase/sale selectors |
+| Serial tracking | Controlled lifecycle, ledger linkage and duplicate-sale prevention | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and return/transfer integration |
 | Rack/bin | Warehouse only | M | M | M | M | — | M | M | NOT STARTED | Zone/rack/shelf/bin |
 | Ledger/WAC | Append-only movements, locks, WAC/valuation | P | P | P | P | D | P | P | PARTIAL | Taxonomy/cost/concurrency matrix |
 | Reservation | Checkout oversell lock only | P | M | M | M | P | P | M | PARTIAL | Entity/expiry/release |

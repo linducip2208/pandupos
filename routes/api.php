@@ -48,6 +48,10 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     Route::get('price-lists', [InventoryConfigurationController::class, 'priceLists']);
     Route::post('price-lists', [InventoryConfigurationController::class, 'storePriceList']);
     Route::put('products/{product}/bundle-items', [InventoryConfigurationController::class, 'setBundleItems']);
+    Route::post('inventory/batches', [InventoryConfigurationController::class, 'storeBatch']);
+    Route::get('inventory/expiry', [InventoryConfigurationController::class, 'expiry']);
+    Route::get('inventory/serials', [InventoryConfigurationController::class, 'serials']);
+    Route::post('inventory/serials', [InventoryConfigurationController::class, 'storeSerial']);
 
     // Purchasing: stock increases ONLY on receive
     Route::apiResource('purchases', PurchaseController::class)->only(['index', 'store']);

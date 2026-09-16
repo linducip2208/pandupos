@@ -10,22 +10,22 @@ use Illuminate\Support\Facades\DB;
 /** Append-only ledger. Stock on hand = SUM(in) - SUM(out). Never update qty in place. */
 final class StockService
 {
-    public function increase(int $tenantId, int $warehouseId, int $variantId, float $qty, float $unitCost, string $refType, ?int $refId): StockMovement
+    public function increase(int $tenantId, int $warehouseId, int $variantId, float $qty, float $unitCost, string $refType, ?int $refId, ?int $batchId = null, ?int $serialNumberId = null): StockMovement
     {
         $this->validateMutation($tenantId, $warehouseId, $variantId, $qty);
 
-        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $qty, $unitCost, $refType, $refId) {
+        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $qty, $unitCost, $refType, $refId, $batchId, $serialNumberId) {
             $this->lockVariant($tenantId, $variantId, $warehouseId);
 
-            return $this->record($tenantId, $warehouseId, $variantId, $qty, max(0, $unitCost), 'in', $refType, $refId);
+            return $this->record($tenantId, $warehouseId, $variantId, $qty, max(0, $unitCost), 'in', $refType, $refId, $batchId, $serialNumberId);
         });
     }
 
-    public function decrease(int $tenantId, int $warehouseId, int $variantId, float $qty, string $refType, ?int $refId): StockMovement
+    public function decrease(int $tenantId, int $warehouseId, int $variantId, float $qty, string $refType, ?int $refId, ?int $batchId = null, ?int $serialNumberId = null): StockMovement
     {
         $this->validateMutation($tenantId, $warehouseId, $variantId, $qty);
 
-        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $qty, $refType, $refId) {
+        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $qty, $refType, $refId, $batchId, $serialNumberId) {
             $this->lockVariant($tenantId, $variantId, $warehouseId);
 
             $onHand = $this->onHandLocked($tenantId, $warehouseId, $variantId);
@@ -36,7 +36,7 @@ final class StockService
             // Weighted-average costing for reproducible COGS/valuation (FIFO optional future).
             $unitCost = $this->weightedAverageCost($tenantId, $warehouseId, $variantId);
 
-            return $this->record($tenantId, $warehouseId, $variantId, $qty, $unitCost, 'out', $refType, $refId);
+            return $this->record($tenantId, $warehouseId, $variantId, $qty, $unitCost, 'out', $refType, $refId, $batchId, $serialNumberId);
         });
     }
 
@@ -48,6 +48,19 @@ final class StockService
         $out = (float) StockMovement::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)
             ->where('product_variant_id', $variantId)->where('movement_type', 'out')->sum('quantity');
+
+        return round($in - $out, 3);
+    }
+
+    public function onHandByBatch(int $tenantId, int $warehouseId, int $variantId, int $batchId): float
+    {
+        $base = StockMovement::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('warehouse_id', $warehouseId)
+            ->where('product_variant_id', $variantId)
+            ->where('inventory_batch_id', $batchId);
+        $in = (float) (clone $base)->where('movement_type', 'in')->sum('quantity');
+        $out = (float) (clone $base)->where('movement_type', 'out')->sum('quantity');
 
         return round($in - $out, 3);
     }
@@ -114,11 +127,12 @@ final class StockService
         });
     }
 
-    private function record(int $tenantId, int $warehouseId, int $variantId, float $qty, float $cost, string $type, string $refType, ?int $refId): StockMovement
+    private function record(int $tenantId, int $warehouseId, int $variantId, float $qty, float $cost, string $type, string $refType, ?int $refId, ?int $batchId = null, ?int $serialNumberId = null): StockMovement
     {
         return StockMovement::withoutGlobalScopes()->create([
             'tenant_id' => $tenantId, 'warehouse_id' => $warehouseId,
-            'product_variant_id' => $variantId, 'reference_type' => $refType,
+            'product_variant_id' => $variantId, 'inventory_batch_id' => $batchId,
+            'serial_number_id' => $serialNumberId, 'reference_type' => $refType,
             'reference_id' => $refId, 'movement_type' => $type,
             'quantity' => $qty, 'unit_cost' => $cost, 'occurred_at' => now(),
         ]);

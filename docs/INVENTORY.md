@@ -7,10 +7,13 @@
 - `barcode_profiles` provides tenant-configurable weighing/price barcode positions and decimal precision. `BarcodeParserService` resolves normal product/variant barcodes before active scale profiles.
 - `price_lists` and `price_list_items` support global, branch, customer-group and promotional scopes, effective dates, quantity breaks, priority and fallback to the variant price.
 - Bundle definitions are relational `bundle_items`. Checkout, partial return and void mutate component inventory, never fake bundle stock.
+- `inventory_batches` records tenant/variant/warehouse lot identity, manufacture/expiry dates and supplier/purchase provenance. `BatchInventoryService` receives stock by batch and allocates sales with FEFO, excluding expired stock unless a caller explicitly enables the controlled override.
+- `serial_numbers` records the received/available/sold/returned/damaged/transferred lifecycle. `SerialNumberService` binds every stock mutation to one serial, validates tenant-owned invoices and rejects duplicate sales.
 - Truth: `stock_movements(tenant, warehouse, variant, ref_type/id, in/out, qty, unit_cost, occurred_at)` append-only.
+- Batch and serial references are carried on the append-only movement; historical movements are never rewritten when lifecycle state changes.
 - `StockService::increase/decrease/onHand/transfer`; oversell rejected (no auto-adjust).
 - Transfers: `transfer_orders(draft/shipped/received/cancelled)` + `transfer_lines`; atomic out+in.
-- Still missing: barcode label UI/printing, price-list UI, lots/batches/expiry/serials, FEFO, reservations, stock count, governed adjustments and advanced transfer receiving.
+- Still missing: barcode label UI/printing, price-list UI, batch/expiry/serial management UI, granular permissions/audit, reservations, rack/bin locations, stock count, governed adjustments and advanced transfer receiving.
 
 ## POS / Sales
 - `cash_sessions`, `sales_invoices(uuid, idempotency_key unique per tenant)`, `sales_lines`, `sale_payments(method cash/transfer/qris/ewallet/card)`, `sales_returns`.

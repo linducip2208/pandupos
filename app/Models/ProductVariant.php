@@ -30,4 +30,14 @@ class ProductVariant extends Model
     {
         return $this->hasMany(BundleItem::class, 'component_variant_id');
     }
+
+    public function inventoryBatches()
+    {
+        return $this->hasMany(InventoryBatch::class);
+    }
+
+    public function serialNumbers()
+    {
+        return $this->hasMany(SerialNumber::class);
+    }
 }

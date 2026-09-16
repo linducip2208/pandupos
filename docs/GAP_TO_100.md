@@ -25,7 +25,7 @@ Execute in this order:
 3. Normal/variant/weighing parser, configurable scale rules, labels and print templates.
 4. Price lists for tenant/location/customer group/date/priority with audited resolver.
 5. Relational bundles with atomic component deduction.
-6. Batch/expiry/FEFO, serial lifecycle, and physical bin locations.
+6. Finish UI/permissions/audit and transaction selectors for implemented batch/expiry/FEFO and serial foundations; add physical bin locations.
 7. Reservation service with expiry/release.
 8. Transfer approval, ship, transit, partial receive, receive/cancel; destination stock only on receipt.
 9. Reasoned/authorized/audited adjustments and stock-count snapshot/review/posting.

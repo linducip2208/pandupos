@@ -42,8 +42,8 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Weighing barcode/labels | Configurable tenant parser for weight/price barcodes | None | Profile/create/parse | Product policy | Tenant-filtered | Parser workflow | Present | PARTIAL |
 | Price lists | Scope/date/quantity/priority resolver and audit hook | None | List/create | Product policy | Tenant-owned references | Resolver precedence | Present | PARTIAL |
 | Bundle/combo | Relational components; checkout/return/void component stock | None | Component API | Product policy | Tenant validations | Full stock lifecycle | Present | PARTIAL |
-| Batch/expiry/FEFO | None | None | None | None | N/A | None | Reference only | MISSING |
-| Serial lifecycle | None | None | None | None | N/A | None | Reference only | MISSING |
+| Batch/expiry/FEFO | Lot provenance, expiry summary and controlled FEFO allocation | None | Receive/expiry endpoints | Product policy only | Tenant references validated | Allocation/expired blocking | Present | PARTIAL |
+| Serial lifecycle | Controlled receive/sell/return/damage/transfer service and movement links | None | Receive/list endpoints | Product policy only | Tenant/invoice references validated | Duplicate-sale/lifecycle proof | Present | PARTIAL |
 | Rack/bin | Warehouse only | None | None | None | Scoped warehouse | None | Reference only | MISSING |
 | Inventory ledger/WAC | Append-only movements, locks, valuation | Report only | Partial | Coarse | Checked | Partial | Present | PARTIAL |
 | Reservation | Checkout locks/rejects oversell; no reservation records | None | None | None | Checked | Oversell only | None | PARTIAL |
@@ -86,10 +86,10 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 30% | Product, conversion, pricing, barcode-parser and bundle foundations improved; advanced inventory/documents remain absent |
+| Core parity | 33% | Product, conversion, pricing, barcode, bundle, batch/FEFO and serial foundations improved; UI and major workflows remain absent |
 | SaaS parity | 46% | Billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 37% | Unit conversion, price precedence, weighing barcode and bundle lifecycle are proven; most final-matrix workflows remain |
+| Test readiness | 40% | Unit conversion, pricing, barcode, bundle, FEFO and serial duplicate prevention are proven; most final-matrix workflows remain |
 | Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
 | Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
 | Production readiness | 26% | Mandatory production gates are not satisfied |

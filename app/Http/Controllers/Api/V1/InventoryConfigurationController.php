@@ -7,8 +7,11 @@ use App\Models\BarcodeProfile;
 use App\Models\BundleItem;
 use App\Models\PriceList;
 use App\Models\Product;
+use App\Models\SerialNumber;
 use App\Services\BarcodeParserService;
+use App\Services\BatchInventoryService;
 use App\Services\PriceResolverService;
+use App\Services\SerialNumberService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -114,5 +117,79 @@ class InventoryConfigurationController extends Controller
         });
 
         return response()->json(['data' => $product->load('bundleItems.componentVariant')]);
+    }
+
+    public function storeBatch(Request $request, BatchInventoryService $batches)
+    {
+        $this->authorize('create', Product::class);
+        $tenantId = TenantContext::idOrFail();
+        $data = $request->validate([
+            'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('tenant_id', $tenantId)],
+            'product_variant_id' => ['required', Rule::exists('product_variants', 'id')->where('tenant_id', $tenantId)],
+            'batch_number' => 'required|string|max:128',
+            'quantity' => 'required|numeric|gt:0',
+            'unit_cost' => 'required|numeric|min:0',
+            'manufactured_at' => 'nullable|date',
+            'expires_at' => 'nullable|date|after_or_equal:manufactured_at',
+            'supplier_id' => ['nullable', Rule::exists('contacts', 'id')->where('tenant_id', $tenantId)],
+            'purchase_id' => ['nullable', Rule::exists('purchases', 'id')->where('tenant_id', $tenantId)],
+        ]);
+
+        $batch = $batches->receive(
+            $tenantId,
+            (int) $data['warehouse_id'],
+            (int) $data['product_variant_id'],
+            $data['batch_number'],
+            (float) $data['quantity'],
+            (float) $data['unit_cost'],
+            $data['manufactured_at'] ?? null,
+            $data['expires_at'] ?? null,
+            $data['supplier_id'] ?? null,
+            $data['purchase_id'] ?? null,
+        );
+
+        return response()->json(['data' => $batch], 201);
+    }
+
+    public function expiry(Request $request, BatchInventoryService $batches)
+    {
+        $this->authorize('viewAny', Product::class);
+        $data = $request->validate(['days' => ['nullable', Rule::in([7, 30, 60, 90])]]);
+
+        return response()->json([
+            'data' => $batches->expirySummary(TenantContext::idOrFail(), (int) ($data['days'] ?? 30)),
+        ]);
+    }
+
+    public function storeSerial(Request $request, SerialNumberService $serials)
+    {
+        $this->authorize('create', Product::class);
+        $tenantId = TenantContext::idOrFail();
+        $data = $request->validate([
+            'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('tenant_id', $tenantId)],
+            'product_variant_id' => ['required', Rule::exists('product_variants', 'id')->where('tenant_id', $tenantId)],
+            'serial_number' => ['required', 'string', 'max:255', Rule::unique('serial_numbers')->where('tenant_id', $tenantId)],
+            'unit_cost' => 'required|numeric|min:0',
+            'inventory_batch_id' => ['nullable', Rule::exists('inventory_batches', 'id')->where('tenant_id', $tenantId)],
+            'purchase_id' => ['nullable', Rule::exists('purchases', 'id')->where('tenant_id', $tenantId)],
+        ]);
+        $serial = $serials->receive(
+            $tenantId,
+            (int) $data['warehouse_id'],
+            (int) $data['product_variant_id'],
+            $data['serial_number'],
+            (float) $data['unit_cost'],
+            $data['inventory_batch_id'] ?? null,
+            $data['purchase_id'] ?? null,
+        );
+
+        return response()->json(['data' => $serial], 201);
+    }
+
+    public function serials()
+    {
+        $this->authorize('viewAny', Product::class);
+
+        return response()->json(['data' => SerialNumber::with(['variant', 'warehouse'])->latest()->paginate(20)]);
     }
 }
