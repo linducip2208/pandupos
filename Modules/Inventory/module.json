@@ -13,5 +13,6 @@
         "inventory.access",
         "inventory.multi_warehouse"
     ],
-    "navigation": []
+    "navigation": [],
+    "provider": "Modules\\Inventory\\Providers\\InventoryServiceProvider"
 }

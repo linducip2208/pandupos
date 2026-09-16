@@ -18,4 +18,11 @@ class StockMovement extends Model
     {
         return ['quantity' => 'decimal:3', 'unit_cost' => 'decimal:2', 'occurred_at' => 'datetime'];
     }
+
+    protected static function booted(): void
+    {
+        // Append-only ledger: block updates/deletes at model layer (DB has no UPDATE/DELETE path).
+        static::updating(fn () => false);
+        static::deleting(fn () => false);
+    }
 }

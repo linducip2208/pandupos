@@ -2,6 +2,17 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Platform\AffiliateController;
+use App\Http\Controllers\Platform\AnnouncementController;
+use App\Http\Controllers\Platform\AuditController;
+use App\Http\Controllers\Platform\BillingController;
+use App\Http\Controllers\Platform\CouponController;
+use App\Http\Controllers\Platform\HealthController;
+use App\Http\Controllers\Platform\ImpersonationController;
+use App\Http\Controllers\Platform\ModuleController;
+use App\Http\Controllers\Platform\PlanController;
+use App\Http\Controllers\Platform\SubscriptionAdminController;
+use App\Http\Controllers\Platform\TenantController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('welcome'))->name('home');
@@ -16,6 +27,32 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         ->middleware(['entitlement:pos.access', 'module:pos']);
 });
 
-Route::get('/platform/health', fn () => view('dashboard', [
-    'tenant' => null, 'sales' => [], 'usage' => [], 'subscription' => null, 'plan' => null,
-]))->name('platform.health')->middleware('auth');
+Route::prefix('platform')->name('platform.')->middleware(['auth', 'can:platform-admin'])->group(function () {
+    Route::get('/dashboard', [App\Http\Controllers\Platform\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
+    Route::get('/tenants/{tenant}', [TenantController::class, 'show'])->name('tenants.show');
+    Route::post('/tenants/{tenant}/activate', [TenantController::class, 'activate'])->name('tenants.activate');
+    Route::post('/tenants/{tenant}/suspend', [TenantController::class, 'suspend'])->name('tenants.suspend');
+    Route::post('/tenants/{tenant}/archive', [TenantController::class, 'archive'])->name('tenants.archive');
+    Route::post('/tenants/{tenant}/plan', [TenantController::class, 'changePlan'])->name('tenants.plan');
+    Route::post('/tenants/{tenant}/extend', [TenantController::class, 'extend'])->name('tenants.extend');
+    Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');
+    Route::post('/plans', [PlanController::class, 'store'])->name('plans.store');
+    Route::post('/plans/{plan}/entitlements', [PlanController::class, 'updateEntitlements'])->name('plans.entitlements');
+    Route::get('/modules', [ModuleController::class, 'index'])->name('modules.index');
+    Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
+    Route::get('/health', [HealthController::class, 'index'])->name('health');
+    Route::post('/tenants/{tenant}/impersonate', [ImpersonationController::class, 'start'])->name('tenants.impersonate');
+    Route::post('/impersonation/stop', [ImpersonationController::class, 'stop'])->withoutMiddleware('can:platform-admin')->name('impersonation.stop');
+    Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+    Route::get('/subscriptions', [SubscriptionAdminController::class, 'index'])->name('subscriptions.index');
+    Route::get('/coupons', [CouponController::class, 'index'])->name('coupons.index');
+    Route::post('/coupons', [CouponController::class, 'store'])->name('coupons.store');
+    Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliates.index');
+    Route::post('/affiliates/payout', [AffiliateController::class, 'payout'])->name('affiliates.payout');
+    Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+    Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+    Route::post('/announcements/{announcement}/send', [AnnouncementController::class, 'send'])->name('announcements.send');
+    Route::get('/settings', fn () => view('platform.simple', ['title' => 'Settings']))->name('settings.index');
+    Route::get('/entitlements', fn () => view('platform.simple', ['title' => 'Entitlements']))->name('entitlements.index');
+});

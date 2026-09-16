@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Module;
+use App\Models\TenantModule;
 use App\Services\ModuleRegistry;
 use Illuminate\Console\Command;
 
@@ -15,10 +16,18 @@ class ModuleListCommand extends Command
     public function handle(ModuleRegistry $registry): int
     {
         $rows = Module::orderBy('slug')->get()
-            ->map(fn (Module $m) => [$m->slug, $m->name, $m->version, $m->is_core ? 'core' : '', $m->is_paid ? 'paid' : 'free'])
+            ->map(fn (Module $m) => [
+                $m->slug,
+                $m->name,
+                $m->version,
+                $m->is_core ? 'core' : '',
+                $m->is_paid ? 'paid' : 'free',
+                TenantModule::withoutGlobalScopes()->where('module_id', $m->getKey())->where('enabled', true)->count(),
+                $m->status ?? 'installed',
+            ])
             ->all();
 
-        $this->table(['slug', 'name', 'version', 'core', 'pricing'], $rows);
+        $this->table(['slug', 'name', 'version', 'core', 'pricing', 'tenants', 'status'], $rows);
 
         return self::SUCCESS;
     }

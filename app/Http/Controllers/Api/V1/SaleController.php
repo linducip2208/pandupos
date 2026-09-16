@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\SalesInvoice;
 use App\Services\SaleService;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SaleController extends Controller
 {
@@ -18,12 +20,13 @@ class SaleController extends Controller
 
     public function store(Request $request, SaleService $service)
     {
+        $tenantId = TenantContext::idOrFail();
         $data = $request->validate([
-            'branch_id' => 'required|exists:branches,id',
-            'warehouse_id' => 'required|exists:warehouses,id',
-            'contact_id' => 'nullable|exists:contacts,id',
+            'branch_id' => ['required', Rule::exists('branches', 'id')->where('tenant_id', $tenantId)],
+            'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('tenant_id', $tenantId)],
+            'contact_id' => ['nullable', Rule::exists('contacts', 'id')->where('tenant_id', $tenantId)],
             'lines' => 'required|array|min:1',
-            'lines.*.variant_id' => 'required|exists:product_variants,id',
+            'lines.*.variant_id' => ['required', Rule::exists('product_variants', 'id')->where('tenant_id', $tenantId)],
             'lines.*.quantity' => 'required|numeric|min:0.001',
             'lines.*.unit_price' => 'required|numeric|min:0',
             'payments' => 'required|array|min:1',
@@ -34,7 +37,7 @@ class SaleController extends Controller
         $key = $request->header('Idempotency-Key', (string) \Str::uuid());
 
         $invoice = $service->checkout(
-            \App\Support\TenantContext::id(),
+            $tenantId,
             $data['branch_id'], $data['warehouse_id'], $data['contact_id'] ?? null,
             $data['lines'], $data['payments'], $key
         );
@@ -44,7 +47,7 @@ class SaleController extends Controller
 
     public function void(SalesInvoice $invoice, SaleService $service, Request $request)
     {
-        $service->void($invoice->id, $request->user()->can('pos.sale.void'));
+        $service->void($invoice->id, $request->user()->can('pos.sale.void'), TenantContext::idOrFail());
 
         return response()->json(['ok' => true]);
     }

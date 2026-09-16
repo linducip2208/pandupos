@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\EntitlementMiddleware;
+use App\Http\Middleware\ModuleEnabledMiddleware;
+use App\Http\Middleware\TenantMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,9 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'tenant' => \App\Http\Middleware\TenantMiddleware::class,
-            'entitlement' => \App\Http\Middleware\EntitlementMiddleware::class,
-            'module' => \App\Http\Middleware\ModuleEnabledMiddleware::class,
+            'tenant' => TenantMiddleware::class,
+            'entitlement' => EntitlementMiddleware::class,
+            'module' => ModuleEnabledMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

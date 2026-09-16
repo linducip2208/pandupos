@@ -22,6 +22,16 @@
                     <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('pos.index') }}">POS Kasir</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url('/api/v1/reports/sales?from='.now()->startOfMonth()->toDateString().'&to='.now()->toDateString()) }}">Laporan</a></li>
+                    @auth
+                        @if(auth()->user()->is_platform_admin)
+                            <li class="nav-item mt-2"><span class="nav-link text-muted">PLATFORM ADMIN</span></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ route('platform.dashboard') }}">Platform Dashboard</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ route('platform.tenants.index') }}">Tenants</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ route('platform.plans.index') }}">Plans</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ route('platform.modules.index') }}">Modules</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ route('platform.audit.index') }}">Audit</a></li>
+                        @endif
+                    @endauth
                     <li class="nav-item"><a class="nav-link" href="{{ route('platform.health') }}">System Health</a></li>
                 </ul>
             </div>
@@ -44,6 +54,13 @@
     <div class="page-wrapper">
         <div class="page-body">
             <div class="container-xl">
+                @if(session('impersonating') || session()->has('impersonating'))
+                    @php $imp = session('impersonating'); @endphp
+                    <div class="alert alert-warning d-flex justify-content-between align-items-center">
+                        <span>Impersonating: {{ $imp['tenant_name'] ?? 'tenant' }}</span>
+                        <form method="POST" action="{{ route('platform.impersonation.stop') }}">@csrf<button class="btn btn-sm btn-dark">Exit Impersonation</button></form>
+                    </div>
+                @endif
                 @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
                 @yield('content')
             </div>

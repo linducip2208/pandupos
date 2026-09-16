@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\Module;
 use App\Models\Plan;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class PlatformSeeder extends Seeder
 {
@@ -71,11 +73,36 @@ class PlatformSeeder extends Seeder
 
         // Spatie roles (platform-level; tenant scoping via memberships + policies in later phases).
         foreach (['platform-admin', 'tenant-owner', 'tenant-admin', 'manager', 'cashier', 'warehouse', 'purchasing', 'sales'] as $role) {
-            \Spatie\Permission\Models\Role::findOrCreate($role, 'web');
+            Role::findOrCreate($role, 'web');
         }
 
         foreach (['pos.sale.create', 'pos.sale.void', 'inventory.view', 'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve', 'sales.view', 'reports.view', 'settings.manage'] as $perm) {
-            \Spatie\Permission\Models\Permission::findOrCreate($perm, 'web');
+            Permission::findOrCreate($perm, 'web');
         }
+
+        foreach ([
+            'platform.dashboard.view',
+            'platform.tenants.view', 'platform.tenants.create', 'platform.tenants.update',
+            'platform.tenants.suspend', 'platform.tenants.activate', 'platform.tenants.impersonate',
+            'platform.plans.manage', 'platform.subscriptions.manage',
+            'platform.billing.view', 'platform.billing.manage',
+            'platform.modules.manage', 'platform.entitlements.manage',
+            'platform.coupons.manage', 'platform.affiliates.manage',
+            'platform.announcements.manage', 'platform.audit.view', 'platform.settings.manage',
+        ] as $perm) {
+            Permission::findOrCreate($perm, 'web');
+        }
+
+        $platformAdmin = Role::findOrCreate('platform-admin', 'web');
+        $platformAdmin->givePermissionTo([
+            'platform.dashboard.view',
+            'platform.tenants.view', 'platform.tenants.create', 'platform.tenants.update',
+            'platform.tenants.suspend', 'platform.tenants.activate', 'platform.tenants.impersonate',
+            'platform.plans.manage', 'platform.subscriptions.manage',
+            'platform.billing.view', 'platform.billing.manage',
+            'platform.modules.manage', 'platform.entitlements.manage',
+            'platform.coupons.manage', 'platform.affiliates.manage',
+            'platform.announcements.manage', 'platform.audit.view', 'platform.settings.manage',
+        ]);
     }
 }

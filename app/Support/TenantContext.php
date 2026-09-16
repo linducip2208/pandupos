@@ -44,6 +44,15 @@ final class TenantContext
         return self::$tenantId ?? self::$tenant?->getKey();
     }
 
+    /** Fail-closed accessor for tenant routes/services. Aborts 403 when no tenant resolved. */
+    public static function idOrFail(): int
+    {
+        $id = self::id();
+        abort_unless($id !== null, 403, 'Tenant context required.');
+
+        return $id;
+    }
+
     public static function check(): bool
     {
         return self::id() !== null;

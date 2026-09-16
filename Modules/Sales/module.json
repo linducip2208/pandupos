@@ -12,5 +12,6 @@
     "entitlements": [
         "sales.access"
     ],
-    "navigation": []
+    "navigation": [],
+    "provider": "Modules\\Sales\\Providers\\SalesServiceProvider"
 }

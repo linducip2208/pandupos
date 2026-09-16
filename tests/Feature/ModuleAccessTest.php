@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Module;
 use App\Models\TenantModule;
 use App\Models\User;
+use App\Services\TenantProvisioningService;
+use Database\Seeders\PlatformSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -14,10 +16,10 @@ class ModuleAccessTest extends TestCase
 
     public function test_disabled_module_blocks_protected_route(): void
     {
-        $this->seed(\Database\Seeders\PlatformSeeder::class);
+        $this->seed(PlatformSeeder::class);
 
         $owner = User::factory()->create();
-        $tenant = app(\App\Services\TenantProvisioningService::class)->provision('Toko M', $owner);
+        $tenant = app(TenantProvisioningService::class)->provision('Toko M', $owner);
         $owner->refresh();
 
         $pos = Module::where('slug', 'pos')->firstOrFail();
@@ -31,7 +33,7 @@ class ModuleAccessTest extends TestCase
 
     public function test_rbac_permission_required_for_void(): void
     {
-        $this->seed(\Database\Seeders\PlatformSeeder::class);
+        $this->seed(PlatformSeeder::class);
 
         $cashier = User::factory()->create();
         $cashier->assignRole('cashier');

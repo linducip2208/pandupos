@@ -1,58 +1,167 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# PanduPOS
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Modern modular multi-tenant SaaS POS & business platform.
 
-## About Laravel
+Independent application. UltimatePOS is used only as a feature/workflow reference — no proprietary code is copied, and PanduPOS is not a fork.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Overview
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+PanduPOS is a multi-tenant SaaS for retail/SME operations:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- POS checkout (cashier-optimized, Livewire)
+- Inventory with append-only stock ledger
+- Purchasing (PO → receive → invoice → payment → return)
+- Sales (quotation → order → invoice → payment → fulfillment → return/refund)
+- Platform Admin (tenants, plans, subscriptions, billing, modules, entitlements)
+- API v1 + offline-sync foundation for future Flutter client
 
-## Learning Laravel
+## Architecture
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Modular monolith (Laravel):
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- `app/Models`, `app/Services`, `app/Http`, `app/Livewire` — current business implementation
+- `Modules/{Inventory,Purchasing,Sales,POS}/module.json` — module manifests (migration to full modular structure is incremental)
+- `app/Support`: `TenantContext`, `TenantScope`, `BelongsToTenant`
+- `app/Services`: `ModuleRegistry`, `ModuleManager`, `EntitlementService`, `UsageLimitService`, `SubscriptionService`, `BillingService`, `StockService`, `PurchaseService`, `SaleService`, `AuditService`, `BrandingService`
+- Docs: `docs/ARCHITECTURE.md`, `docs/ERD.md`, `docs/MODULE_SYSTEM.md`, `docs/PRODUCT_REQUIREMENTS.md`, `docs/IMPLEMENTATION_ROADMAP.md`
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+Definition of Done (per feature): migration + model + validation + authorization + service logic + UI/API + tenant isolation + error handling + tests + docs.
 
-## Agentic Development
+## Requirements
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+- PHP 8.3+
+- Laravel 13
+- MySQL 8+ (production) / SQLite (local/test)
+- Redis recommended (cache/queue in production)
+- Node.js + NPM
+- Composer 2.x
+
+## Installation
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan db:seed
+npm run build
+php artisan serve
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Development
 
-## Contributing
+```bash
+php artisan serve
+npm run dev
+php artisan queue:listen --tries=1
+php artisan pail
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Useful:
 
-## Code of Conduct
+```bash
+composer validate --strict
+composer dump-autoload
+php artisan optimize:clear
+./vendor/bin/pint --test
+php artisan test
+php artisan platform:module:list
+php artisan platform:module:health
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Working branch for hardening: `feat/platform-hardening`.
 
-## Security Vulnerabilities
+## Tenant Architecture
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- Every tenant-owned model uses `tenant_id` + `BelongsToTenant` global scope (`TenantScope`).
+- `TenantMiddleware` resolves `TenantContext` from authenticated user membership — never trust `tenant_id` from request body.
+- Tenant statuses: `trial`, `active`, `past_due`, `suspended`, `cancelled`, `archived`.
+- Platform admin bypass is explicit via `can:platform-admin`.
+- `withoutGlobalScopes()` usage must be audited and always re-constrained by explicit `tenant_id`.
+
+See `docs/ARCHITECTURE.md`, `docs/ERD.md`.
+
+## Module System
+
+Manifests in `Modules/*/module.json`. Registry (`ModuleRegistry`) + manager (`ModuleManager`) control enable/disable per tenant.
+
+Commands:
+
+```bash
+php artisan platform:module:list
+php artisan platform:module:health
+php artisan platform:module:health POS
+php artisan platform:module:enable POS
+php artisan platform:module:disable POS
+php artisan platform:make-module CRM
+```
+
+Access requires both: module enabled AND plan entitlement allowed, enforced server-side (403 otherwise). Disabling a module never deletes data.
+
+See `docs/MODULE_SYSTEM.md`.
+
+## API
+
+Base: `/api/v1` (Sanctum + `tenant` middleware).
+
+- `GET /api/v1/me`, `GET /api/v1/tenant`
+- `GET /api/v1/modules`, `GET /api/v1/entitlements`, `GET /api/v1/usage`, `GET /api/v1/subscription`
+- `products`, `contacts`, `purchases` (+ `POST purchases/{id}/receive`), `sales` (+ `POST sales/{invoice}/void`)
+- `GET reports/sales`, `GET reports/stock`
+- `GET sync/pull`, `POST sync/push` (stub → real sync per roadmap)
+- Platform: `/api/v1/platform/*` (`can:platform-admin`)
+
+Convention: `{ "data": ... }`, errors `{ "message": ..., "errors": {} }`, paginated + `request_id`, rate-limited.
+
+See `docs/API.md`.
+
+## Testing
+
+```bash
+php artisan test
+```
+
+Coverage: `TenantIsolationTest`, `EntitlementTest`, `ModuleAccessTest`, `BusinessFlowTest` (purchase receive → stock, sale → stock, return, split-payment idempotency, void RBAC, usage limits).
+
+Critical invariants (must always hold):
+
+- PO creation does not increase stock; receiving does, exactly once (partial receives supported).
+- Sale decreases stock; oversell fails; void/return restores via stock movement (no hard-delete of completed sales).
+- Duplicate `Idempotency-Key` checkout creates one sale.
+- Tenant A cannot touch Tenant B data (web + API).
+- Disabled module / missing entitlement → 403; expired subscription blocks paid features.
+
+## Queue
+
+Default `database` locally; use Redis in production. Long sends (announcements) and webhooks must be queued.
+
+## Scheduler
+
+Enable cron for subscription expiry/renewal, trial-ending reminders, queued jobs, and health checks.
+
+```bash
+php artisan schedule:run
+```
+
+## Deployment
+
+1. `composer install --prefer-dist --no-progress`
+2. `npm run build`
+3. `php artisan migrate --force`
+4. `php artisan optimize`
+5. Configure queue worker + scheduler + Redis + mail + storage link.
+
+Checklist before release: `composer validate --strict`, `pint --test`, `php artisan test`, `composer audit`, `php artisan migrate --pretend`, `platform:module:health`.
+
+## Security
+
+- CSRF/XSS/SQLi/IDOR/tenant-escape/mass-assignment/upload/rate-limit/auth/API-token/webhook-signature/open-redirect/session hardening.
+- Never log passwords, tokens, API secrets, payment credentials.
+- `composer audit` must be clean; add security tests for authz and tenant isolation.
+
+See `docs/SECURITY.md`.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Proprietary — PanduPOS Enterprise. All rights reserved unless a separate commercial license states otherwise. Do not redistribute. UltimatePOS reference does not grant any right to its proprietary code.

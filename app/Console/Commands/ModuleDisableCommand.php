@@ -17,6 +17,7 @@ class ModuleDisableCommand extends Command
 
         if ($tenant <= 0) {
             $this->error('Pass --tenant=<id>.');
+
             return self::FAILURE;
         }
 

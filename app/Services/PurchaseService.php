@@ -2,7 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Contact;
+use App\Models\ProductVariant;
 use App\Models\Purchase;
+use App\Models\Warehouse;
+use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
 
 /** Stock increases ONLY on receiving, never on PO creation. */
@@ -12,6 +16,16 @@ final class PurchaseService
 
     public function createDraft(int $tenantId, int $warehouseId, int $contactId, array $lines): Purchase
     {
+        // Validate tenant ownership of all references (prevent IDOR, mirrors SaleService).
+        abort_unless(Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $warehouseId)->exists(), 422, 'Warehouse does not belong to tenant.');
+        abort_unless(Contact::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $contactId)->exists(), 422, 'Contact does not belong to tenant.');
+        foreach ($lines as $l) {
+            abort_unless(ProductVariant::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $l['product_variant_id'])->exists(), 422, 'Variant does not belong to tenant.');
+            if (($l['quantity'] ?? 0) <= 0) {
+                abort(422, 'Line quantity must be greater than zero.');
+            }
+        }
+
         return DB::transaction(function () use ($tenantId, $warehouseId, $contactId, $lines) {
             $total = collect($lines)->sum(fn ($l) => $l['quantity'] * $l['unit_cost']);
             $purchase = Purchase::withoutGlobalScopes()->create([
@@ -26,24 +40,52 @@ final class PurchaseService
         });
     }
 
-    public function receive(int $purchaseId): Purchase
+    public function receive(int $purchaseId, ?array $partialLines = null, ?int $tenantId = null): Purchase
     {
-        return DB::transaction(function () use ($purchaseId) {
-            $purchase = Purchase::withoutGlobalScopes()->findOrFail($purchaseId);
+        return DB::transaction(function () use ($purchaseId, $partialLines, $tenantId) {
+            $tenantId ??= TenantContext::id();
+            $q = Purchase::withoutGlobalScopes()->lockForUpdate();
+            if ($tenantId !== null) {
+                $q->where('tenant_id', $tenantId);
+            }
+            $purchase = $q->findOrFail($purchaseId);
 
             if ($purchase->status === 'received') {
                 return $purchase; // idempotent
             }
+            abort_if($purchase->status === 'cancelled', 422, 'Cannot receive a cancelled purchase.');
 
-            foreach ($purchase->lines as $line) {
-                $this->stock->increase(
-                    $purchase->tenant_id, $purchase->warehouse_id,
-                    $line->product_variant_id, (float) $line->quantity,
-                    (float) $line->unit_cost, 'purchase_receipt', $purchase->id
-                );
+            $map = null;
+            if ($partialLines !== null) {
+                $map = collect($partialLines)->keyBy('product_variant_id');
             }
 
-            $purchase->update(['status' => 'received']);
+            foreach ($purchase->lines as $line) {
+                $qtyToReceive = (float) $line->quantity - (float) ($line->received_quantity ?? 0);
+                if ($map !== null) {
+                    $row = $map->get($line->product_variant_id);
+                    if (! $row) {
+                        continue;
+                    }
+                    // Never receive more than remaining; prevents +100 twice.
+                    $qtyToReceive = min($qtyToReceive, (float) ($row['quantity'] ?? 0));
+                }
+                if ($qtyToReceive <= 0) {
+                    continue;
+                }
+                $this->stock->increase(
+                    $purchase->tenant_id, $purchase->warehouse_id,
+                    $line->product_variant_id, $qtyToReceive,
+                    (float) $line->unit_cost, 'purchase_receipt', $purchase->id
+                );
+                $line->update(['received_quantity' => (float) ($line->received_quantity ?? 0) + $qtyToReceive]);
+            }
+
+            $purchase->refresh();
+            $totalOrdered = (float) $purchase->lines()->sum('quantity');
+            $totalReceived = (float) $purchase->lines()->sum('received_quantity');
+            $status = $totalReceived <= 0 ? $purchase->status : ($totalReceived < $totalOrdered ? 'partial' : 'received');
+            $purchase->update(['status' => $status]);
 
             return $purchase;
         });

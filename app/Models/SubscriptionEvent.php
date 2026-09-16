@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class SubscriptionEvent extends Model
 {
+    use BelongsToTenant;
+
     protected $fillable = ['subscription_id', 'tenant_id', 'event', 'payload', 'actor_id'];
 
     protected function casts(): array
