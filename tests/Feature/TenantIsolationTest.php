@@ -134,6 +134,6 @@ class TenantIsolationTest extends TestCase
 
         $ownerA->forceFill(['current_tenant_id' => $tenantA->id])->save();
         // Even if attacker sends tenant_id in body, server context (current_tenant_id) wins.
-        $this->actingAs($ownerA)->getJson('/api/v1/me')->assertOk()->assertJsonPath('tenant_id', $tenantA->id);
+        $this->actingAs($ownerA)->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.tenant_id', $tenantA->id);
     }
 }

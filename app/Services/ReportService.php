@@ -55,4 +55,31 @@ final class ReportService
 
         return ['docs' => (int) $row->docs, 'total' => (float) $row->total];
     }
+
+    /**
+     * Trustworthy profit: revenue from final invoices, COGS from stock out movements
+     * (weighted-average unit_cost), never selling-price-only. Gross = revenue - COGS.
+     */
+    public function profit(int $tenantId, string $from, string $to): array
+    {
+        $revenue = (float) DB::table('sales_invoices')
+            ->where('tenant_id', $tenantId)->where('status', 'final')
+            ->whereBetween('created_at', [$from, $to])->sum('total');
+
+        $cogs = (float) DB::table('stock_movements as sm')
+            ->join('sales_invoices as si', function ($j) {
+                $j->on('si.id', '=', 'sm.reference_id')->where('sm.reference_type', '=', 'sale');
+            })
+            ->where('sm.tenant_id', $tenantId)->where('sm.movement_type', 'out')
+            ->where('si.status', 'final')
+            ->whereBetween('si.created_at', [$from, $to])
+            ->selectRaw('COALESCE(SUM(sm.quantity * sm.unit_cost),0) as c')->value('c');
+
+        return ['revenue' => $revenue, 'cogs' => $cogs, 'gross_profit' => round($revenue - $cogs, 2)];
+    }
+
+    public function stockValuation(int $tenantId, ?int $warehouseId = null): float
+    {
+        return app(StockService::class)->valuation($tenantId, $warehouseId);
+    }
 }

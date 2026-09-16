@@ -54,6 +54,13 @@
     <div class="page-wrapper">
         <div class="page-body">
             <div class="container-xl">
+                @if(session('impersonating') || session()->has('impersonating'))
+                    @php $imp = session('impersonating'); @endphp
+                    <div class="alert alert-warning d-flex justify-content-between align-items-center">
+                        <span>Impersonating: {{ $imp['tenant_name'] ?? 'tenant' }}</span>
+                        <form method="POST" action="{{ route('platform.impersonation.stop') }}">@csrf<button class="btn btn-sm btn-dark">Exit Impersonation</button></form>
+                    </div>
+                @endif
                 @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
                 @yield('content')
             </div>

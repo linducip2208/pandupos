@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Platform\AuditController;
 use App\Http\Controllers\Platform\HealthController;
+use App\Http\Controllers\Platform\ImpersonationController;
 use App\Http\Controllers\Platform\ModuleController;
 use App\Http\Controllers\Platform\PlanController;
 use App\Http\Controllers\Platform\TenantController;
@@ -36,6 +37,8 @@ Route::prefix('platform')->name('platform.')->middleware(['auth', 'can:platform-
     Route::get('/modules', [ModuleController::class, 'index'])->name('modules.index');
     Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
     Route::get('/health', [HealthController::class, 'index'])->name('health');
+    Route::post('/tenants/{tenant}/impersonate', [ImpersonationController::class, 'start'])->name('tenants.impersonate');
+    Route::post('/impersonation/stop', [ImpersonationController::class, 'stop'])->withoutMiddleware('can:platform-admin')->name('impersonation.stop');
     Route::get('/billing', fn () => view('platform.simple', ['title' => 'Billing']))->name('billing.index');
     Route::get('/subscriptions', fn () => view('platform.simple', ['title' => 'Subscriptions']))->name('subscriptions.index');
     Route::get('/coupons', fn () => view('platform.simple', ['title' => 'Coupons']))->name('coupons.index');

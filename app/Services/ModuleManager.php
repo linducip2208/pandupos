@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class ModuleManager
 {
-    public function __construct(private ModuleRegistry $registry) {}
+    public function __construct(private ModuleRegistry $registry, private ?AuditService $audit = null) {}
 
     public function enable(int $tenantId, string $slug): void
     {
@@ -25,11 +25,12 @@ final class ModuleManager
             }
         }
 
-        DB::transaction(function () use ($tenantId, $module) {
+        DB::transaction(function () use ($tenantId, $module, $slug) {
             TenantModule::query()->withoutGlobalScopes()->updateOrCreate(
                 ['tenant_id' => $tenantId, 'module_id' => $module->getKey()],
                 ['enabled' => true, 'enabled_at' => now(), 'disabled_at' => null]
             );
+            $this->audit?->log($tenantId, auth()->id(), 'module.enabled', Module::class, $module->getKey(), null, ['slug' => $slug]);
         });
     }
 
@@ -51,5 +52,6 @@ final class ModuleManager
             ->where('tenant_id', $tenantId)
             ->where('module_id', $module->getKey())
             ->update(['enabled' => false, 'disabled_at' => now()]);
+        $this->audit?->log($tenantId, auth()->id(), 'module.disabled', Module::class, $module->getKey(), null, ['slug' => $slug]);
     }
 }
