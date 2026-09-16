@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
 
-class SuperadminTenantController extends Controller
+class PlatformTenantController extends Controller
 {
     public function index(Request $request)
     {

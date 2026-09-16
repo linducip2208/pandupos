@@ -85,10 +85,10 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant'])->group(function () {
     });
 });
 
-// Platform superadmin (no tenant scope, gate platform-admin)
+// Platform admin (no tenant scope, gate platform-admin)
 Route::prefix('v1/platform')->middleware(['auth:sanctum', 'can:platform-admin'])->group(function () {
-    Route::get('tenants', [\App\Http\Controllers\SuperadminTenantController::class, 'index']);
-    Route::post('tenants/{tenant}/suspend', [\App\Http\Controllers\SuperadminTenantController::class, 'suspend']);
+    Route::get('tenants', [\App\Http\Controllers\PlatformTenantController::class, 'index']);
+    Route::post('tenants/{tenant}/suspend', [\App\Http\Controllers\PlatformTenantController::class, 'suspend']);
     Route::get('health', function () {
         return response()->json([
             'app' => config('app.name'),
