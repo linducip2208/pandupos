@@ -79,5 +79,30 @@ class PlatformSeeder extends Seeder
         foreach (['pos.sale.create', 'pos.sale.void', 'inventory.view', 'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve', 'sales.view', 'reports.view', 'settings.manage'] as $perm) {
             Permission::findOrCreate($perm, 'web');
         }
+
+        foreach ([
+            'platform.dashboard.view',
+            'platform.tenants.view', 'platform.tenants.create', 'platform.tenants.update',
+            'platform.tenants.suspend', 'platform.tenants.activate', 'platform.tenants.impersonate',
+            'platform.plans.manage', 'platform.subscriptions.manage',
+            'platform.billing.view', 'platform.billing.manage',
+            'platform.modules.manage', 'platform.entitlements.manage',
+            'platform.coupons.manage', 'platform.affiliates.manage',
+            'platform.announcements.manage', 'platform.audit.view', 'platform.settings.manage',
+        ] as $perm) {
+            Permission::findOrCreate($perm, 'web');
+        }
+
+        $platformAdmin = Role::findOrCreate('platform-admin', 'web');
+        $platformAdmin->givePermissionTo([
+            'platform.dashboard.view',
+            'platform.tenants.view', 'platform.tenants.create', 'platform.tenants.update',
+            'platform.tenants.suspend', 'platform.tenants.activate', 'platform.tenants.impersonate',
+            'platform.plans.manage', 'platform.subscriptions.manage',
+            'platform.billing.view', 'platform.billing.manage',
+            'platform.modules.manage', 'platform.entitlements.manage',
+            'platform.coupons.manage', 'platform.affiliates.manage',
+            'platform.announcements.manage', 'platform.audit.view', 'platform.settings.manage',
+        ]);
     }
 }

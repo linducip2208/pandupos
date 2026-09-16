@@ -30,6 +30,11 @@ class Tenant extends Model
         return $this->hasMany(Branch::class);
     }
 
+    public function memberships()
+    {
+        return $this->hasMany(Membership::class);
+    }
+
     public function warehouses()
     {
         return $this->hasMany(Warehouse::class);
