@@ -11,7 +11,8 @@ class SalesInvoice extends Model
 
     protected $fillable = [
         'uuid', 'tenant_id', 'branch_id', 'warehouse_id', 'contact_id',
-        'invoice_no', 'status', 'payment_status', 'subtotal', 'discount', 'tax', 'total', 'idempotency_key',
+        'invoice_no', 'status', 'payment_status', 'fulfillment_status',
+        'subtotal', 'discount', 'tax', 'total', 'idempotency_key',
     ];
 
     protected function casts(): array

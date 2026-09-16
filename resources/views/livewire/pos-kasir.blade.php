@@ -36,6 +36,8 @@
                 </table>
             </div>
             <div class="card-footer">
+                @if($lastInvoiceNo)<div class="alert alert-success">Struk: {{ $lastInvoiceNo }} @if($lastChange>0)| Kembali Rp {{ number_format($lastChange,0,',','.') }}@endif</div>@endif
+                <div class="text-muted mb-2">Dibayar Rp {{ number_format($this->paid,0,',','.') }} • Kembali Rp {{ number_format(max(0,$this->change),0,',','.') }}</div>
                 @foreach($payments as $i => $pay)
                     <div class="input-group mb-2">
                         <select class="form-select" wire:model="payments.{{ $i }}.method">
@@ -45,7 +47,17 @@
                         <input class="form-control" type="number" wire:model="payments.{{ $i }}.amount" placeholder="Nominal">
                     </div>
                 @endforeach
-                <button class="btn btn-primary btn-lg w-100" wire:click="checkout">Bayar (F9)</button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary btn-lg flex-fill" wire:click="checkout">Bayar (F9)</button>
+                    <button class="btn btn-lg" wire:click="holdSale('HOLD-{{ count($held)+1 }}')">Hold</button>
+                </div>
+                @if(count($held))
+                <div class="mt-2 d-flex gap-2 flex-wrap">
+                    @foreach(array_keys($held) as $label)
+                        <button class="btn btn-sm btn-outline-secondary" wire:click="resumeSale('{{ $label }}')">Resume {{ $label }}</button>
+                    @endforeach
+                </div>
+                @endif
             </div>
         </div>
     </div>

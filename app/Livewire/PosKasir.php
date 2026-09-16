@@ -19,6 +19,13 @@ class PosKasir extends Component
     /** @var array<int, array{method:string,amount:float}> */
     public array $payments = [['method' => 'cash', 'amount' => 0]];
 
+    public ?string $lastInvoiceNo = null;
+
+    public float $lastChange = 0;
+
+    /** @var array<string,array> held carts keyed by label */
+    public array $held = [];
+
     public function addToCart(int $variantId, string $name, float $price): void
     {
         foreach ($this->cart as &$row) {
@@ -50,6 +57,34 @@ class PosKasir extends Component
         return collect($this->cart)->sum(fn ($r) => $r['qty'] * $r['price']);
     }
 
+    public function getPaidProperty(): float
+    {
+        return collect($this->payments)->sum(fn ($p) => (float) ($p['amount'] ?? 0));
+    }
+
+    public function getChangeProperty(): float
+    {
+        return round($this->paid - $this->total, 2);
+    }
+
+    public function holdSale(string $label = 'HOLD-1'): void
+    {
+        $this->held[$label] = ['cart' => $this->cart, 'payments' => $this->payments, 'held_at' => now()->toDateTimeString()];
+        $this->cart = [];
+        $this->payments = [['method' => 'cash', 'amount' => 0]];
+        session()->flash('status', "Sale held: {$label}");
+    }
+
+    public function resumeSale(string $label): void
+    {
+        if (! isset($this->held[$label])) {
+            return;
+        }
+        $this->cart = $this->held[$label]['cart'] ?? [];
+        $this->payments = $this->held[$label]['payments'] ?? [['method' => 'cash', 'amount' => 0]];
+        unset($this->held[$label]);
+    }
+
     public function checkout(SaleService $sales): void
     {
         $this->validate([
@@ -73,9 +108,11 @@ class PosKasir extends Component
             'web-'.uniqid(),
         );
 
+        $this->lastInvoiceNo = $invoice->invoice_no;
+        $this->lastChange = round(collect($this->payments)->sum(fn ($p) => (float) $p['amount']) - $this->total, 2);
         $this->cart = [];
         $this->payments = [['method' => 'cash', 'amount' => 0]];
-        session()->flash('status', 'Terjual: '.$invoice->invoice_no);
+        session()->flash('status', 'Terjual: '.$invoice->invoice_no.($this->lastChange > 0 ? " | Kembali: {$this->lastChange}" : ''));
     }
 
     public function render()

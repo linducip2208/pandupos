@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MeController;
@@ -33,6 +34,12 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     // Catalog & inventory
     Route::apiResource('products', ProductController::class)->only(['index', 'store', 'show']);
     Route::apiResource('contacts', ContactController::class)->only(['index', 'store']);
+    Route::get('categories', [CatalogController::class, 'categories']);
+    Route::post('categories', [CatalogController::class, 'storeCategory']);
+    Route::get('brands', [CatalogController::class, 'brands']);
+    Route::post('brands', [CatalogController::class, 'storeBrand']);
+    Route::get('units', [CatalogController::class, 'units']);
+    Route::post('units', [CatalogController::class, 'storeUnit']);
 
     // Purchasing: stock increases ONLY on receive
     Route::apiResource('purchases', PurchaseController::class)->only(['index', 'store']);

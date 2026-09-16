@@ -11,6 +11,7 @@
 <form method="POST" action="{{ route('platform.tenants.activate', $tenant) }}">@csrf<button class="btn btn-success">Activate</button></form>
 <form method="POST" action="{{ route('platform.tenants.suspend', $tenant) }}">@csrf<input name="reason" placeholder="reason" class="form-control d-inline w-auto"><button class="btn btn-warning">Suspend</button></form>
 <form method="POST" action="{{ route('platform.tenants.archive', $tenant) }}">@csrf<button class="btn btn-danger" onclick="return confirm('Archive?')">Archive</button></form>
+<form method="POST" action="{{ route('platform.tenants.impersonate', $tenant) }}">@csrf<button class="btn btn-info">Impersonate</button></form>
 </div></div></div>
 <div class="col-lg-6"><div class="card"><div class="card-header"><h3 class="card-title">Change plan / Extend</h3></div><div class="card-body">
 <form method="POST" action="{{ route('platform.tenants.plan', $tenant) }}" class="row g-2">@csrf

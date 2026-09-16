@@ -58,7 +58,8 @@ final class SaleService
                 'tenant_id' => $tenantId, 'branch_id' => $branchId, 'warehouse_id' => $warehouseId,
                 'contact_id' => $contactId, 'invoice_no' => 'S-'.now()->format('YmdHis').'-'.Str::upper(Str::random(4)),
                 'status' => 'final',
-                'payment_status' => $paid > 0 ? 'paid' : 'unpaid',
+                'payment_status' => $paid > 0 ? ($paid < $subtotal - 0.01 ? 'partial' : 'paid') : 'unpaid',
+                'fulfillment_status' => 'fulfilled',
                 'subtotal' => $subtotal, 'total' => $subtotal,
                 'idempotency_key' => $idempotencyKey,
             ]);

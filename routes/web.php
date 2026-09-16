@@ -2,11 +2,16 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Platform\AffiliateController;
+use App\Http\Controllers\Platform\AnnouncementController;
 use App\Http\Controllers\Platform\AuditController;
+use App\Http\Controllers\Platform\BillingController;
+use App\Http\Controllers\Platform\CouponController;
 use App\Http\Controllers\Platform\HealthController;
 use App\Http\Controllers\Platform\ImpersonationController;
 use App\Http\Controllers\Platform\ModuleController;
 use App\Http\Controllers\Platform\PlanController;
+use App\Http\Controllers\Platform\SubscriptionAdminController;
 use App\Http\Controllers\Platform\TenantController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,11 +44,15 @@ Route::prefix('platform')->name('platform.')->middleware(['auth', 'can:platform-
     Route::get('/health', [HealthController::class, 'index'])->name('health');
     Route::post('/tenants/{tenant}/impersonate', [ImpersonationController::class, 'start'])->name('tenants.impersonate');
     Route::post('/impersonation/stop', [ImpersonationController::class, 'stop'])->withoutMiddleware('can:platform-admin')->name('impersonation.stop');
-    Route::get('/billing', fn () => view('platform.simple', ['title' => 'Billing']))->name('billing.index');
-    Route::get('/subscriptions', fn () => view('platform.simple', ['title' => 'Subscriptions']))->name('subscriptions.index');
-    Route::get('/coupons', fn () => view('platform.simple', ['title' => 'Coupons']))->name('coupons.index');
-    Route::get('/affiliates', fn () => view('platform.simple', ['title' => 'Affiliates']))->name('affiliates.index');
-    Route::get('/announcements', fn () => view('platform.simple', ['title' => 'Announcements']))->name('announcements.index');
+    Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+    Route::get('/subscriptions', [SubscriptionAdminController::class, 'index'])->name('subscriptions.index');
+    Route::get('/coupons', [CouponController::class, 'index'])->name('coupons.index');
+    Route::post('/coupons', [CouponController::class, 'store'])->name('coupons.store');
+    Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliates.index');
+    Route::post('/affiliates/payout', [AffiliateController::class, 'payout'])->name('affiliates.payout');
+    Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+    Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+    Route::post('/announcements/{announcement}/send', [AnnouncementController::class, 'send'])->name('announcements.send');
     Route::get('/settings', fn () => view('platform.simple', ['title' => 'Settings']))->name('settings.index');
     Route::get('/entitlements', fn () => view('platform.simple', ['title' => 'Entitlements']))->name('entitlements.index');
 });
