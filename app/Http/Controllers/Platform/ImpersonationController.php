@@ -26,10 +26,11 @@ class ImpersonationController extends Controller
         ]);
 
         $target = isset($data['target_user_id'])
-            ? User::find($data['target_user_id'])
+            ? User::whereHas('memberships', fn ($q) => $q->withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('user_id', $data['target_user_id']))->find($data['target_user_id'])
             : User::whereHas('memberships', fn ($q) => $q->withoutGlobalScopes()->where('tenant_id', $tenant->id))->first();
 
-        abort_unless($target, 422, 'No tenant user to impersonate.');
+        abort_unless($target, 422, 'Target user is not a member of this tenant.');
+        $target->forceFill(['current_tenant_id' => $tenant->id])->save();
         $request->session()->put('impersonating', ['session_id' => $session->id, 'tenant_id' => $tenant->id, 'tenant_name' => $tenant->name]);
 
         app(AuditService::class)->log($tenant->id, $request->user()->id, 'impersonation.started', Tenant::class, $tenant->id, null, ['target' => $target->id]);

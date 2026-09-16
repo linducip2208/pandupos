@@ -25,7 +25,7 @@ final class CouponService
         if ($coupon->applicable_plan_ids && ! in_array($planId, $coupon->applicable_plan_ids, true)) {
             abort(422, 'Coupon not applicable to this plan.');
         }
-        if ($coupon->max_redemptions && $coupon->redemptions()->count() >= $coupon->max_redemptions) {
+        if ($coupon->max_redemptions && $coupon->redemptions()->withoutGlobalScopes()->count() >= $coupon->max_redemptions) {
             abort(422, 'Coupon redemption limit reached.');
         }
         if ($coupon->redemptions()->where('tenant_id', $tenantId)->count() >= $coupon->per_tenant_limit) {

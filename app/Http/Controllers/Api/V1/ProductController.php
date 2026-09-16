@@ -8,6 +8,7 @@ use App\Services\UsageLimitService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -26,13 +27,14 @@ class ProductController extends Controller
     public function store(Request $request, UsageLimitService $usage)
     {
         $this->authorize('create', Product::class);
+        $tenantId = TenantContext::idOrFail();
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'sku' => 'nullable|string|max:64',
             'barcode' => 'nullable|string|max:64',
-            'category_id' => 'nullable|exists:categories,id',
-            'brand_id' => 'nullable|exists:brands,id',
-            'unit_id' => 'nullable|exists:units,id',
+            'category_id' => ['nullable', Rule::exists('categories', 'id')->where('tenant_id', $tenantId)],
+            'brand_id' => ['nullable', Rule::exists('brands', 'id')->where('tenant_id', $tenantId)],
+            'unit_id' => ['nullable', Rule::exists('units', 'id')->where('tenant_id', $tenantId)],
             'sell_price' => 'required|numeric|min:0',
             'purchase_price' => 'nullable|numeric|min:0',
         ]);

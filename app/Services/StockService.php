@@ -98,8 +98,12 @@ final class StockService
             abort(422, 'Source and destination warehouse must differ.');
         }
         DB::transaction(function () use ($tenantId, $fromWarehouse, $toWarehouse, $variantId, $qty, $transferId) {
-            $this->lockVariant($tenantId, $variantId, $fromWarehouse);
-            $this->lockVariant($tenantId, $variantId, $toWarehouse);
+            // Sort lock order to prevent deadlock on opposite transfers (A->B vs B->A).
+            $ordered = [$fromWarehouse, $toWarehouse];
+            sort($ordered);
+            foreach ($ordered as $wid) {
+                $this->lockVariant($tenantId, $variantId, $wid);
+            }
             $onHand = $this->onHandLocked($tenantId, $fromWarehouse, $variantId);
             if ($onHand < $qty) {
                 abort(422, "Insufficient stock (on hand: {$onHand}, requested: {$qty}). Oversell rejected.");
@@ -134,10 +138,12 @@ final class StockService
     private function lockVariant(int $tenantId, int $variantId, int $warehouseId): void
     {
         // Serialize concurrent mutations per (warehouse, variant) to prevent oversell races.
-        ProductVariant::withoutGlobalScopes()
+        $variant = ProductVariant::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)->where('id', $variantId)->lockForUpdate()->first();
-        Warehouse::withoutGlobalScopes()
+        abort_unless($variant, 422, 'Product variant does not belong to tenant.');
+        $warehouse = Warehouse::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)->where('id', $warehouseId)->lockForUpdate()->first();
+        abort_unless($warehouse, 422, 'Warehouse does not belong to tenant.');
     }
 
     private function onHandLocked(int $tenantId, int $warehouseId, int $variantId): float

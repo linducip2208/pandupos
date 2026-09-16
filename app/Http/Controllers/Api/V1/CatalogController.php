@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Unit;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CatalogController extends Controller
 {
@@ -17,7 +19,8 @@ class CatalogController extends Controller
 
     public function storeCategory(Request $request)
     {
-        $data = $request->validate(['name' => 'required|string|max:255', 'parent_id' => 'nullable|exists:categories,id']);
+        $tenantId = TenantContext::idOrFail();
+        $data = $request->validate(['name' => 'required|string|max:255', 'parent_id' => ['nullable', Rule::exists('categories', 'id')->where('tenant_id', $tenantId)]]);
         $row = Category::create($data);
 
         return response()->json(['data' => $row], 201);

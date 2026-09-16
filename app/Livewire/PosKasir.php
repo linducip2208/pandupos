@@ -94,7 +94,8 @@ class PosKasir extends Component
         ]);
 
         $user = auth()->user();
-        $tenantId = TenantContext::id() ?? $user->current_tenant_id;
+        $tenantId = TenantContext::idOrFail();
+        abort_unless($user->memberships()->withoutGlobalScopes()->where('tenant_id', $tenantId)->exists() || $user->is_platform_admin, 403);
         $branchId = $user->memberships()->where('tenant_id', $tenantId)->first()?->branch_ids[0]
             ?? Branch::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id');
         $warehouseId = Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id');
@@ -117,6 +118,7 @@ class PosKasir extends Component
 
     public function render()
     {
+        TenantContext::idOrFail();
         $products = Product::with('variants')
             ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->limit(24)->get();

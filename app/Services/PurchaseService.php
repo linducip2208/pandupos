@@ -2,7 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Contact;
+use App\Models\ProductVariant;
 use App\Models\Purchase;
+use App\Models\Warehouse;
+use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
 
 /** Stock increases ONLY on receiving, never on PO creation. */
@@ -12,6 +16,16 @@ final class PurchaseService
 
     public function createDraft(int $tenantId, int $warehouseId, int $contactId, array $lines): Purchase
     {
+        // Validate tenant ownership of all references (prevent IDOR, mirrors SaleService).
+        abort_unless(Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $warehouseId)->exists(), 422, 'Warehouse does not belong to tenant.');
+        abort_unless(Contact::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $contactId)->exists(), 422, 'Contact does not belong to tenant.');
+        foreach ($lines as $l) {
+            abort_unless(ProductVariant::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $l['product_variant_id'])->exists(), 422, 'Variant does not belong to tenant.');
+            if (($l['quantity'] ?? 0) <= 0) {
+                abort(422, 'Line quantity must be greater than zero.');
+            }
+        }
+
         return DB::transaction(function () use ($tenantId, $warehouseId, $contactId, $lines) {
             $total = collect($lines)->sum(fn ($l) => $l['quantity'] * $l['unit_cost']);
             $purchase = Purchase::withoutGlobalScopes()->create([
@@ -26,10 +40,15 @@ final class PurchaseService
         });
     }
 
-    public function receive(int $purchaseId, ?array $partialLines = null): Purchase
+    public function receive(int $purchaseId, ?array $partialLines = null, ?int $tenantId = null): Purchase
     {
-        return DB::transaction(function () use ($purchaseId, $partialLines) {
-            $purchase = Purchase::withoutGlobalScopes()->lockForUpdate()->findOrFail($purchaseId);
+        return DB::transaction(function () use ($purchaseId, $partialLines, $tenantId) {
+            $tenantId ??= TenantContext::id();
+            $q = Purchase::withoutGlobalScopes()->lockForUpdate();
+            if ($tenantId !== null) {
+                $q->where('tenant_id', $tenantId);
+            }
+            $purchase = $q->findOrFail($purchaseId);
 
             if ($purchase->status === 'received') {
                 return $purchase; // idempotent

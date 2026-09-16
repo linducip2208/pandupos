@@ -27,7 +27,8 @@ class TenantMiddleware
                 ?? $request->header('X-Tenant-ID')
                 ?? $request->route('tenant');
         } else {
-            $tenantId = $request->header('X-Tenant-ID') ?? $request->route('tenant');
+            // Guests: only explicit route binding, never header — prevents unauthenticated context spoofing.
+            $tenantId = $request->route('tenant');
         }
 
         if ($tenantId) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Support\TenantContext;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -60,11 +61,21 @@ class SyncController extends Controller
                     continue;
                 }
 
-                DB::table('idempotency_keys')->insert([
-                    'tenant_id' => $tenantId, 'key' => $key,
-                    'response' => json_encode(['device_id' => $deviceId]),
-                    'created_at' => now(), 'updated_at' => now(),
-                ]);
+                try {
+                    DB::table('idempotency_keys')->insert([
+                        'tenant_id' => $tenantId, 'key' => $key,
+                        'response' => json_encode(['device_id' => $deviceId]),
+                        'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                } catch (QueryException $e) {
+                    // Concurrent push with same key: treat as duplicate, not 500.
+                    if ($e->getCode() === '23000') {
+                        $results[] = ['uuid' => $m['uuid'], 'status' => 'duplicate', 'conflict' => 'already_applied'];
+
+                        continue;
+                    }
+                    throw $e;
+                }
                 DB::table('server_change_logs')->insert([
                     'tenant_id' => $tenantId, 'entity' => $m['entity'], 'entity_uuid' => $m['uuid'],
                     'entity_type' => $m['entity'], 'entity_id' => 0,

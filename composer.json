@@ -1,10 +1,10 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "pandupos/enterprise",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
-    "license": "MIT",
+    "description": "PanduPOS Enterprise — modular multi-tenant SaaS POS & business platform.",
+    "keywords": ["laravel", "pos", "saas", "multi-tenant", "inventory"],
+    "license": "proprietary",
     "require": {
         "php": "^8.3",
         "laravel/framework": "^13.0",
