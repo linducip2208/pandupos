@@ -18,6 +18,9 @@ final class UsageLimitService
         'branches.max' => ['table' => 'branches', 'column' => 'tenant_id'],
         'warehouses.max' => ['table' => 'warehouses', 'column' => 'tenant_id'],
         'products.max' => ['table' => 'products', 'column' => 'tenant_id'],
+        'customers.max' => ['table' => 'contacts', 'column' => 'tenant_id', 'where' => ['type' => 'customer']],
+        'suppliers.max' => ['table' => 'contacts', 'column' => 'tenant_id', 'where' => ['type' => 'supplier']],
+        'invoices.monthly' => ['table' => 'sales_invoices', 'column' => 'tenant_id', 'monthly' => true],
     ];
 
     public function count(int $tenantId, string $usageKey): int
@@ -28,7 +31,17 @@ final class UsageLimitService
             return 0;
         }
 
-        return (int) DB::table($meter['table'])->where($meter['column'], $tenantId)->count();
+        $q = DB::table($meter['table'])->where($meter['column'], $tenantId);
+
+        foreach ($meter['where'] ?? [] as $col => $val) {
+            $q->where($col, $val);
+        }
+
+        if (! empty($meter['monthly'])) {
+            $q->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()]);
+        }
+
+        return (int) $q->count();
     }
 
     public function limit(int $tenantId, string $usageKey): ?int
