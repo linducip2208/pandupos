@@ -23,9 +23,15 @@ jobs:
         with:
           php-version: '8.3'
           extensions: mbstring, pdo_mysql, pdo_sqlite, sqlite3, bcmath, ctype, fileinfo, gd, json, tokenizer, xml, zip
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
       - run: composer validate --strict
       - run: composer install --prefer-dist --no-progress
       - run: ./vendor/bin/pint --test
+      - run: npm ci
+      - run: npm run build
       - name: Run PHPUnit
         shell: bash
         run: |
