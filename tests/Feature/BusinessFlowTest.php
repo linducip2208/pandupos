@@ -2,15 +2,24 @@
 
 namespace Tests\Feature;
 
+use App\Models\Branch;
+use App\Models\Contact;
+use App\Models\Plan;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\SalesInvoice;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\EntitlementService;
 use App\Services\PurchaseService;
 use App\Services\SaleService;
 use App\Services\StockService;
+use App\Services\TenantProvisioningService;
+use App\Services\UsageLimitService;
+use Database\Seeders\PlatformSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class BusinessFlowTest extends TestCase
@@ -19,12 +28,12 @@ class BusinessFlowTest extends TestCase
 
     private function setupTenant(): array
     {
-        $this->seed(\Database\Seeders\PlatformSeeder::class);
+        $this->seed(PlatformSeeder::class);
         $owner = User::factory()->create();
-        $tenant = app(\App\Services\TenantProvisioningService::class)->provision('Toko Test', $owner);
+        $tenant = app(TenantProvisioningService::class)->provision('Toko Test', $owner);
         $warehouse = Warehouse::withoutGlobalScopes()->where('tenant_id', $tenant->id)->first()
             ?? Warehouse::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'Gudang', 'code' => 'G1']);
-        $branch = \App\Models\Branch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->first();
+        $branch = Branch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->first();
 
         $product = Product::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'Indomie', 'sku' => 'IND-'.uniqid()]);
         $variant = ProductVariant::withoutGlobalScopes()->create([
@@ -39,7 +48,7 @@ class BusinessFlowTest extends TestCase
     {
         ['tenant' => $t, 'warehouse' => $w, 'variant' => $v] = $this->setupTenant();
 
-        $supplier = \App\Models\Contact::withoutGlobalScopes()->create([
+        $supplier = Contact::withoutGlobalScopes()->create([
             'tenant_id' => $t->id, 'type' => 'supplier', 'name' => 'Supplier A',
         ]);
 
@@ -54,10 +63,10 @@ class BusinessFlowTest extends TestCase
         $ps->receive($purchase->id);
         $this->assertEquals(100, app(StockService::class)->onHand($t->id, $w->id, $v->id));
 
-        $customer = \App\Models\Contact::withoutGlobalScopes()->create([
+        $customer = Contact::withoutGlobalScopes()->create([
             'tenant_id' => $t->id, 'type' => 'customer', 'name' => 'Budi',
         ]);
-        $branch = \App\Models\Branch::withoutGlobalScopes()->where('tenant_id', $t->id)->first();
+        $branch = Branch::withoutGlobalScopes()->where('tenant_id', $t->id)->first();
 
         /** @var SaleService $ss */
         $ss = app(SaleService::class);
@@ -74,7 +83,7 @@ class BusinessFlowTest extends TestCase
 
         app(StockService::class)->increase($t->id, $w->id, $v->id, 50, 2500, 'opening', null);
 
-        $customer = \App\Models\Contact::withoutGlobalScopes()->create(['tenant_id' => $t->id, 'type' => 'customer', 'name' => 'C']);
+        $customer = Contact::withoutGlobalScopes()->create(['tenant_id' => $t->id, 'type' => 'customer', 'name' => 'C']);
         $inv = app(SaleService::class)->checkout($t->id, $b->id, $w->id, $customer->id, [
             ['variant_id' => $v->id, 'quantity' => 10, 'unit_price' => 3500],
         ], [['method' => 'cash', 'amount' => 35000]], 'k-'.uniqid());
@@ -96,7 +105,7 @@ class BusinessFlowTest extends TestCase
                 ['variant_id' => $v->id, 'quantity' => 2, 'unit_price' => 3500],
             ], [['method' => 'cash', 'amount' => 1000]], 'bad-'.uniqid());
             $this->fail('Expected 422 for unbalanced split.');
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+        } catch (HttpException $e) {
             $this->assertEquals(422, $e->getStatusCode());
         }
 
@@ -116,14 +125,14 @@ class BusinessFlowTest extends TestCase
         ], $key);
 
         $this->assertEquals($first->id, $second->id);
-        $this->assertEquals(1, \App\Models\SalesInvoice::withoutGlobalScopes()->where('idempotency_key', $key)->count());
+        $this->assertEquals(1, SalesInvoice::withoutGlobalScopes()->where('idempotency_key', $key)->count());
     }
 
     public function test_stock_transfer(): void
     {
         ['tenant' => $t, 'variant' => $v] = $this->setupTenant();
-        $w1 = \App\Models\Warehouse::withoutGlobalScopes()->where('tenant_id', $t->id)->first();
-        $w2 = \App\Models\Warehouse::withoutGlobalScopes()->create(['tenant_id' => $t->id, 'name' => 'W2', 'code' => 'W2-'.uniqid()]);
+        $w1 = Warehouse::withoutGlobalScopes()->where('tenant_id', $t->id)->first();
+        $w2 = Warehouse::withoutGlobalScopes()->create(['tenant_id' => $t->id, 'name' => 'W2', 'code' => 'W2-'.uniqid()]);
 
         app(StockService::class)->increase($t->id, $w1->id, $v->id, 20, 2500, 'opening', null);
         app(StockService::class)->transfer($t->id, $w1->id, $w2->id, $v->id, 5, 1);
@@ -143,32 +152,32 @@ class BusinessFlowTest extends TestCase
         try {
             app(SaleService::class)->void($inv->id, false);
             $this->fail('Expected 403.');
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+        } catch (HttpException $e) {
             $this->assertEquals(403, $e->getStatusCode());
         }
     }
 
     public function test_usage_limit_enforced(): void
     {
-        $this->seed(\Database\Seeders\PlatformSeeder::class);
+        $this->seed(PlatformSeeder::class);
         $owner = User::factory()->create();
-        $tenant = app(\App\Services\TenantProvisioningService::class)->provision('Toko Limit', $owner);
+        $tenant = app(TenantProvisioningService::class)->provision('Toko Limit', $owner);
 
         // Starter: products.max = 1000. Shrink to 1 for test.
-        $plan = \App\Models\Plan::where('slug', 'starter')->first();
+        $plan = Plan::where('slug', 'starter')->first();
         $plan->entitlements()->updateOrCreate(['entitlement' => 'products.max'], ['value' => '1']);
-        app(\App\Services\EntitlementService::class)->forget($tenant->id);
+        app(EntitlementService::class)->forget($tenant->id);
 
         // Re-point subscription to starter to be sure.
-        \App\Models\Subscription::withoutGlobalScopes()->where('tenant_id', $tenant->id)->update(['plan_id' => $plan->id]);
-        app(\App\Services\EntitlementService::class)->forget($tenant->id);
+        Subscription::withoutGlobalScopes()->where('tenant_id', $tenant->id)->update(['plan_id' => $plan->id]);
+        app(EntitlementService::class)->forget($tenant->id);
 
         Product::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'P1', 'sku' => 'S1-'.uniqid()]);
 
         try {
-            app(\App\Services\UsageLimitService::class)->assertCanCreate($tenant->id, 'products.max');
+            app(UsageLimitService::class)->assertCanCreate($tenant->id, 'products.max');
             $this->fail('Expected 403 usage limit.');
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+        } catch (HttpException $e) {
             $this->assertEquals(403, $e->getStatusCode());
         }
     }

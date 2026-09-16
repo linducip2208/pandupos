@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\Module;
 use App\Models\Plan;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class PlatformSeeder extends Seeder
 {
@@ -71,11 +73,11 @@ class PlatformSeeder extends Seeder
 
         // Spatie roles (platform-level; tenant scoping via memberships + policies in later phases).
         foreach (['platform-admin', 'tenant-owner', 'tenant-admin', 'manager', 'cashier', 'warehouse', 'purchasing', 'sales'] as $role) {
-            \Spatie\Permission\Models\Role::findOrCreate($role, 'web');
+            Role::findOrCreate($role, 'web');
         }
 
         foreach (['pos.sale.create', 'pos.sale.void', 'inventory.view', 'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve', 'sales.view', 'reports.view', 'settings.manage'] as $perm) {
-            \Spatie\Permission\Models\Permission::findOrCreate($perm, 'web');
+            Permission::findOrCreate($perm, 'web');
         }
     }
 }

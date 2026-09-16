@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Tenant;
 use App\Support\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
@@ -28,7 +29,7 @@ class TenantMiddleware
         }
 
         if ($tenantId) {
-            $tenant = \App\Models\Tenant::find($tenantId);
+            $tenant = Tenant::find($tenantId);
 
             if (! $tenant) {
                 abort(404, 'Tenant not found.');

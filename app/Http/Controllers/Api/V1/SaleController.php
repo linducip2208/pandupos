@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\SalesInvoice;
 use App\Services\SaleService;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 
 class SaleController extends Controller
@@ -34,7 +35,7 @@ class SaleController extends Controller
         $key = $request->header('Idempotency-Key', (string) \Str::uuid());
 
         $invoice = $service->checkout(
-            \App\Support\TenantContext::id(),
+            TenantContext::id(),
             $data['branch_id'], $data['warehouse_id'], $data['contact_id'] ?? null,
             $data['lines'], $data['payments'], $key
         );

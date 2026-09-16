@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Crypt;
-
 /** Centralized branding — no hardcoded platform name in business views. */
 final class BrandingService
 {

@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
 
 /** Attach to every tenant-owned model. Auto-fills tenant_id and adds isolation scope. */
@@ -20,6 +21,6 @@ trait BelongsToTenant
 
     public function tenant()
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 }

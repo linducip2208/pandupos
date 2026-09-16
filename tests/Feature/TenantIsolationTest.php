@@ -5,9 +5,10 @@ namespace Tests\Feature;
 use App\Models\Branch;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\TenantProvisioningService;
 use App\Support\TenantContext;
+use Database\Seeders\PlatformSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class TenantIsolationTest extends TestCase
@@ -31,12 +32,12 @@ class TenantIsolationTest extends TestCase
 
     public function test_middleware_blocks_non_member(): void
     {
-        $this->seed(\Database\Seeders\PlatformSeeder::class);
+        $this->seed(PlatformSeeder::class);
 
         $owner = User::factory()->create();
         $outsider = User::factory()->create();
 
-        $tenant = app(\App\Services\TenantProvisioningService::class)->provision('Toko A', $owner);
+        $tenant = app(TenantProvisioningService::class)->provision('Toko A', $owner);
 
         $this->actingAs($outsider)
             ->getJson('/api/v1/me', ['X-Tenant-ID' => $tenant->id])

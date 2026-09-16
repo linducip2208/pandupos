@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Services\UsageLimitService;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -37,7 +37,7 @@ class ProductController extends Controller
             'purchase_price' => 'nullable|numeric|min:0',
         ]);
 
-        $usage->assertCanCreate(\App\Support\TenantContext::id(), 'products.max');
+        $usage->assertCanCreate(TenantContext::id(), 'products.max');
 
         return DB::transaction(function () use ($data) {
             $product = Product::create($data);

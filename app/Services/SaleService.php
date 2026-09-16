@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -12,8 +13,8 @@ final class SaleService
     public function __construct(private StockService $stock) {}
 
     /**
-     * @param array $lines [['variant_id'=>int,'quantity'=>float,'unit_price'=>float,'discount'=>float]]
-     * @param array $payments [['method'=>string,'amount'=>float,'reference'=>?string]]
+     * @param  array  $lines  [['variant_id'=>int,'quantity'=>float,'unit_price'=>float,'discount'=>float]]
+     * @param  array  $payments  [['method'=>string,'amount'=>float,'reference'=>?string]]
      */
     public function checkout(
         int $tenantId, int $branchId, int $warehouseId, ?int $contactId,
@@ -92,7 +93,7 @@ final class SaleService
                     $rl['variant_id'], (float) $rl['quantity'], 0, 'sale_return', $invoice->id
                 );
             }
-            \App\Models\SalesReturn::withoutGlobalScopes()->create([
+            SalesReturn::withoutGlobalScopes()->create([
                 'tenant_id' => $invoice->tenant_id, 'sales_invoice_id' => $invoice->id,
                 'total' => collect($returnLines)->sum(fn ($r) => $r['quantity'] * ($r['unit_price'] ?? 0)),
             ]);

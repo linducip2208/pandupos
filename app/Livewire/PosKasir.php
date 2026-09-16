@@ -2,7 +2,9 @@
 
 namespace App\Livewire;
 
+use App\Models\Branch;
 use App\Models\Product;
+use App\Models\Warehouse;
 use App\Services\SaleService;
 use App\Support\TenantContext;
 use Livewire\Component;
@@ -59,8 +61,8 @@ class PosKasir extends Component
         $user = auth()->user();
         $tenantId = TenantContext::id() ?? $user->current_tenant_id;
         $branchId = $user->memberships()->where('tenant_id', $tenantId)->first()?->branch_ids[0]
-            ?? \App\Models\Branch::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id');
-        $warehouseId = \App\Models\Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id');
+            ?? Branch::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id');
+        $warehouseId = Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id');
 
         $invoice = $sales->checkout(
             $tenantId, $branchId, $warehouseId, null,

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Services\ReportService;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 
 class ReportController extends Controller
@@ -11,7 +12,7 @@ class ReportController extends Controller
     public function sales(Request $request, ReportService $reports)
     {
         $request->validate(['from' => 'required|date', 'to' => 'required|date']);
-        $tenantId = \App\Support\TenantContext::id();
+        $tenantId = TenantContext::id();
 
         return response()->json([
             'summary' => $reports->salesSummary($tenantId, $request->from, $request->to),
@@ -23,7 +24,7 @@ class ReportController extends Controller
     public function stock(ReportService $reports)
     {
         return response()->json([
-            'on_hand' => $reports->stockOnHand(\App\Support\TenantContext::id()),
+            'on_hand' => $reports->stockOnHand(TenantContext::id()),
         ]);
     }
 }

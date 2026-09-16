@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\AuditLog;
+use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\SubscriptionEvent;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /** Trial / upgrade / downgrade / cancel / renew with immutable history. */
@@ -19,7 +21,7 @@ final class SubscriptionService
                 ->whereIn('status', Subscription::ACTIVE_STATUSES)
                 ->update(['status' => 'cancelled', 'cancelled_at' => now(), 'ends_at' => now()]);
 
-            $plan = \App\Models\Plan::findOrFail($planId);
+            $plan = Plan::findOrFail($planId);
 
             $sub = Subscription::withoutGlobalScopes()->create([
                 'tenant_id' => $tenantId,
@@ -68,7 +70,7 @@ final class SubscriptionService
         });
     }
 
-    private function periodEnd(string $cycle): \Carbon\Carbon
+    private function periodEnd(string $cycle): Carbon
     {
         return match ($cycle) {
             'yearly' => now()->addYear(),
@@ -81,7 +83,7 @@ final class SubscriptionService
 
     private function log(int $tenantId, int $subId, string $event, array $payload): void
     {
-        \App\Models\SubscriptionEvent::create([
+        SubscriptionEvent::create([
             'subscription_id' => $subId, 'tenant_id' => $tenantId,
             'event' => $event, 'payload' => $payload,
             'actor_id' => auth()->id(),

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 
 class PlatformTenantController extends Controller
@@ -22,7 +23,7 @@ class PlatformTenantController extends Controller
         $data = $request->validate(['reason' => 'required|string']);
 
         $tenant->update(['status' => 'suspended']);
-        app(\App\Services\AuditService::class)->log(
+        app(AuditService::class)->log(
             $tenant->id, $request->user()->id, 'tenant.suspended',
             Tenant::class, $tenant->id, null, ['reason' => $data['reason']]
         );

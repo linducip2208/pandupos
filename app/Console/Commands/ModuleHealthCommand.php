@@ -24,6 +24,7 @@ class ModuleHealthCommand extends Command
         $base = base_path('Modules');
         if (! is_dir($base)) {
             $this->warn('No Modules/ directory yet (only DB registry).');
+
             return self::SUCCESS;
         }
 

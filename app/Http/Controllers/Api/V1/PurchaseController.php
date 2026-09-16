@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Contact;
 use App\Models\Purchase;
 use App\Services\PurchaseService;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 
 class PurchaseController extends Controller
@@ -29,7 +29,7 @@ class PurchaseController extends Controller
         ]);
 
         $purchase = $service->createDraft(
-            \App\Support\TenantContext::id(),
+            TenantContext::id(),
             $data['warehouse_id'], $data['contact_id'], $data['lines']
         );
 
