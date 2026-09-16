@@ -22,7 +22,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, pdo_mysql, bcmath, ctype, fileinfo, json, tokenizer, xml
+          extensions: mbstring, pdo_mysql, pdo_sqlite, sqlite3, bcmath, ctype, fileinfo, gd, json, tokenizer, xml, zip
       - run: composer validate --strict
       - run: composer install --prefer-dist --no-progress
       - run: ./vendor/bin/pint --test
@@ -31,8 +31,8 @@ jobs:
         run: |
           set -o pipefail
           php artisan test 2>&1 | tee /tmp/pandupos-tests.log || {
-            failure_tail="$(tail -n 80 /tmp/pandupos-tests.log | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')"
-            echo "::error title=PHPUnit failed::${failure_tail}"
+            failure_summary="$(grep -Ei 'FAIL|FAILED|Error|Exception|SQLSTATE|Expected|Actual|Tests:|at tests/' /tmp/pandupos-tests.log | tail -n 60 | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')"
+            echo "::error title=PHPUnit failure summary::${failure_summary}"
             exit 1
           }
       - name: Audit Composer dependencies
