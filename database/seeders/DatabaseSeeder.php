@@ -14,6 +14,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(PlatformSeeder::class);
+        $this->call([PlatformSeeder::class, PlatformAdminSeeder::class]);
+
+        if (! app()->isProduction()) {
+            $this->call(DemoTenantSeeder::class);
+        }
     }
 }
