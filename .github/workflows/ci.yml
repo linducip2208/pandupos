@@ -18,7 +18,7 @@ jobs:
       QUEUE_CONNECTION: sync
       MAIL_MAILER: array
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
@@ -26,5 +26,15 @@ jobs:
       - run: composer validate --strict
       - run: composer install --prefer-dist --no-progress
       - run: ./vendor/bin/pint --test
-      - run: php artisan test
-      - run: composer audit
+      - name: Run PHPUnit
+        shell: bash
+        run: |
+          set -o pipefail
+          php artisan test 2>&1 | tee /tmp/pandupos-tests.log || {
+            failure_tail="$(tail -n 80 /tmp/pandupos-tests.log | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')"
+            echo "::error title=PHPUnit failed::${failure_tail}"
+            exit 1
+          }
+      - name: Audit Composer dependencies
+        if: always()
+        run: composer audit
