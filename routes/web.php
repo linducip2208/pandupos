@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocsController;
+use App\Http\Controllers\InventoryWorkspaceController;
 use App\Http\Controllers\Platform\AffiliateController;
 use App\Http\Controllers\Platform\AnnouncementController;
 use App\Http\Controllers\Platform\AuditController;
@@ -86,6 +87,20 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/approvals/settings', [ApprovalController::class, 'setting'])->name('approvals.setting');
     Route::post('/approvals/{approval}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
     Route::post('/approvals/{approval}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
+    Route::prefix('inventory')->name('inventory.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
+        Route::get('/', [InventoryWorkspaceController::class, 'index'])->name('index');
+        Route::post('/locations', [InventoryWorkspaceController::class, 'storeLocation'])->name('locations.store');
+        Route::post('/reservations', [InventoryWorkspaceController::class, 'storeReservation'])->name('reservations.store');
+        Route::post('/reservations/{reservation}/release', [InventoryWorkspaceController::class, 'releaseReservation'])->name('reservations.release');
+        Route::post('/transfers', [InventoryWorkspaceController::class, 'storeTransfer'])->name('transfers.store');
+        Route::post('/transfers/{transfer}/receive', [InventoryWorkspaceController::class, 'receiveTransfer'])->name('transfers.receive');
+        Route::post('/transfers/{transfer}/{action}', [InventoryWorkspaceController::class, 'transferAction'])->where('action', 'approve|ship|transit|cancel')->name('transfers.action');
+        Route::post('/adjustments', [InventoryWorkspaceController::class, 'storeAdjustment'])->name('adjustments.store');
+        Route::post('/adjustments/{adjustment}/{action}', [InventoryWorkspaceController::class, 'adjustmentAction'])->where('action', 'approve|post')->name('adjustments.action');
+        Route::post('/counts', [InventoryWorkspaceController::class, 'storeCount'])->name('counts.store');
+        Route::post('/counts/{count}/record', [InventoryWorkspaceController::class, 'recordCount'])->name('counts.record');
+        Route::post('/counts/{count}/{action}', [InventoryWorkspaceController::class, 'countAction'])->where('action', 'approve|post')->name('counts.action');
+    });
 });
 
 Route::prefix('platform')->name('platform.')->middleware(['auth', 'can:platform-admin'])->group(function () {

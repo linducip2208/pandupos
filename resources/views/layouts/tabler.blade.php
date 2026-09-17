@@ -24,6 +24,11 @@
                         <li class="nav-item"><a class="nav-link" href="{{ route('pos.index') }}"><x-nav-icon name="pos"/><span class="nav-link-title">POS Kasir</span></a></li>
                         <li class="nav-item"><a class="nav-link" href="{{ route('approvals.index') }}"><x-nav-icon name="approval"/><span class="nav-link-title">Approval</span></a></li>
                     </ul></li>
+                    @can('inventory.view')
+                        <li class="nav-group"><button class="nav-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#nav-inventory" aria-expanded="true"><x-nav-icon name="inventory-group"/><span>📦 Persediaan</span><span class="nav-chevron">⌄</span></button><ul class="collapse show nav-submenu" id="nav-inventory">
+                            <li class="nav-item"><a class="nav-link" href="{{ route('inventory.index') }}"><x-nav-icon name="inventory-control"/><span class="nav-link-title">Kontrol Persediaan</span></a></li>
+                        </ul></li>
+                    @endcan
                     <li class="nav-group"><button class="nav-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#nav-reports" aria-expanded="true"><x-nav-icon name="report-group"/><span>📊 Laporan</span><span class="nav-chevron">⌄</span></button><ul class="collapse show nav-submenu" id="nav-reports">
                         <li class="nav-item"><a class="nav-link" href="{{ route('reports.show','bisnis') }}"><x-nav-icon name="business"/><span class="nav-link-title">Bisnis Utama</span></a></li>
                         <li class="nav-item"><a class="nav-link" href="{{ route('reports.show','keuangan') }}"><x-nav-icon name="finance"/><span class="nav-link-title">Keuangan</span></a></li>

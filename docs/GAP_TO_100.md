@@ -25,10 +25,9 @@ Execute in this order:
 3. Normal/variant/weighing parser, configurable scale rules, labels and print templates.
 4. Price lists for tenant/location/customer group/date/priority with audited resolver.
 5. Relational bundles with atomic component deduction.
-6. Finish UI/permissions/audit and transaction selectors for implemented batch/expiry/FEFO, serial and physical-location foundations.
-7. Integrate implemented reservation service into sales-order/held-cart UI and schedule expiry cleanup.
-8. Add tenant UI for the implemented transfer approval/ship/transit/partial-receive/receive/cancel workflow.
-9. Add UI and requester/approver segregation for the implemented governed adjustment and stock-count workflows.
+6. Finish UI/permissions/audit and transaction selectors for implemented batch/expiry/FEFO and serial foundations; physical-location creation now has tenant UI.
+7. Integrate the reservation workflow, whose create/release UI now exists, into sales-order/held-cart flows and schedule expiry cleanup.
+8. Add requester/approver segregation to the implemented transfer, adjustment, and stock-count UI workflows.
 10. Operationalize the implemented read-only `inventory:reconcile` command and alert on differences; retain explicit-only `--fix`.
 11. WAC matrix and future FIFO strategy contract are implemented; retain as a regression gate and integrate original-cost returns with the upcoming purchase-return document.
 

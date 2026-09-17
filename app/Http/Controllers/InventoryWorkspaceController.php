@@ -1,0 +1,187 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\ProductVariant;
+use App\Models\StockAdjustment;
+use App\Models\StockCount;
+use App\Models\StockReservation;
+use App\Models\TransferOrder;
+use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
+use App\Services\StockAdjustmentService;
+use App\Services\StockCountService;
+use App\Services\StockReservationService;
+use App\Services\StockTransferService;
+use App\Support\TenantContext;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+
+class InventoryWorkspaceController extends Controller
+{
+    public function index(Request $request): View
+    {
+        $this->requirePermission($request, 'inventory.view');
+
+        return view('inventory.index', [
+            'warehouses' => Warehouse::query()->orderBy('name')->get(),
+            'variants' => ProductVariant::query()->with('product')->orderBy('sku')->get(),
+            'locations' => WarehouseLocation::query()->with('warehouse')->latest()->limit(30)->get(),
+            'reservations' => StockReservation::query()->with(['warehouse', 'variant.product'])->latest()->limit(30)->get(),
+            'transfers' => TransferOrder::query()->with(['fromWarehouse', 'toWarehouse', 'lines.variant.product'])->latest()->limit(30)->get(),
+            'adjustments' => StockAdjustment::query()->with(['warehouse', 'lines.variant.product'])->latest()->limit(30)->get(),
+            'counts' => StockCount::query()->with(['warehouse', 'lines.variant.product'])->latest()->limit(30)->get(),
+        ]);
+    }
+
+    public function storeLocation(Request $request): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.adjust');
+        $data = $request->validate([
+            'warehouse_id' => ['required', 'integer'], 'code' => ['required', 'string', 'max:50'],
+            'zone' => ['nullable', 'string', 'max:80'], 'rack' => ['nullable', 'string', 'max:80'],
+            'shelf' => ['nullable', 'string', 'max:80'], 'bin' => ['nullable', 'string', 'max:80'],
+        ]);
+        abort_unless(Warehouse::query()->whereKey($data['warehouse_id'])->exists(), 404);
+        WarehouseLocation::create($data + ['tenant_id' => TenantContext::idOrFail(), 'is_active' => true]);
+
+        return back()->with('status', 'Lokasi gudang berhasil dibuat.');
+    }
+
+    public function storeReservation(Request $request, StockReservationService $service): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.transfer');
+        $data = $request->validate([
+            'warehouse_id' => ['required', 'integer'], 'product_variant_id' => ['required', 'integer'],
+            'quantity' => ['required', 'numeric', 'gt:0'], 'source_type' => ['required', 'string', 'max:80'],
+            'source_id' => ['nullable', 'integer'], 'expires_at' => ['nullable', 'date', 'after:now'],
+        ]);
+        $service->reserve($data + ['tenant_id' => TenantContext::idOrFail()], $request->user()->id);
+
+        return back()->with('status', 'Stok berhasil direservasi.');
+    }
+
+    public function releaseReservation(Request $request, StockReservation $reservation, StockReservationService $service): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.transfer');
+        $this->assertTenant($reservation->tenant_id);
+        $service->release($reservation, $request->user()->id);
+
+        return back()->with('status', 'Reservasi berhasil dilepas.');
+    }
+
+    public function storeTransfer(Request $request, StockTransferService $service): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.transfer');
+        $data = $request->validate([
+            'from_warehouse_id' => ['required', 'integer', 'different:to_warehouse_id'],
+            'to_warehouse_id' => ['required', 'integer'], 'product_variant_id' => ['required', 'integer'],
+            'quantity' => ['required', 'numeric', 'gt:0'], 'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $service->createDraft(TenantContext::idOrFail(), (int) $data['from_warehouse_id'], (int) $data['to_warehouse_id'], [[
+            'product_variant_id' => $data['product_variant_id'], 'quantity' => $data['quantity'],
+        ]], $data['notes'] ?? null, $request->user()->id);
+
+        return back()->with('status', 'Draft transfer berhasil dibuat.');
+    }
+
+    public function transferAction(Request $request, TransferOrder $transfer, string $action, StockTransferService $service): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.transfer');
+        $this->assertTenant($transfer->tenant_id);
+        match ($action) {
+            'approve' => $service->approve($transfer, $request->user()->id),
+            'ship' => $service->ship($transfer, $request->user()->id),
+            'transit' => $service->markInTransit($transfer, $request->user()->id),
+            'cancel' => $service->cancel($transfer, $request->user()->id),
+            default => abort(404),
+        };
+
+        return back()->with('status', 'Status transfer berhasil diperbarui.');
+    }
+
+    public function receiveTransfer(Request $request, TransferOrder $transfer, StockTransferService $service): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.transfer');
+        $this->assertTenant($transfer->tenant_id);
+        $data = $request->validate(['quantities' => ['required', 'array'], 'quantities.*' => ['nullable', 'numeric', 'gt:0']]);
+        $service->receive($transfer, array_filter($data['quantities'], fn ($quantity) => $quantity !== null && $quantity !== ''), $request->user()->id);
+
+        return back()->with('status', 'Penerimaan transfer berhasil dicatat.');
+    }
+
+    public function storeAdjustment(Request $request, StockAdjustmentService $service): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.adjust');
+        $data = $request->validate([
+            'warehouse_id' => ['required', 'integer'], 'reason' => ['required', 'in:damage,expired,loss,count_correction,opening_correction,other'],
+            'notes' => ['required', 'string', 'max:1000'], 'product_variant_id' => ['required', 'integer'],
+            'quantity_change' => ['required', 'numeric', 'not_in:0'], 'unit_cost' => ['nullable', 'numeric', 'min:0'],
+        ]);
+        $service->create(TenantContext::idOrFail(), (int) $data['warehouse_id'], $data['reason'], [[
+            'product_variant_id' => $data['product_variant_id'], 'quantity_change' => $data['quantity_change'],
+            'unit_cost' => $data['unit_cost'] ?? null,
+        ]], $data['notes'], $request->user()->id);
+
+        return back()->with('status', 'Draft penyesuaian berhasil dibuat.');
+    }
+
+    public function adjustmentAction(Request $request, StockAdjustment $adjustment, string $action, StockAdjustmentService $service): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.adjust');
+        $this->assertTenant($adjustment->tenant_id);
+        match ($action) {
+            'approve' => $service->approve($adjustment, $request->user()->id),
+            'post' => $service->post($adjustment, $request->user()->id),
+            default => abort(404),
+        };
+
+        return back()->with('status', 'Status penyesuaian berhasil diperbarui.');
+    }
+
+    public function storeCount(Request $request, StockCountService $service): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.adjust');
+        $data = $request->validate([
+            'warehouse_id' => ['required', 'integer'], 'reference' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $service->createAndSnapshot(TenantContext::idOrFail(), (int) $data['warehouse_id'], $data['reference'] ?? null, $data['notes'] ?? null, $request->user()->id);
+
+        return back()->with('status', 'Stock count dan snapshot berhasil dibuat.');
+    }
+
+    public function recordCount(Request $request, StockCount $count, StockCountService $service): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.adjust');
+        $this->assertTenant($count->tenant_id);
+        $data = $request->validate(['quantities' => ['required', 'array'], 'quantities.*' => ['required', 'numeric', 'min:0']]);
+        $service->recordCounts($count, $data['quantities'], $request->user()->id);
+
+        return back()->with('status', 'Hasil hitung berhasil dikirim untuk review.');
+    }
+
+    public function countAction(Request $request, StockCount $count, string $action, StockCountService $service): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.adjust');
+        $this->assertTenant($count->tenant_id);
+        match ($action) {
+            'approve' => $service->approve($count, $request->user()->id),
+            'post' => $service->post($count, $request->user()->id),
+            default => abort(404),
+        };
+
+        return back()->with('status', 'Status stock count berhasil diperbarui.');
+    }
+
+    private function requirePermission(Request $request, string $permission): void
+    {
+        abort_unless($request->user()?->can($permission), 403);
+    }
+
+    private function assertTenant(int $tenantId): void
+    {
+        abort_unless($tenantId === TenantContext::idOrFail(), 404);
+    }
+}
