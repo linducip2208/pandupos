@@ -30,4 +30,9 @@ class Purchase extends Model
     {
         return $this->belongsTo(Contact::class);
     }
+
+    public function goodsReceipts()
+    {
+        return $this->hasMany(GoodsReceipt::class);
+    }
 }

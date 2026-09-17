@@ -3,16 +3,19 @@
 namespace App\Services;
 
 use App\Models\Contact;
+use App\Models\GoodsReceipt;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\Warehouse;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /** Stock increases ONLY on receiving, never on PO creation. */
 final class PurchaseService
 {
-    public function __construct(private StockService $stock) {}
+    public function __construct(private StockService $stock, private AuditService $audit) {}
 
     public function createDraft(int $tenantId, int $warehouseId, int $contactId, array $lines): Purchase
     {
@@ -40,9 +43,9 @@ final class PurchaseService
         });
     }
 
-    public function receive(int $purchaseId, ?array $partialLines = null, ?int $tenantId = null): Purchase
+    public function receive(int $purchaseId, ?array $partialLines = null, ?int $tenantId = null, ?int $actorId = null, ?string $notes = null): Purchase
     {
-        return DB::transaction(function () use ($purchaseId, $partialLines, $tenantId) {
+        return DB::transaction(function () use ($purchaseId, $partialLines, $tenantId, $actorId, $notes) {
             $tenantId ??= TenantContext::id();
             $q = Purchase::withoutGlobalScopes()->lockForUpdate();
             if ($tenantId !== null) {
@@ -60,24 +63,49 @@ final class PurchaseService
                 $map = collect($partialLines)->keyBy('product_variant_id');
             }
 
-            foreach ($purchase->lines as $line) {
+            $receivable = [];
+            foreach ($purchase->lines()->lockForUpdate()->get() as $line) {
                 $qtyToReceive = (float) $line->quantity - (float) ($line->received_quantity ?? 0);
                 if ($map !== null) {
                     $row = $map->get($line->product_variant_id);
                     if (! $row) {
                         continue;
                     }
-                    // Never receive more than remaining; prevents +100 twice.
-                    $qtyToReceive = min($qtyToReceive, (float) ($row['quantity'] ?? 0));
+                    $requested = (float) ($row['quantity'] ?? 0);
+                    if ($requested > $qtyToReceive) {
+                        throw ValidationException::withMessages([
+                            'lines' => "Receipt quantity {$requested} exceeds remaining quantity {$qtyToReceive}.",
+                        ]);
+                    }
+                    $qtyToReceive = $requested;
                 }
                 if ($qtyToReceive <= 0) {
                     continue;
                 }
+                $receivable[] = [$line, $qtyToReceive];
+            }
+
+            if ($receivable === []) {
+                return $purchase->fresh('lines');
+            }
+
+            $receipt = GoodsReceipt::withoutGlobalScopes()->create([
+                'tenant_id' => $purchase->tenant_id, 'purchase_id' => $purchase->id,
+                'warehouse_id' => $purchase->warehouse_id, 'receipt_no' => 'TMP-'.(string) Str::uuid(),
+                'received_at' => now(), 'received_by' => $actorId, 'notes' => $notes,
+            ]);
+            $receipt->update(['receipt_no' => 'GR-'.str_pad((string) $receipt->id, 8, '0', STR_PAD_LEFT)]);
+
+            foreach ($receivable as [$line, $qtyToReceive]) {
                 $this->stock->increase(
                     $purchase->tenant_id, $purchase->warehouse_id,
                     $line->product_variant_id, $qtyToReceive,
-                    (float) $line->unit_cost, 'purchase_receipt', $purchase->id
+                    (float) $line->unit_cost, 'purchase_receipt', $receipt->id
                 );
+                $receipt->lines()->create([
+                    'purchase_line_id' => $line->id, 'product_variant_id' => $line->product_variant_id,
+                    'quantity' => $qtyToReceive, 'unit_cost' => $line->unit_cost,
+                ]);
                 $line->update(['received_quantity' => (float) ($line->received_quantity ?? 0) + $qtyToReceive]);
             }
 
@@ -86,6 +114,7 @@ final class PurchaseService
             $totalReceived = (float) $purchase->lines()->sum('received_quantity');
             $status = $totalReceived <= 0 ? $purchase->status : ($totalReceived < $totalOrdered ? 'partial' : 'received');
             $purchase->update(['status' => $status]);
+            $this->audit->log($purchase->tenant_id, $actorId, 'purchase.goods_receipt.posted', GoodsReceipt::class, $receipt->id, null, $receipt->fresh('lines')->toArray());
 
             return $purchase;
         });

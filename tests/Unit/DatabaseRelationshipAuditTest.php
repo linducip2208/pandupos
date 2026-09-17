@@ -21,6 +21,8 @@ use App\Models\Contact;
 use App\Models\CouponRedemption;
 use App\Models\CustomerLogin;
 use App\Models\Device;
+use App\Models\GoodsReceipt;
+use App\Models\GoodsReceiptLine;
 use App\Models\IdempotencyKey;
 use App\Models\ImpersonationSession;
 use App\Models\IntegrationFeatureAssignment;
@@ -101,6 +103,8 @@ class DatabaseRelationshipAuditTest extends TestCase
             TransferOrder::class => ['tenant', 'fromWarehouse', 'toWarehouse', 'approver', 'shipper'],
             TransferLine::class => ['transferOrder', 'variant'], Contact::class => ['tenant'],
             Purchase::class => ['tenant', 'warehouse', 'contact'], PurchaseLine::class => ['purchase', 'variant'],
+            GoodsReceipt::class => ['tenant', 'purchase', 'warehouse', 'receiver'],
+            GoodsReceiptLine::class => ['goodsReceipt', 'purchaseLine', 'variant'],
             CashSession::class => ['tenant', 'register', 'openedBy'], SalesInvoice::class => ['tenant', 'branch', 'warehouse', 'contact'],
             SalesLine::class => ['invoice', 'variant'], SalePayment::class => ['tenant', 'invoice'],
             SalesReturn::class => ['tenant', 'invoice'], Device::class => ['tenant'],

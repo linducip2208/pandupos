@@ -21,7 +21,7 @@ Legend: `D` done, `P` partial, `M` missing, `—` not applicable. `FEATURE COMPL
 | Reservation | Audited idempotent reserve/release/consume/expire and available-to-promise | D | P | D | D | D | D | D | PARTIAL | Sales-order/held-cart integration, consume UI and scheduler |
 | Transfer | Audited state machine with approval, transit, partial receipt and preserved cost | D | D | D | D | D | D | D | PARTIAL | Requester/approver segregation and multi-line creation UI |
 | Adjustment/count/reconcile | Audited approve/post adjustment, count snapshot-to-post, read-only reconcile CLI | D | D | D | D | D | D | D | PARTIAL | Requester/approver segregation and multi-line creation UI |
-| PO/partial receipt | Draft and cumulative receive service/API | P | M | P | P | D | P | P | PARTIAL | UI/approval/document split |
+| PO/partial receipt | PO plus immutable receipt history; each partial receipt has lines, actor, time, audit and ledger reference | P | M | P | P | D | D | D | PARTIAL | Purchase UI, configurable approval, over-receive policy UI |
 | Supplier invoice/payment/return | No separate documents | M | M | M | M | — | M | M | NOT STARTED | Complete AP chain |
 | Quotation/proforma/order/delivery | Final invoice foundation only | M | M | M | M | — | M | M | NOT STARTED | Immutable documents/conversions |
 | Invoice/payment | Atomic checkout, lines, split payments | P | P | P | P | D | P | P | PARTIAL | Posting/receivable state machine |

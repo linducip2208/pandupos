@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\Contact;
+use App\Models\GoodsReceipt;
 use App\Models\Module;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -18,6 +19,7 @@ use App\Services\StockService;
 use App\Services\TenantProvisioningService;
 use Database\Seeders\PlatformSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class CriticalBusinessTest extends TestCase
@@ -60,12 +62,23 @@ class CriticalBusinessTest extends TestCase
         $supplier = Contact::withoutGlobalScopes()->create(['tenant_id' => $t->id, 'type' => 'supplier', 'name' => 'S']);
         $ps = app(PurchaseService::class);
         $po = $ps->createDraft($t->id, $w->id, $supplier->id, [['product_variant_id' => $v->id, 'quantity' => 100, 'unit_cost' => 2500]]);
-        $ps->receive($po->id, [['product_variant_id' => $v->id, 'quantity' => 40]]);
-        $this->assertEquals(40, app(StockService::class)->onHand($t->id, $w->id, $v->id));
+        $ps->receive($po->id, [['product_variant_id' => $v->id, 'quantity' => 30]]);
+        $this->assertEquals(30, app(StockService::class)->onHand($t->id, $w->id, $v->id));
         $this->assertEquals('partial', $po->refresh()->status);
-        $ps->receive($po->id, [['product_variant_id' => $v->id, 'quantity' => 60]]);
+        $ps->receive($po->id, [['product_variant_id' => $v->id, 'quantity' => 40]]);
+        $this->assertEquals(70, app(StockService::class)->onHand($t->id, $w->id, $v->id));
+        try {
+            $ps->receive($po->id, [['product_variant_id' => $v->id, 'quantity' => 31]]);
+            $this->fail('Over-receipt should require an explicit policy.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('lines', $exception->errors());
+        }
+        $ps->receive($po->id, [['product_variant_id' => $v->id, 'quantity' => 30]]);
         $this->assertEquals(100, app(StockService::class)->onHand($t->id, $w->id, $v->id));
         $this->assertEquals('received', $po->refresh()->status);
+        $this->assertSame(3, GoodsReceipt::withoutGlobalScopes()->where('purchase_id', $po->id)->count());
+        $this->assertDatabaseCount('goods_receipt_lines', 3);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'purchase.goods_receipt.posted']);
     }
 
     public function test_sale_decreases_oversell_fails_void_return_restore(): void

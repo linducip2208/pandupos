@@ -46,6 +46,8 @@ class PurchaseController extends Controller
             'lines.*.quantity' => 'required_with:lines|numeric|min:0.001',
         ]);
 
-        return response()->json($service->receive($purchase->id, $data['lines'] ?? null, TenantContext::idOrFail())->load('lines'));
+        return response()->json($service->receive(
+            $purchase->id, $data['lines'] ?? null, TenantContext::idOrFail(), $request->user()?->id
+        )->load(['lines', 'goodsReceipts.lines']));
     }
 }
