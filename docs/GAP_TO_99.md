@@ -1,0 +1,35 @@
+# Gap to 99 — PanduPOS Enterprise
+
+Updated: 2026-09-17. Scores are calculated by `php artisan readiness:score`, using the evidence gates in `ReadinessScoreService`; this document is the execution backlog, not a score ledger.
+
+## Current blockers to a 99/100 release
+
+| Dimension | Score | Exact blockers |
+|---|---:|---|
+| Core | 32 | Advanced inventory UI/integration; complete purchasing/AP; commercial sales/POS/register; reports/imports/dashboard |
+| SaaS | 28 | Subscription/billing automation and verified sandbox; coupon/affiliate/announcements; domains/white-label; API/offline hardening |
+| Addons | 1 | No requested addon has a complete tenant workflow or STABLE release evidence |
+| Tests | 70 | Browser E2E, full concurrency and security regression matrices absent |
+| Security | 58 | Full IDOR/API/upload/secret audit and sensitive-admin hardening absent |
+| Operations | 27 | Restore, staging, rollback, monitoring, alerting and load-test evidence absent |
+| Production | 26 | Security/operations/staging gates not verified |
+| Commercial | 20 | License audit, installation/onboarding/support artifacts and release gates incomplete |
+
+## Wave 1 — core, in required order
+
+1. ~~Bundle UI and atomic component inventory regression.~~ DONE: audited tenant component manager and lifecycle tests.
+2. Batch/expiry/FEFO and serial tenant workflows with purchase/POS selectors and controlled overrides.
+3. Rack/bin transaction selectors; reservation held-cart integration and cleanup scheduler.
+4. Transfer, adjustment and count multi-line UX with requester/approver segregation.
+5. Purchase request, multi-line PO/GRN/AP/return/statement/PDF/export.
+6. Quotation → order → reservation → delivery → invoice → payment → credit note/return/refund lifecycle.
+7. Register, cash movement, hold/resume, discount/tax/credit, receipt layouts and printer contract.
+8. Expense, report catalog/filter/export, import preview/commit and role dashboard.
+
+Each item remains PARTIAL until backend, UI, API where relevant, permission, tenant isolation, audit, tests and documentation are all evidenced.
+
+## Non-negotiable later waves
+
+- SaaS: at least one real Indonesian payment sandbox E2E; no hard-coded provider dependency.
+- Addons: each targeted module must pass the completeness rule before STABLE.
+- Security/operations: backup restore, staging/rollback, monitoring/alerting and load reports must be actual drills, not statements.

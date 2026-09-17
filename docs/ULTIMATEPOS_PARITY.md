@@ -14,7 +14,7 @@ Canonical readiness percentages live in `PRODUCTION_READINESS_SCORE.md`; this ma
 | Sub-units/conversion | Tenant-safe direct/inverse/chained conversion manager integrated with purchasing, POS and Sales Order | D | D | D | D | D | D | D | FEATURE COMPLETE | Sprint 2 gates passed locally; CI verification recorded per sprint |
 | SKU/barcode/weighing/labels | Normal/variant barcode, configurable weight/price parser and Code 128 labels | D | D | D | D | D | D | D | FEATURE COMPLETE | A4 sheet and dedicated thermal layouts verified |
 | Selling price groups | Retail/wholesale/member/VIP/branch/group/promo/date/quantity resolver with POS source trace | D | D | D | D | D | D | D | FEATURE COMPLETE | Create/edit/archive, audit and automatic POS customer-group selection verified |
-| Combo/bundle | Relational components and atomic sale/return/void stock | D | M | D | P | D | D | D | PARTIAL | Tenant management UI |
+| Combo/bundle | Relational components, audited tenant component manager and atomic sale/return/void stock | D | D | D | D | D | D | D | FEATURE COMPLETE | UI sync and lifecycle regression verified |
 | Opening stock/location assignment | Generic ledger increase only | P | M | M | M | P | M | P | PARTIAL | Governed workflow/audit |
 | Lot/batch/expiry/FEFO | Lot provenance, expiry report API and controlled FEFO allocation | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and purchase/sale selectors |
 | Serial tracking | Controlled lifecycle, ledger linkage and duplicate-sale prevention | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and return/transfer integration |
@@ -87,4 +87,4 @@ No addon is currently FEATURE COMPLETE, TESTED, or STABLE.
 
 ## Current scores
 
-**Core 30%, SaaS 46%, Addons 1%, test readiness 37%, security readiness 58%, operations readiness 27%.** Move these only when repository evidence and release gates move.
+**Core 32%, SaaS 28%, Addons 1%, test readiness 70%, security readiness 58%, operations readiness 27%, production readiness 26%, commercial readiness 20%.** These values are produced by `php artisan readiness:score`; see `PRODUCTION_READINESS_SCORE.md` and `GAP_TO_99.md`.

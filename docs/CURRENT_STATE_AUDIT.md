@@ -4,9 +4,9 @@ Audit date: 2026-09-17
 
 Branch: `main`
 
-Verified CI commit: `8533ad7d927e6a74e2cf97686e7062c277b0d8ef`
+Verified CI commit: `9d301469c1dce8958a690cd13a1c196a4e1d70b3`
 
-GitHub Actions run: [35187238713](https://github.com/linducip2208/pandupos/actions/runs/35187238713) — **success**
+GitHub Actions run: [35208745723](https://github.com/linducip2208/pandupos/actions/runs/35208745723) — **success**
 
 Canonical percentages are maintained in `PRODUCTION_READINESS_SCORE.md`; this audit mirrors them.
 
@@ -20,7 +20,7 @@ This replaces earlier optimistic status reports. A class, route, migration, scre
 | Dependency validation | `composer validate --strict` in Actions | DONE |
 | Reproducible install/build | Composer install, Node 22 `npm ci`, Vite build | DONE |
 | Formatting/tests/audit | Pint, PHPUnit and Composer audit in Actions | DONE |
-| Current CI | Run 35129303206 completed successfully | DONE |
+| Current CI | Run 35208745723 completed successfully for commit `9d30146` | DONE |
 | Production/staging drill | No verified staging deploy, load test, restore drill, or live payment sandbox evidence | MISSING |
 
 CI being green proves the checked pipeline, not product parity or production readiness.
@@ -43,7 +43,7 @@ CI being green proves the checked pipeline, not product parity or production rea
 | SKU/normal barcode | Product and variant SKU/barcode plus Code 128 SVG generation | POS lookup and responsive A4/thermal label workspace | Product CRUD and label preview | Product policy | Scoped and cross-tenant label rejection | Product/variant and scannable label workflow | Present | DONE |
 | Weighing barcode/labels | Configurable tenant parser for weight/price barcodes | Profile manager, parser preview, archive and print UI | Profile create/parse | Product policy | Tenant-filtered | Parser, UI, audit and isolation workflow | Present | DONE |
 | Price lists | Scope/date/quantity/priority resolver with traceable source | Responsive create/edit/archive UI and POS customer/source display | List/create and resolver | Product/transaction permissions | Tenant-owned references | Resolver precedence, UI audit and POS customer group | Present | DONE |
-| Bundle/combo | Relational components; checkout/return/void component stock | None | Component API | Product policy | Tenant validations | Full stock lifecycle | Present | PARTIAL |
+| Bundle/combo | Relational components; checkout/return/void component stock | Tenant component manager | Component API | Product policy | Tenant validations | UI audit plus full stock lifecycle | Present | DONE |
 | Batch/expiry/FEFO | Lot provenance, expiry summary and controlled FEFO allocation | None | Receive/expiry endpoints | Product policy only | Tenant references validated | Allocation/expired blocking | Present | PARTIAL |
 | Serial lifecycle | Controlled receive/sell/return/damage/transfer service and movement links | None | Receive/list endpoints | Product policy only | Tenant/invoice references validated | Duplicate-sale/lifecycle proof | Present | PARTIAL |
 | Rack/bin | Optional zone/rack/shelf/bin master and location-linked ledger | None | List/create | Product policy only | Tenant/warehouse references checked | Location stock flow | Present | PARTIAL |
@@ -89,10 +89,10 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 76% | Product Master, units, barcode and selling price groups are end-to-end; later core sprints remain |
-| SaaS parity | 46% | Billing, gateways, affiliate, domains and renewal automation remain partial |
+| Core parity | 32% | Catalog, pricing and bundle workflows have end-to-end evidence; advanced inventory, purchasing, sales/POS and reporting remain incomplete |
+| SaaS parity | 28% | Tenant/plan/entitlement foundations exist; billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 76% | Product Master, units, barcode and price resolver/POS integration are proven; later core matrices remain |
+| Test readiness | 70% | Existing suite is green; browser E2E, full concurrency and security matrices remain incomplete |
 | Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
 | Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
 | Production readiness | 26% | Mandatory production gates are not satisfied |

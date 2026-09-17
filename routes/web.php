@@ -4,6 +4,7 @@ use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BarcodeWorkspaceController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\BundleWorkspaceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocsController;
 use App\Http\Controllers\InventoryWorkspaceController;
@@ -108,6 +109,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::put('/profiles/{profile}', [BarcodeWorkspaceController::class, 'updateProfile'])->name('profiles.update');
         Route::post('/profiles/{profile}/archive', [BarcodeWorkspaceController::class, 'archiveProfile'])->name('profiles.archive');
         Route::get('/labels', [BarcodeWorkspaceController::class, 'labels'])->name('labels');
+    });
+    Route::prefix('bundles')->name('bundles.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
+        Route::get('/', [BundleWorkspaceController::class, 'index'])->name('index');
+        Route::post('/{product}/components', [BundleWorkspaceController::class, 'sync'])->name('sync');
     });
     Route::prefix('sales-orders')->name('sales-orders.')->middleware(['entitlement:sales.access', 'module:sales'])->group(function () {
         Route::get('/', [SalesOrderWorkspaceController::class, 'index'])->name('index');

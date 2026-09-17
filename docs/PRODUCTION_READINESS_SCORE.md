@@ -2,14 +2,14 @@
 
 Updated: 2026-09-17.
 
-This file is the canonical score ledger. Other readiness documents mirror these percentages; scores change only with repository and automated-test evidence.
+This file renders the canonical score ledger from `app/Support/Readiness/ReadinessScoreService.php`. Run `php artisan readiness:score` to reproduce the values. Other documents must not maintain independent percentages.
 
 | Dimension | Score | Evidence |
 |---|---:|---|
-| Core parity | 76% | Product Master, units, barcode and selling price groups are end-to-end; later core sprints remain |
-| SaaS parity | 46% | Functional control-plane foundations; billing and automation incomplete |
+| Core parity | 32% | Catalog, pricing and bundle workflows are evidenced; advanced inventory, purchasing, sales/POS and reporting remain incomplete |
+| SaaS parity | 28% | Tenant/plan/entitlement foundations exist; billing and automation remain incomplete |
 | Addon parity | 1% | No requested addon meets the completeness rule |
-| Test readiness | 76% | Product Master, units, barcode and audited price resolver/POS integration are proven; later core matrices remain |
+| Test readiness | 70% | Current unit/feature suite is green; E2E, concurrency and full security matrices remain absent |
 | Security readiness | 58% | Representative isolation/auth/webhook controls; full audit absent |
 | Operations readiness | 27% | CI green; staging/load/restore/monitoring evidence absent |
 | Production readiness | 26% | Weighted mandatory release-gate completion |

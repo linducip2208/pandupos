@@ -2,6 +2,7 @@
 
 use App\Models\Subscription;
 use App\Services\SubscriptionService;
+use App\Support\Readiness\ReadinessScoreService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -9,6 +10,18 @@ use Illuminate\Support\Facades\Schedule;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('readiness:score {--json : Emit structured JSON}', function (ReadinessScoreService $scores) {
+    $dimensions = $scores->dimensions();
+    if ($this->option('json')) {
+        $this->line(json_encode($dimensions, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        return self::SUCCESS;
+    }
+    $this->table(['Dimension', 'Score'], collect($dimensions)->map(fn (array $dimension, string $name) => [strtoupper($name), $dimension['score']])->all());
+
+    return self::SUCCESS;
+})->purpose('Show the canonical, evidence-weighted product readiness scores');
 
 Schedule::call(function () {
     // Expire past-due subscriptions; suspend trials ended. History preserved, entitlement cache invalidated.
