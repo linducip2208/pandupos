@@ -33,6 +33,7 @@ use App\Http\Controllers\ProgrammaticSeoController;
 use App\Http\Controllers\PurchasingWorkspaceController;
 use App\Http\Controllers\ReportPageController;
 use App\Http\Controllers\SalesOrderWorkspaceController;
+use App\Http\Controllers\SerialWorkspaceController;
 use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
@@ -105,6 +106,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::prefix('batches')->name('batches.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
         Route::get('/', [BatchWorkspaceController::class, 'index'])->name('index');
         Route::post('/receive', [BatchWorkspaceController::class, 'receive'])->name('receive');
+    });
+    Route::prefix('serials')->name('serials.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
+        Route::get('/', [SerialWorkspaceController::class, 'index'])->name('index');
+        Route::post('/receive', [SerialWorkspaceController::class, 'receive'])->name('receive');
     });
     Route::get('/pos', fn () => view('pos.index'))->name('pos.index')
         ->middleware(['entitlement:pos.access', 'module:pos']);

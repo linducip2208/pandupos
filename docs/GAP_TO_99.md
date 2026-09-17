@@ -18,7 +18,7 @@ Updated: 2026-09-17. Scores are calculated by `php artisan readiness:score`, usi
 ## Wave 1 — core, in required order
 
 1. ~~Bundle UI and atomic component inventory regression.~~ DONE: audited tenant component manager and lifecycle tests.
-2. Batch/expiry/FEFO: tenant receive/list/provenance UI is done; purchase/POS selectors and permissioned controlled override remain. Serial tenant workflow remains incomplete.
+2. Batch/expiry/FEFO: tenant receive/list/provenance UI is done; purchase/POS selectors and permissioned controlled override remain. Serial receive/register/history UI is done; document-driven return/transfer and POS selector integration remain.
 3. Rack/bin transaction selectors; reservation held-cart integration and cleanup scheduler.
 4. Transfer, adjustment and count multi-line UX with requester/approver segregation.
 5. Purchase request, multi-line PO/GRN/AP/return/statement/PDF/export.

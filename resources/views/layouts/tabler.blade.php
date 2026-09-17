@@ -32,6 +32,7 @@
                             <li class="nav-item"><a class="nav-link" href="{{ route('price-lists.index') }}"><x-nav-icon name="price-list"/><span class="nav-link-title">Daftar Harga</span></a></li>
                             <li class="nav-item"><a class="nav-link" href="{{ route('bundles.index') }}"><x-nav-icon name="bundle"/><span class="nav-link-title">Bundle & Combo</span></a></li>
                             <li class="nav-item"><a class="nav-link" href="{{ route('batches.index') }}"><x-nav-icon name="batch"/><span class="nav-link-title">Batch & Kedaluwarsa</span></a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ route('serials.index') }}"><x-nav-icon name="serial"/><span class="nav-link-title">Serial Number</span></a></li>
                             <li class="nav-item"><a class="nav-link" href="{{ route('inventory.index') }}"><x-nav-icon name="inventory-control"/><span class="nav-link-title">Kontrol Persediaan</span></a></li>
                         </ul></li>
                     @endcan

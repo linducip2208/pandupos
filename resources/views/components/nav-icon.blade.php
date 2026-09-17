@@ -11,6 +11,7 @@
 @case('price-list')<path d="M7 7h.01M3 3h6l12 12l-6 6L3 9z"/>@break
 @case('bundle')<path d="M4 7l8-4 8 4-8 4zM4 7v10l8 4 8-4V7"/><path d="M12 11v10"/>@break
 @case('batch')<path d="M4 6h16v14H4zM8 6V4h8v2M8 11h8M8 15h5"/><path d="M17 16l1.5 1.5L21 14"/>@break
+@case('serial')<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h3"/>@break
 @case('purchasing-group')<path d="M3 4h2l2 11h10l3-8H6M9 20h.01M17 20h.01"/>@break
 @case('purchasing-workspace')<path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5M16 16l2 2 3-4"/>@break
 @case('platform-group')<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6V20h-4v-.08a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1H4v-4h.08a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6V4h4v.08a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.14.37.35.7.6 1H20v4h-.08c-.25.3-.46.63-.52 1z"/>@break
