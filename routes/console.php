@@ -37,5 +37,6 @@ Schedule::command('business:escalate-overdue')->hourly()->withoutOverlapping()->
 Schedule::command('notifications:send-pending')->everyFiveMinutes()->withoutOverlapping()->name('notifications-send-pending');
 Schedule::command('business:send-reminders')->dailyAt('08:00')->withoutOverlapping()->name('business-send-reminders');
 Schedule::command('backup:database')->dailyAt('01:30')->withoutOverlapping()->name('backup-database');
+Schedule::command('inventory:expire-reservations')->everyFiveMinutes()->withoutOverlapping()->name('inventory-expire-reservations');
 
 Schedule::command('seo:indexnow')->dailyAt('02:45')->withoutOverlapping()->name('seo-indexnow');

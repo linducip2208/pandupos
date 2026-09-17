@@ -92,6 +92,21 @@ class StockLocationReservationTest extends TestCase
         $this->assertSame(2, AuditLog::withoutGlobalScopes()->where('tenant_id', $tenant->id)->count());
     }
 
+    public function test_expiry_cleanup_is_tenant_scoped_and_audited(): void
+    {
+        [$tenant, $warehouse, $variant] = $this->context();
+        app(StockService::class)->increase($tenant->id, $warehouse->id, $variant->id, 1, 12, 'opening', 1);
+        $reservation = app(StockReservationService::class)->reserve([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'product_variant_id' => $variant->id,
+            'quantity' => 1, 'source_type' => 'sales_order', 'source_id' => 101, 'expires_at' => now()->subMinute(),
+        ]);
+
+        $this->artisan('inventory:expire-reservations', ['--tenant' => $tenant->id])->assertSuccessful();
+
+        $this->assertSame('expired', $reservation->refresh()->status);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'action' => 'inventory.reservation.expired', 'subject_id' => $reservation->id]);
+    }
+
     private function context(): array
     {
         $this->seed(PlatformSeeder::class);

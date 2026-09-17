@@ -88,10 +88,19 @@ final class StockReservationService
 
     public function expireDue(int $tenantId): int
     {
-        return StockReservation::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)->where('status', 'active')
-            ->whereNotNull('expires_at')->where('expires_at', '<=', now())
-            ->update(['status' => 'expired', 'released_at' => now(), 'updated_at' => now()]);
+        return DB::transaction(function () use ($tenantId) {
+            $reservations = StockReservation::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)->where('status', 'active')
+                ->whereNotNull('expires_at')->where('expires_at', '<=', now())
+                ->lockForUpdate()->get();
+            foreach ($reservations as $reservation) {
+                $before = $reservation->toArray();
+                $reservation->update(['status' => 'expired', 'released_at' => now()]);
+                $this->audit->log($tenantId, null, 'inventory.reservation.expired', StockReservation::class, $reservation->id, $before, $reservation->fresh()->toArray());
+            }
+
+            return $reservations->count();
+        });
     }
 
     private function finish(StockReservation $reservation, string $status, string $timestamp, ?int $actorId): StockReservation
