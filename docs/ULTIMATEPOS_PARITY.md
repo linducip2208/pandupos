@@ -56,35 +56,37 @@ Canonical readiness percentages live in `PRODUCTION_READINESS_SCORE.md`; this ma
 
 ## Addon release matrix
 
+All addons below are **DEFERRED — POST V1** under [SCOPE_FREEZE.md](SCOPE_FREEZE.md). They are intentionally excluded from v1 production and commercial readiness; this is not a completion claim.
+
 | Addon | Evidence | Status |
 |---|---|---|
-| Essentials / HRM | None | NOT STARTED |
-| Payroll | None | NOT STARTED |
-| Accounting | Registry/entitlement name only | NOT STARTED |
-| AssetManagement | None | NOT STARTED |
-| Cms | Public/blog primitives are not a tenant CMS module | NOT STARTED |
-| Connector | Generic provider/webhook primitives only | PARTIAL |
-| Crm | Registry/entitlement name only | NOT STARTED |
-| Ecommerce | None | NOT STARTED |
-| FieldForce | None | NOT STARTED |
-| Manufacturing / MRP | None | NOT STARTED |
-| ProductCatalogue | Public marketing/pSEO is not a tenant catalogue | NOT STARTED |
-| Project | None | NOT STARTED |
-| Repair | None | NOT STARTED |
-| Spreadsheet | None | NOT STARTED |
-| Superadmin | Incomplete platform control plane | PARTIAL |
-| WooCommerce | None | NOT STARTED |
-| AiAssistance | Generic configurable adapters only | PARTIAL |
-| Hms | None | NOT STARTED |
-| InboxReport | None | NOT STARTED |
-| CustomDashboard | No tenant widget registry | NOT STARTED |
-| Gym | None | NOT STARTED |
-| ZatcaIntegrationKsa | None | NOT STARTED |
-| Cheque | None | NOT STARTED |
-| Restaurant | None | NOT STARTED |
+| Essentials / HRM | None | DEFERRED — POST V1 |
+| Payroll | None | DEFERRED — POST V1 |
+| Accounting | Registry/entitlement name only | DEFERRED — POST V1 |
+| AssetManagement | None | DEFERRED — POST V1 |
+| Cms | Public/blog primitives are not a tenant CMS module | DEFERRED — POST V1 |
+| Connector | Generic provider/webhook primitives only | DEFERRED — POST V1 |
+| Crm | Registry/entitlement name only | DEFERRED — POST V1 |
+| Ecommerce | None | DEFERRED — POST V1 |
+| FieldForce | None | DEFERRED — POST V1 |
+| Manufacturing / MRP | None | DEFERRED — POST V1 |
+| ProductCatalogue | Public marketing/pSEO is not a tenant catalogue | DEFERRED — POST V1 |
+| Project | None | DEFERRED — POST V1 |
+| Repair | None | DEFERRED — POST V1 |
+| Spreadsheet | None | DEFERRED — POST V1 |
+| Superadmin | Incomplete platform control plane | DEFERRED — POST V1 |
+| WooCommerce | None | DEFERRED — POST V1 |
+| AiAssistance | Generic configurable adapters only | DEFERRED — POST V1 |
+| Hms | None | DEFERRED — POST V1 |
+| InboxReport | None | DEFERRED — POST V1 |
+| CustomDashboard | No tenant widget registry | DEFERRED — POST V1 |
+| Gym | None | DEFERRED — POST V1 |
+| ZatcaIntegrationKsa | None | DEFERRED — POST V1 |
+| Cheque | None | DEFERRED — POST V1 |
+| Restaurant | None | DEFERRED — POST V1 |
 
-No addon is currently FEATURE COMPLETE, TESTED, or STABLE.
+No deferred addon is currently FEATURE COMPLETE, TESTED, or STABLE.
 
 ## Current scores
 
-**Core 32%, SaaS 28%, Addons 1%, test readiness 70%, security readiness 58%, operations readiness 27%, production readiness 26%, commercial readiness 20%.** These values are produced by `php artisan readiness:score`; see `PRODUCTION_READINESS_SCORE.md` and `GAP_TO_99.md`.
+**Core 32%, SaaS 28%, test readiness 70%, security readiness 58%, operations readiness 27%, production readiness 26%, commercial readiness 20%. Future addon parity is FROZEN / OUT OF SCOPE FOR V1.** These values are produced by `php artisan readiness:score`; see `PRODUCTION_READINESS_SCORE.md`, `GAP_TO_99.md`, and `SCOPE_FREEZE.md`.

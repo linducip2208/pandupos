@@ -8,7 +8,7 @@ Updated: 2026-09-17. Scores are calculated by `php artisan readiness:score`, usi
 |---|---:|---|
 | Core | 32 | Advanced inventory UI/integration; complete purchasing/AP; commercial sales/POS/register; reports/imports/dashboard |
 | SaaS | 28 | Subscription/billing automation and verified sandbox; coupon/affiliate/announcements; domains/white-label; API/offline hardening |
-| Addons | 1 | No requested addon has a complete tenant workflow or STABLE release evidence |
+| Future addon parity | FROZEN / OUT OF SCOPE | Deferred post-v1 modules are not release blockers; see `SCOPE_FREEZE.md` |
 | Tests | 70 | Browser E2E, full concurrency and security regression matrices absent |
 | Security | 58 | Full IDOR/API/upload/secret audit and sensitive-admin hardening absent |
 | Operations | 27 | Restore, staging, rollback, monitoring, alerting and load-test evidence absent |
@@ -31,5 +31,5 @@ Each item remains PARTIAL until backend, UI, API where relevant, permission, ten
 ## Non-negotiable later waves
 
 - SaaS: at least one real Indonesian payment sandbox E2E; no hard-coded provider dependency.
-- Addons: each targeted module must pass the completeness rule before STABLE.
+- Deferred addons are post-v1 work and must not be started during stabilization.
 - Security/operations: backup restore, staging/rollback, monitoring/alerting and load reports must be actual drills, not statements.

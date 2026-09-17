@@ -30,12 +30,11 @@ final class ReadinessScoreService
                 ['White-label and custom domains', 15, false, 'Ownership verification and rendering'],
                 ['Scoped API and offline-sale hardening', 15, false, 'Scope/revocation and immutable events'],
             ]),
-            'addons' => $this->dimension([
-                ['Stable commercially targeted addon workflows', 99, false, 'No requested addon meets completeness rule'],
-                ['Module registry baseline', 1, true, 'Installed manifests are verifiable only as baseline'],
+            'future_addon_parity' => $this->dimension([
+                ['Deferred post-v1 addon parity', 0, false, 'Out of v1 scope; informational only and excluded from release readiness'],
             ]),
             'tests' => $this->dimension([
-                ['Current unit/feature regression suite', 70, true, '268 tests / 781 assertions'],
+                ['Current unit/feature regression suite', 70, true, '272 tests / 803 assertions'],
                 ['Browser E2E and onboarding coverage', 10, false, 'No verified browser suite'],
                 ['Concurrency matrix', 10, false, 'Only representative stock proof'],
                 ['Security regression matrix', 10, false, 'Full endpoint matrix absent'],
@@ -57,7 +56,7 @@ final class ReadinessScoreService
             'commercial' => $this->dimension([
                 ['Baseline product/CI artifacts', 20, true, 'Repository and build artifacts'],
                 ['License, onboarding, installation and support package', 40, false, 'Not completed'],
-                ['Core/SaaS/addon release gates', 40, false, 'Not completed'],
+                ['In-scope core/SaaS release gates', 40, false, 'Not completed; deferred addons excluded by v1 scope freeze'],
             ]),
         ];
     }
