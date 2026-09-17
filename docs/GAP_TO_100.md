@@ -37,7 +37,7 @@ Exit only when all applicable backend/UI/API/permission/isolation/audit/tests/do
 
 1. Complete purchase request plus multi-line PO/return edit/cancel UX; PO, receipt, supplier invoice/payment and purchase return foundations and workspace now exist.
 2. Complete requester/approver segregation and configurable over-receive policy UI; manager/owner threshold routing now exists.
-3. Separate quotation, proforma, order, delivery, invoice, payment, return and credit note.
+3. Complete tenant UI and conversions around the implemented quotation/proforma foundation, then add separate order, delivery, posted invoice, payment, return and credit note.
 4. Reservation on confirmed orders and partial delivery.
 5. Recurring templates without implicit charging.
 6. Register open/count/close, cash movements, denominations and Z report.

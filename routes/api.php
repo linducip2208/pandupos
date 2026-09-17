@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PurchaseController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SaleController;
+use App\Http\Controllers\Api\V1\SalesDocumentController;
 use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\SyncController;
 use App\Http\Controllers\Api\V1\WebhookController;
@@ -86,6 +87,12 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     // Sales / POS: atomic checkout + idempotency
     Route::apiResource('sales', SaleController::class)->only(['index', 'store']);
     Route::post('sales/{invoice}/void', [SaleController::class, 'void']);
+    Route::middleware(['entitlement:sales.access', 'module:sales'])->prefix('sales-documents')->group(function () {
+        Route::get('quotations', [SalesDocumentController::class, 'index']);
+        Route::post('quotations', [SalesDocumentController::class, 'store']);
+        Route::post('quotations/{quotation}/transition', [SalesDocumentController::class, 'transition']);
+        Route::post('quotations/{quotation}/proforma', [SalesDocumentController::class, 'proforma']);
+    });
 
     // Reports
     Route::get('reports/sales', [ReportController::class, 'sales']);

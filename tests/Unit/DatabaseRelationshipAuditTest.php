@@ -34,6 +34,8 @@ use App\Models\PaymentProof;
 use App\Models\PlanEntitlement;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\ProformaInvoice;
+use App\Models\ProformaInvoiceLine;
 use App\Models\Purchase;
 use App\Models\PurchaseLine;
 use App\Models\PurchaseReturn;
@@ -42,6 +44,8 @@ use App\Models\Register;
 use App\Models\SalePayment;
 use App\Models\SalesInvoice;
 use App\Models\SalesLine;
+use App\Models\SalesQuotation;
+use App\Models\SalesQuotationLine;
 use App\Models\SalesReturn;
 use App\Models\SerialNumber;
 use App\Models\ServerChangeLog;
@@ -116,6 +120,10 @@ class DatabaseRelationshipAuditTest extends TestCase
             CashSession::class => ['tenant', 'register', 'openedBy'], SalesInvoice::class => ['tenant', 'branch', 'warehouse', 'contact'],
             SalesLine::class => ['invoice', 'variant'], SalePayment::class => ['tenant', 'invoice'],
             SalesReturn::class => ['tenant', 'invoice'], Device::class => ['tenant'],
+            SalesQuotation::class => ['tenant', 'branch', 'contact', 'creator'],
+            SalesQuotationLine::class => ['quotation', 'variant'],
+            ProformaInvoice::class => ['tenant', 'quotation', 'branch', 'contact', 'creator'],
+            ProformaInvoiceLine::class => ['proforma', 'variant'],
             ServerChangeLog::class => ['tenant'], WebhookEndpoint::class => ['tenant'],
             WebhookDelivery::class => ['endpoint'], TenantSetting::class => ['tenant'],
             TenantDomain::class => ['tenant'], ImpersonationSession::class => ['platformUser', 'tenant', 'targetUser'],

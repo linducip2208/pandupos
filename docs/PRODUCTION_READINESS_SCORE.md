@@ -4,10 +4,10 @@ Updated: 2026-09-17.
 
 | Dimension | Score | Evidence |
 |---|---:|---|
-| Core parity | 59% | Purchasing documents, configurable manager/owner approval and tenant workspace are implemented; multi-line UX and major workflows remain |
+| Core parity | 61% | Purchasing workspace and quotation/proforma foundations are implemented; sales order/delivery, multi-line UX and major POS workflows remain |
 | SaaS parity | 46% | Functional control-plane foundations; billing and automation incomplete |
 | Addon parity | 1% | No requested addon meets the completeness rule |
-| Test readiness | 62% | Purchasing money/quantity boundaries, approval-level authorization and workspace isolation are proven; many final-matrix items remain |
+| Test readiness | 64% | Purchasing and quotation/proforma lifecycle, isolation and non-posting behavior are proven; many final-matrix items remain |
 | Security readiness | 58% | Representative isolation/auth/webhook controls; full audit absent |
 | Operations readiness | 27% | CI green; staging/load/restore/monitoring evidence absent |
 | Production readiness | 26% | Weighted mandatory release-gate completion |

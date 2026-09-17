@@ -23,7 +23,7 @@ Legend: `D` done, `P` partial, `M` missing, `—` not applicable. `FEATURE COMPL
 | Adjustment/count/reconcile | Audited approve/post adjustment, count snapshot-to-post, read-only reconcile CLI | D | D | D | D | D | D | D | PARTIAL | Requester/approver segregation and multi-line creation UI |
 | PO/partial receipt | PO plus configurable manager/owner approval, tenant workspace, and immutable receipt history with actor, audit and ledger reference | D | P | P | D | D | D | D | PARTIAL | Multi-line create/edit/cancel UX and configurable over-receive policy UI |
 | Supplier invoice/payment/return | Separate tenant-scoped invoice, exact payment ledger, audited return/credit documents, and tenant workspace | D | P | D | D | D | D | D | PARTIAL | Multi-line return UX, supplier statement, approval segregation and accounting posting |
-| Quotation/proforma/order/delivery | Final invoice foundation only | M | M | M | M | — | M | M | NOT STARTED | Immutable documents/conversions |
+| Quotation/proforma/order/delivery | Audited quotation lifecycle and immutable non-posting proforma conversion; final invoice foundation | P | M | P | D | D | P | P | PARTIAL | Tenant UI, sales order, reservation, partial delivery and invoice conversion |
 | Invoice/payment | Atomic checkout, lines, split payments | P | P | P | P | D | P | P | PARTIAL | Posting/receivable state machine |
 | Recurring sale | Not found | M | M | M | M | — | M | M | NOT STARTED | Templates/scheduler |
 | Register/cash/Z | Cash-session schema only | P | M | M | M | P | M | M | PARTIAL | Open/count/close/movements/Z |
