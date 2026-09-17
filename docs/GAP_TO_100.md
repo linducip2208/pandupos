@@ -30,7 +30,7 @@ Execute in this order:
 8. Add tenant UI for the implemented transfer approval/ship/transit/partial-receive/receive/cancel workflow.
 9. Add UI and requester/approver segregation for the implemented governed adjustment and stock-count workflows.
 10. Operationalize the implemented read-only `inventory:reconcile` command and alert on differences; retain explicit-only `--fix`.
-11. Complete WAC matrix and costing-strategy contract for future FIFO.
+11. WAC matrix and future FIFO strategy contract are implemented; retain as a regression gate and integrate original-cost returns with the upcoming purchase-return document.
 
 Exit only when all applicable backend/UI/API/permission/isolation/audit/tests/docs layers exist, local gates pass, main is pushed, and Actions is green.
 

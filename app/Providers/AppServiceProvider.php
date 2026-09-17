@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Contracts\CostingStrategy;
 use App\Models\BlogPost;
 use App\Models\Product;
 use App\Models\User;
 use App\Policies\ProductPolicy;
+use App\Services\Costing\WeightedAverageCostStrategy;
 use App\Services\EntitlementService;
 use App\Services\ModuleRegistry;
 use App\Services\Seo\IndexNowService;
@@ -22,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(EntitlementService::class);
         $this->app->singleton(ModuleRegistry::class);
+        $this->app->bind(CostingStrategy::class, WeightedAverageCostStrategy::class);
     }
 
     /**

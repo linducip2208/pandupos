@@ -14,10 +14,11 @@
 - Truth: `stock_movements(tenant, warehouse, variant, ref_type/id, in/out, qty, unit_cost, occurred_at)` append-only.
 - Batch and serial references are carried on the append-only movement; historical movements are never rewritten when lifecycle state changes.
 - `inventory_balances` is only an atomically maintained cache. `php artisan inventory:reconcile` compares it with the ledger by tenant/warehouse/variant and changes nothing unless an operator explicitly passes `--fix`.
+- Costing is resolved through the `CostingStrategy` contract; the active independent implementation is perpetual weighted average. Sale COGS, sale return/void restoration, transfers and original-cost purchase-return movements retain ledger cost evidence, while a future FIFO implementation can replace the strategy without rewriting movements.
 - Adjustments require a controlled reason, explanatory notes, approval and a separate post action. Cycle counts snapshot expected quantities, require every count, expose variance for review/approval, and post append-only correction movements exactly once.
 - `StockService::increase/decrease/onHand/transfer`; oversell rejected (no auto-adjust).
 - Transfers use explicit `draft -> approved -> shipped -> in_transit -> partial_received -> received` (or pre-shipment cancellation). Shipping posts source `transfer_out`; each partial receipt posts destination `transfer_in`, so destination stock never appears before physical receipt. The shipment WAC is preserved on every receipt and all transitions are audited.
-- Still missing: barcode label UI/printing, price-list UI, inventory-control management UI, fine-grained separation between adjustment requester/approver/poster, and the complete costing edge-case matrix.
+- Still missing: barcode label UI/printing, price-list UI, inventory-control management UI, fine-grained separation between adjustment requester/approver/poster, and purchase-document integration for purchase returns.
 
 ## POS / Sales
 - `cash_sessions`, `sales_invoices(uuid, idempotency_key unique per tenant)`, `sales_lines`, `sale_payments(method cash/transfer/qris/ewallet/card)`, `sales_returns`.

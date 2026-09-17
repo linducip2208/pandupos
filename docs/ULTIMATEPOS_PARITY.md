@@ -17,7 +17,7 @@ Legend: `D` done, `P` partial, `M` missing, `—` not applicable. `FEATURE COMPL
 | Lot/batch/expiry/FEFO | Lot provenance, expiry report API and controlled FEFO allocation | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and purchase/sale selectors |
 | Serial tracking | Controlled lifecycle, ledger linkage and duplicate-sale prevention | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and return/transfer integration |
 | Rack/bin | Optional zone/rack/shelf/bin master with location-linked movements | D | M | D | P | D | D | D | PARTIAL | Management UI and granular permission |
-| Ledger/WAC | Append-only movements, locks, atomic balance cache, WAC/valuation and reconcile CLI | P | P | P | P | D | P | D | PARTIAL | Complete costing/concurrency matrix |
+| Ledger/WAC | Append-only ledger, pluggable strategy contract, WAC COGS/reversals/transfers and reconcile CLI | D | P | P | P | D | D | D | PARTIAL | UI and production concurrency/load evidence |
 | Reservation | Audited idempotent reserve/release/consume/expire and available-to-promise | D | M | D | P | D | D | D | PARTIAL | Sales-order/held-cart UI integration and scheduler |
 | Transfer | Audited state machine with approval, transit, partial receipt and preserved cost | D | M | D | D | D | D | D | PARTIAL | Tenant management UI |
 | Adjustment/count/reconcile | Audited approve/post adjustment, count snapshot-to-post, read-only reconcile CLI | D | M | D | D | D | D | D | PARTIAL | Tenant UI and requester/approver segregation |

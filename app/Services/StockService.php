@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\CostingStrategy;
 use App\Models\InventoryBalance;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\DB;
 /** Append-only ledger. Stock on hand = SUM(in) - SUM(out). Never update qty in place. */
 final class StockService
 {
+    public function __construct(private CostingStrategy $costing) {}
+
     public function increase(int $tenantId, int $warehouseId, int $variantId, float $qty, float $unitCost, string $refType, ?int $refId, ?int $batchId = null, ?int $serialNumberId = null, ?int $locationId = null): StockMovement
     {
         $this->validateMutation($tenantId, $warehouseId, $variantId, $qty, $locationId);
@@ -24,11 +27,11 @@ final class StockService
         });
     }
 
-    public function decrease(int $tenantId, int $warehouseId, int $variantId, float $qty, string $refType, ?int $refId, ?int $batchId = null, ?int $serialNumberId = null, ?int $locationId = null): StockMovement
+    public function decrease(int $tenantId, int $warehouseId, int $variantId, float $qty, string $refType, ?int $refId, ?int $batchId = null, ?int $serialNumberId = null, ?int $locationId = null, ?float $unitCostOverride = null): StockMovement
     {
         $this->validateMutation($tenantId, $warehouseId, $variantId, $qty, $locationId);
 
-        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $qty, $refType, $refId, $batchId, $serialNumberId, $locationId) {
+        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $qty, $refType, $refId, $batchId, $serialNumberId, $locationId, $unitCostOverride) {
             $this->lockVariant($tenantId, $variantId, $warehouseId);
 
             $available = $this->availableToPromise($tenantId, $warehouseId, $variantId);
@@ -37,7 +40,7 @@ final class StockService
             }
 
             // Weighted-average costing for reproducible COGS/valuation (FIFO optional future).
-            $unitCost = $this->weightedAverageCost($tenantId, $warehouseId, $variantId);
+            $unitCost = $unitCostOverride ?? $this->weightedAverageCost($tenantId, $warehouseId, $variantId);
 
             return $this->record($tenantId, $warehouseId, $variantId, $qty, $unitCost, 'out', $refType, $refId, $batchId, $serialNumberId, $locationId);
         });
@@ -91,30 +94,7 @@ final class StockService
 
     public function weightedAverageCost(int $tenantId, int $warehouseId, int $variantId): float
     {
-        $inQty = (float) StockMovement::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)
-            ->where('product_variant_id', $variantId)->where('movement_type', 'in')->sum('quantity');
-        if ($inQty <= 0) {
-            return 0;
-        }
-        $inCost = (float) StockMovement::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)
-            ->where('product_variant_id', $variantId)->where('movement_type', 'in')
-            ->selectRaw('COALESCE(SUM(quantity * unit_cost),0) as c')->value('c');
-        $outCost = (float) StockMovement::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)
-            ->where('product_variant_id', $variantId)->where('movement_type', 'out')
-            ->selectRaw('COALESCE(SUM(quantity * unit_cost),0) as c')->value('c');
-        $outQty = (float) StockMovement::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)
-            ->where('product_variant_id', $variantId)->where('movement_type', 'out')->sum('quantity');
-
-        $remainingQty = $inQty - $outQty;
-        if ($remainingQty <= 0) {
-            return 0;
-        }
-
-        return round(($inCost - $outCost) / $remainingQty, 2);
+        return $this->costing->unitCost($tenantId, $warehouseId, $variantId);
     }
 
     public function valuation(int $tenantId, ?int $warehouseId = null): float
