@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PurchaseController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SaleController;
+use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\SyncController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Controllers\PlatformTenantController;
@@ -58,6 +59,12 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     Route::post('inventory/reservations', [InventoryConfigurationController::class, 'storeReservation']);
     Route::post('inventory/reservations/{reservation}/release', [InventoryConfigurationController::class, 'releaseReservation']);
     Route::post('inventory/reservations/{reservation}/consume', [InventoryConfigurationController::class, 'consumeReservation']);
+    Route::apiResource('inventory/transfers', StockTransferController::class)->only(['index', 'store', 'show']);
+    Route::post('inventory/transfers/{transfer}/approve', [StockTransferController::class, 'approve']);
+    Route::post('inventory/transfers/{transfer}/ship', [StockTransferController::class, 'ship']);
+    Route::post('inventory/transfers/{transfer}/in-transit', [StockTransferController::class, 'inTransit']);
+    Route::post('inventory/transfers/{transfer}/receive', [StockTransferController::class, 'receive']);
+    Route::post('inventory/transfers/{transfer}/cancel', [StockTransferController::class, 'cancel']);
 
     // Purchasing: stock increases ONLY on receive
     Route::apiResource('purchases', PurchaseController::class)->only(['index', 'store']);

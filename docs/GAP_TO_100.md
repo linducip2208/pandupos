@@ -27,7 +27,7 @@ Execute in this order:
 5. Relational bundles with atomic component deduction.
 6. Finish UI/permissions/audit and transaction selectors for implemented batch/expiry/FEFO, serial and physical-location foundations.
 7. Integrate implemented reservation service into sales-order/held-cart UI and schedule expiry cleanup.
-8. Transfer approval, ship, transit, partial receive, receive/cancel; destination stock only on receipt.
+8. Add tenant UI for the implemented transfer approval/ship/transit/partial-receive/receive/cancel workflow.
 9. Reasoned/authorized/audited adjustments and stock-count snapshot/review/posting.
 10. Read-only `inventory:reconcile`.
 11. Complete WAC matrix and costing-strategy contract for future FIFO.

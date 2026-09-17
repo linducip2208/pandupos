@@ -14,8 +14,8 @@
 - Truth: `stock_movements(tenant, warehouse, variant, ref_type/id, in/out, qty, unit_cost, occurred_at)` append-only.
 - Batch and serial references are carried on the append-only movement; historical movements are never rewritten when lifecycle state changes.
 - `StockService::increase/decrease/onHand/transfer`; oversell rejected (no auto-adjust).
-- Transfers: `transfer_orders(draft/shipped/received/cancelled)` + `transfer_lines`; atomic out+in.
-- Still missing: barcode label UI/printing, price-list UI, batch/expiry/serial/location/reservation management UI, granular inventory permissions, stock count, governed adjustments and advanced transfer receiving.
+- Transfers use explicit `draft -> approved -> shipped -> in_transit -> partial_received -> received` (or pre-shipment cancellation). Shipping posts source `transfer_out`; each partial receipt posts destination `transfer_in`, so destination stock never appears before physical receipt. The shipment WAC is preserved on every receipt and all transitions are audited.
+- Still missing: barcode label UI/printing, price-list UI, batch/expiry/serial/location/reservation/transfer management UI, stock count, governed adjustments and reconciliation.
 
 ## POS / Sales
 - `cash_sessions`, `sales_invoices(uuid, idempotency_key unique per tenant)`, `sales_lines`, `sale_payments(method cash/transfer/qris/ewallet/card)`, `sales_returns`.

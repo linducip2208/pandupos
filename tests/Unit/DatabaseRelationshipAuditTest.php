@@ -25,6 +25,7 @@ use App\Models\IdempotencyKey;
 use App\Models\ImpersonationSession;
 use App\Models\IntegrationFeatureAssignment;
 use App\Models\IntegrationProvider;
+use App\Models\InventoryBatch;
 use App\Models\Membership;
 use App\Models\PaymentProof;
 use App\Models\PlanEntitlement;
@@ -37,8 +38,10 @@ use App\Models\SalePayment;
 use App\Models\SalesInvoice;
 use App\Models\SalesLine;
 use App\Models\SalesReturn;
+use App\Models\SerialNumber;
 use App\Models\ServerChangeLog;
 use App\Models\StockMovement;
+use App\Models\StockReservation;
 use App\Models\Subscription;
 use App\Models\SubscriptionEvent;
 use App\Models\SystemSetting;
@@ -49,6 +52,7 @@ use App\Models\TransferLine;
 use App\Models\TransferOrder;
 use App\Models\Unit;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use App\Models\WebhookDelivery;
 use App\Models\WebhookEndpoint;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -69,7 +73,7 @@ class DatabaseRelationshipAuditTest extends TestCase
     public static function foreignKeyRelationships(): array
     {
         $map = [
-            Branch::class => ['tenant'], Warehouse::class => ['tenant', 'branch'],
+            Branch::class => ['tenant'], Warehouse::class => ['tenant', 'branch'], WarehouseLocation::class => ['tenant', 'warehouse'],
             Register::class => ['tenant', 'branch'], Membership::class => ['tenant', 'user'],
             TenantModule::class => ['tenant', 'module'], PlanEntitlement::class => ['plan'],
             Subscription::class => ['tenant', 'plan'], SubscriptionEvent::class => ['tenant', 'subscription', 'actor'],
@@ -80,7 +84,11 @@ class DatabaseRelationshipAuditTest extends TestCase
             BillingTransaction::class => ['tenant', 'invoice'], AnnouncementDelivery::class => ['announcement', 'tenant'],
             Category::class => ['tenant', 'parent'], Brand::class => ['tenant'], Unit::class => ['tenant'],
             Product::class => ['tenant', 'category', 'brand', 'unit'], ProductVariant::class => ['tenant', 'product'],
-            StockMovement::class => ['tenant', 'warehouse', 'variant'], TransferOrder::class => ['tenant', 'fromWarehouse', 'toWarehouse'],
+            InventoryBatch::class => ['tenant', 'variant', 'warehouse', 'supplier', 'purchase'],
+            SerialNumber::class => ['tenant', 'variant', 'warehouse', 'inventoryBatch', 'purchase', 'salesInvoice'],
+            StockReservation::class => ['tenant', 'warehouse', 'warehouseLocation', 'variant', 'inventoryBatch'],
+            StockMovement::class => ['tenant', 'warehouse', 'warehouseLocation', 'variant', 'inventoryBatch', 'serialNumber'],
+            TransferOrder::class => ['tenant', 'fromWarehouse', 'toWarehouse', 'approver', 'shipper'],
             TransferLine::class => ['transferOrder', 'variant'], Contact::class => ['tenant'],
             Purchase::class => ['tenant', 'warehouse', 'contact'], PurchaseLine::class => ['purchase', 'variant'],
             CashSession::class => ['tenant', 'register', 'openedBy'], SalesInvoice::class => ['tenant', 'branch', 'warehouse', 'contact'],

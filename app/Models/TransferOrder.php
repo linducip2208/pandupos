@@ -9,7 +9,18 @@ class TransferOrder extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'from_warehouse_id', 'to_warehouse_id', 'status'];
+    protected $fillable = [
+        'tenant_id', 'from_warehouse_id', 'to_warehouse_id', 'status', 'approved_by', 'shipped_by',
+        'approved_at', 'shipped_at', 'in_transit_at', 'received_at', 'cancelled_at', 'notes',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'approved_at' => 'datetime', 'shipped_at' => 'datetime', 'in_transit_at' => 'datetime',
+            'received_at' => 'datetime', 'cancelled_at' => 'datetime',
+        ];
+    }
 
     public function fromWarehouse()
     {
@@ -24,5 +35,15 @@ class TransferOrder extends Model
     public function lines()
     {
         return $this->hasMany(TransferLine::class);
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function shipper()
+    {
+        return $this->belongsTo(User::class, 'shipped_by');
     }
 }

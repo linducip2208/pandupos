@@ -4,10 +4,10 @@ Updated: 2026-09-17.
 
 | Dimension | Score | Evidence |
 |---|---:|---|
-| Core parity | 36% | Catalog, batch/serial/location and reservation foundations improved; major workflows missing |
+| Core parity | 39% | Advanced inventory and transfer foundations improved; major workflows missing |
 | SaaS parity | 46% | Functional control-plane foundations; billing and automation incomplete |
 | Addon parity | 1% | No requested addon meets the completeness rule |
-| Test readiness | 43% | Location and reservation invariants are proven; suite still lacks most final-matrix items |
+| Test readiness | 46% | Transfer timing, partial receipt and costing invariants are proven; most final-matrix items remain |
 | Security readiness | 58% | Representative isolation/auth/webhook controls; full audit absent |
 | Operations readiness | 27% | CI green; staging/load/restore/monitoring evidence absent |
 | Production readiness | 26% | Weighted mandatory release-gate completion |

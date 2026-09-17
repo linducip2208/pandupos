@@ -1,0 +1,102 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Branch;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\User;
+use App\Models\Warehouse;
+use App\Services\StockService;
+use App\Services\StockTransferService;
+use App\Services\TenantProvisioningService;
+use Database\Seeders\PlatformSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
+use Tests\TestCase;
+
+class AdvancedStockTransferTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_destination_stock_changes_only_as_partial_receipts_are_posted(): void
+    {
+        [$tenant, $owner, $source, $destination, $variant] = $this->context();
+        $stock = app(StockService::class);
+        $stock->increase($tenant->id, $source->id, $variant->id, 10, 8, 'opening', 1);
+        $service = app(StockTransferService::class);
+        $transfer = $service->createDraft($tenant->id, $source->id, $destination->id, [
+            ['product_variant_id' => $variant->id, 'quantity' => 10],
+        ], null, $owner->id);
+
+        $service->approve($transfer, $owner->id);
+        $this->assertEquals(10, $stock->onHand($tenant->id, $source->id, $variant->id));
+        $this->assertEquals(0, $stock->onHand($tenant->id, $destination->id, $variant->id));
+
+        $shipped = $service->ship($transfer, $owner->id);
+        $this->assertSame('shipped', $shipped->status);
+        $this->assertEquals(0, $stock->onHand($tenant->id, $source->id, $variant->id));
+        $this->assertEquals(0, $stock->onHand($tenant->id, $destination->id, $variant->id));
+        $inTransit = $service->markInTransit($shipped, $owner->id);
+
+        $line = $inTransit->lines->first();
+        $partial = $service->receive($inTransit, [$line->id => 3], $owner->id);
+        $this->assertSame('partial_received', $partial->status);
+        $this->assertEquals(3, $stock->onHand($tenant->id, $destination->id, $variant->id));
+
+        try {
+            $service->receive($partial, [$line->id => 8], $owner->id);
+            $this->fail('Receipt greater than remaining quantity must be rejected.');
+        } catch (ValidationException) {
+            $this->assertEquals(3, $stock->onHand($tenant->id, $destination->id, $variant->id));
+        }
+
+        $received = $service->receive($partial->fresh(), [$line->id => 7], $owner->id);
+        $this->assertSame('received', $received->status);
+        $this->assertEquals(10, $stock->onHand($tenant->id, $destination->id, $variant->id));
+        $this->assertEquals(8, $stock->weightedAverageCost($tenant->id, $destination->id, $variant->id));
+    }
+
+    public function test_only_unshipped_transfer_can_be_cancelled(): void
+    {
+        [$tenant, $owner, $source, $destination, $variant] = $this->context();
+        app(StockService::class)->increase($tenant->id, $source->id, $variant->id, 2, 8, 'opening', 1);
+        $service = app(StockTransferService::class);
+        $draft = $service->createDraft($tenant->id, $source->id, $destination->id, [
+            ['product_variant_id' => $variant->id, 'quantity' => 1],
+        ]);
+        $this->assertSame('cancelled', $service->cancel($draft, $owner->id)->status);
+
+        $second = $service->createDraft($tenant->id, $source->id, $destination->id, [
+            ['product_variant_id' => $variant->id, 'quantity' => 1],
+        ]);
+        $service->approve($second, $owner->id);
+        $shipped = $service->ship($second, $owner->id);
+        $this->expectException(ValidationException::class);
+        $service->cancel($shipped, $owner->id);
+    }
+
+    private function context(): array
+    {
+        $this->seed(PlatformSeeder::class);
+        $owner = User::factory()->create();
+        $tenant = app(TenantProvisioningService::class)->provision('Transfer Tenant', $owner);
+        $branch = Branch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
+        $source = Warehouse::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'branch_id' => $branch->id, 'name' => 'Source', 'code' => 'SRC',
+        ]);
+        $destination = Warehouse::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'branch_id' => $branch->id, 'name' => 'Destination', 'code' => 'DST',
+        ]);
+        $product = Product::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'name' => 'Transfer Item', 'sku' => 'TRF',
+            'product_type' => 'stock', 'track_inventory' => true,
+        ]);
+        $variant = ProductVariant::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'product_id' => $product->id,
+            'name' => 'Default', 'sku' => 'TRF-1', 'purchase_price' => 8, 'sell_price' => 12,
+        ]);
+
+        return [$tenant, $owner, $source, $destination, $variant];
+    }
+}

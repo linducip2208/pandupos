@@ -47,7 +47,7 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Rack/bin | Optional zone/rack/shelf/bin master and location-linked ledger | None | List/create | Product policy only | Tenant/warehouse references checked | Location stock flow | Present | PARTIAL |
 | Inventory ledger/WAC | Append-only movements, locks, valuation | Report only | Partial | Coarse | Checked | Partial | Present | PARTIAL |
 | Reservation | Idempotent reserve/release/consume/expire with available-to-promise and audit | None | List/create/release/consume | Product policy only | Tenant/warehouse/location/batch checked | Oversell/release/consume | Present | PARTIAL |
-| Transfer | Direct paired movement/order schema | No workflow | None | None | Scoped | Basic | Basic | PARTIAL |
+| Transfer | Audited approve/ship/transit/partial-receive/receive/cancel state machine; cost preserved | None | Full workflow endpoints | `inventory.transfer` | Tenant warehouses/variants checked | Partial receiving/no early destination stock | Present | PARTIAL |
 | Adjustment/count/reconcile | No governed workflow/command | None | None | None | N/A | None | Target only | MISSING |
 | Purchase/partial receipt | Draft plus cumulative receipt transaction | No full UI | List/create/receive | Coarse | Checked | Partial receive | Present | PARTIAL |
 | Purchase request/invoice/payment/return | Generic approval only | None | None | None | N/A | None | Target only | MISSING |
@@ -86,10 +86,10 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 36% | Advanced catalog, batch/serial/location and reservation foundations exist; UI and major document workflows remain absent |
+| Core parity | 39% | Advanced inventory foundations and transfer state machine exist; UI and major document workflows remain absent |
 | SaaS parity | 46% | Billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 43% | Location stock and audited reservation oversell/release/consume invariants are now proven; most final-matrix workflows remain |
+| Test readiness | 46% | Transfer partial-receipt, cost preservation and destination-timing invariants are proven; most final-matrix workflows remain |
 | Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
 | Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
 | Production readiness | 26% | Mandatory production gates are not satisfied |

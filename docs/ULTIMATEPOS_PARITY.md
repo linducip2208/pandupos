@@ -19,7 +19,7 @@ Legend: `D` done, `P` partial, `M` missing, `—` not applicable. `FEATURE COMPL
 | Rack/bin | Optional zone/rack/shelf/bin master with location-linked movements | D | M | D | P | D | D | D | PARTIAL | Management UI and granular permission |
 | Ledger/WAC | Append-only movements, locks, WAC/valuation | P | P | P | P | D | P | P | PARTIAL | Taxonomy/cost/concurrency matrix |
 | Reservation | Audited idempotent reserve/release/consume/expire and available-to-promise | D | M | D | P | D | D | D | PARTIAL | Sales-order/held-cart UI integration and scheduler |
-| Transfer | Direct transfer and order schema | P | M | M | M | D | P | P | PARTIAL | Approval/transit/partial receive |
+| Transfer | Audited state machine with approval, transit, partial receipt and preserved cost | D | M | D | D | D | D | D | PARTIAL | Tenant management UI |
 | Adjustment/count/reconcile | No complete workflow/command | M | M | M | M | — | M | M | NOT STARTED | All three workflows |
 | PO/partial receipt | Draft and cumulative receive service/API | P | M | P | P | D | P | P | PARTIAL | UI/approval/document split |
 | Supplier invoice/payment/return | No separate documents | M | M | M | M | — | M | M | NOT STARTED | Complete AP chain |
