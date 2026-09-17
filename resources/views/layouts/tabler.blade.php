@@ -22,6 +22,7 @@
                     <li class="nav-group"><button class="nav-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#nav-transactions" aria-expanded="true"><x-nav-icon name="transaction-group"/><span>🧾 Transaksi</span><span class="nav-chevron">⌄</span></button><ul class="collapse show nav-submenu" id="nav-transactions">
                         <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}"><x-nav-icon name="dashboard"/><span class="nav-link-title">Dashboard</span></a></li>
                         <li class="nav-item"><a class="nav-link" href="{{ route('pos.index') }}"><x-nav-icon name="pos"/><span class="nav-link-title">POS Kasir</span></a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ route('sales-orders.index') }}"><x-nav-icon name="sales-order"/><span class="nav-link-title">Sales Order</span></a></li>
                         <li class="nav-item"><a class="nav-link" href="{{ route('approvals.index') }}"><x-nav-icon name="approval"/><span class="nav-link-title">Approval</span></a></li>
                     </ul></li>
                     @can('inventory.view')

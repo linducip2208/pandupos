@@ -6,8 +6,10 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Unit;
+use App\Models\UnitConversion;
 use App\Models\Warehouse;
 use App\Services\AuditService;
+use App\Services\UnitConversionService;
 use App\Services\UsageLimitService;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
@@ -128,6 +130,32 @@ class ProductMasterController extends Controller
         return back()->with('status', 'Satuan berhasil dibuat.');
     }
 
+    public function storeUnitConversion(Request $request, UnitConversionService $service, AuditService $audit): RedirectResponse
+    {
+        $this->authorize('create', Product::class);
+        $tenantId = TenantContext::idOrFail();
+        $data = $request->validate([
+            'from_unit_id' => ['required', Rule::exists('units', 'id')->where('tenant_id', $tenantId)],
+            'to_unit_id' => ['required', 'different:from_unit_id', Rule::exists('units', 'id')->where('tenant_id', $tenantId)],
+            'factor' => ['required', 'numeric', 'gt:0'],
+        ]);
+        $conversion = $service->define($tenantId, (int) $data['from_unit_id'], (int) $data['to_unit_id'], $data['factor']);
+        $audit->log($tenantId, $request->user()->id, 'catalog.unit_conversion.saved', UnitConversion::class, $conversion->id, null, $conversion->toArray());
+
+        return back()->with('status', 'Konversi satuan tersimpan. Arah inverse dan rantai dihitung otomatis.');
+    }
+
+    public function destroyUnitConversion(Request $request, UnitConversion $conversion, AuditService $audit): RedirectResponse
+    {
+        $this->authorize('create', Product::class);
+        abort_unless($conversion->tenant_id === TenantContext::idOrFail(), 404);
+        $before = $conversion->toArray();
+        $conversion->delete();
+        $audit->log(TenantContext::idOrFail(), $request->user()->id, 'catalog.unit_conversion.deleted', UnitConversion::class, $conversion->id, $before, null);
+
+        return back()->with('status', 'Konversi satuan dihapus.');
+    }
+
     public function updateCategory(Request $request, Category $category, AuditService $audit): RedirectResponse
     {
         $this->authorize('create', Product::class);
@@ -233,6 +261,12 @@ class ProductMasterController extends Controller
 
     private function options(): array
     {
-        return ['categories' => Category::with('parent')->orderBy('name')->get(), 'brands' => Brand::orderBy('name')->get(), 'units' => Unit::orderBy('name')->get(), 'warehouses' => Warehouse::orderBy('name')->get()];
+        return [
+            'categories' => Category::with('parent')->orderBy('name')->get(),
+            'brands' => Brand::orderBy('name')->get(),
+            'units' => Unit::orderBy('name')->get(),
+            'unitConversions' => UnitConversion::with(['fromUnit', 'toUnit'])->latest()->get(),
+            'warehouses' => Warehouse::orderBy('name')->get(),
+        ];
     }
 }

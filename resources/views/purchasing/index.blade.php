@@ -26,9 +26,10 @@
         <form method="POST" action="{{ route('purchasing.orders.store') }}" class="row g-3">@csrf
             <div class="col-12 col-md-6"><label class="form-label">Pemasok</label><select name="contact_id" class="form-select" required><option value="">Pilih pemasok</option>@foreach($suppliers as $supplier)<option value="{{ $supplier->id }}">{{ $supplier->name }}</option>@endforeach</select></div>
             <div class="col-12 col-md-6"><label class="form-label">Gudang tujuan</label><select name="warehouse_id" class="form-select" required><option value="">Pilih gudang</option>@foreach($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>@endforeach</select></div>
-            <div class="col-12"><label class="form-label">Produk/varian</label><select name="product_variant_id" class="form-select" required>@foreach($variants as $variant)<option value="{{ $variant->id }}">{{ $variant->sku }} · {{ $variant->product?->name }}</option>@endforeach</select></div>
-            <div class="col-6"><label class="form-label">Jumlah</label><input name="quantity" type="number" min="0.001" step="0.001" class="form-control" required></div>
-            <div class="col-6"><label class="form-label">Harga beli</label><input name="unit_cost" type="number" min="0" step="0.01" class="form-control" required></div>
+            <div class="col-12"><label class="form-label">Produk/varian</label><select name="product_variant_id" class="form-select" required>@foreach($variants as $variant)<option value="{{ $variant->id }}">{{ $variant->sku }} · {{ $variant->product?->name }} (dasar: {{ $variant->product?->unit?->short_name ?? '—' }})</option>@endforeach</select></div>
+            <div class="col-4"><label class="form-label">Jumlah</label><input name="quantity" type="number" min="0.001" step="0.001" class="form-control" required></div>
+            <div class="col-4"><label class="form-label">Satuan beli</label><select name="unit_id" class="form-select" required>@foreach($units as $unit)<option value="{{ $unit->id }}">{{ $unit->name }} ({{ $unit->short_name }})</option>@endforeach</select></div>
+            <div class="col-4"><label class="form-label">Harga/satuan</label><input name="unit_cost" type="number" min="0" step="0.01" class="form-control" required></div>
             <div class="col-12"><button class="btn btn-primary w-100">Buat purchase order</button></div>
         </form>
     </div></div></div>

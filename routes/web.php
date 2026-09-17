@@ -28,6 +28,7 @@ use App\Http\Controllers\ProductMasterController;
 use App\Http\Controllers\ProgrammaticSeoController;
 use App\Http\Controllers\PurchasingWorkspaceController;
 use App\Http\Controllers\ReportPageController;
+use App\Http\Controllers\SalesOrderWorkspaceController;
 use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
@@ -89,6 +90,8 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::put('/brands/{brand}', [ProductMasterController::class, 'updateBrand'])->name('brands.update');
         Route::post('/units', [ProductMasterController::class, 'storeUnit'])->name('units.store');
         Route::put('/units/{unit}', [ProductMasterController::class, 'updateUnit'])->name('units.update');
+        Route::post('/unit-conversions', [ProductMasterController::class, 'storeUnitConversion'])->name('unit-conversions.store');
+        Route::delete('/unit-conversions/{conversion}', [ProductMasterController::class, 'destroyUnitConversion'])->name('unit-conversions.destroy');
         Route::post('/masters/{type}/{id}/archive', [ProductMasterController::class, 'archiveMaster'])->where('type', 'category|brand|unit')->name('masters.archive');
         Route::get('/{product}', [ProductMasterController::class, 'show'])->name('show');
         Route::get('/{product}/edit', [ProductMasterController::class, 'edit'])->name('edit');
@@ -97,6 +100,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     });
     Route::get('/pos', fn () => view('pos.index'))->name('pos.index')
         ->middleware(['entitlement:pos.access', 'module:pos']);
+    Route::prefix('sales-orders')->name('sales-orders.')->middleware(['entitlement:sales.access', 'module:sales'])->group(function () {
+        Route::get('/', [SalesOrderWorkspaceController::class, 'index'])->name('index');
+        Route::post('/', [SalesOrderWorkspaceController::class, 'store'])->name('store');
+    });
     Route::get('/reports/{type}', [ReportPageController::class, 'show'])->name('reports.show');
     Route::get('/reports/{type}/csv', [ReportPageController::class, 'csv'])->name('reports.csv');
     Route::get('/reports/{type}/xlsx', [ReportPageController::class, 'xlsx'])->name('reports.xlsx');

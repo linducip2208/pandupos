@@ -24,6 +24,7 @@ class SalesOrderController extends Controller
             'branch_id' => ['required', 'integer'], 'warehouse_id' => ['required', 'integer'], 'contact_id' => ['required', 'integer'],
             'sales_quotation_id' => ['nullable', 'integer'], 'order_date' => ['nullable', 'date'], 'notes' => ['nullable', 'string', 'max:2000'],
             'lines' => ['required', 'array', 'min:1'], 'lines.*.product_variant_id' => ['required', 'integer'],
+            'lines.*.unit_id' => ['nullable', 'integer'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'], 'lines.*.unit_price' => ['required', 'numeric', 'min:0'],
             'lines.*.discount' => ['nullable', 'numeric', 'min:0'],
         ]);

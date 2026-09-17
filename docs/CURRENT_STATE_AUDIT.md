@@ -39,7 +39,7 @@ CI being green proves the checked pipeline, not product parity or production rea
 |---|---|---|---|---|---|---|---|---|
 | Tenant context/scoping | Present | Present | Present | Membership/platform gates | Representative isolation proven | Present | Present | DONE |
 | Product master | Types, tracking, image/tax/reorder metadata, variants/attributes, warehouse assignments, safe archive | Responsive list/create/view/edit plus category/brand/unit management | Create/list/show/update/archive foundation | Product policy plus `products.manage` registry | Scoped and cross-tenant tested | 33 UI/isolation/archive assertions plus API basics | Present | PARTIAL |
-| Unit conversion | Direct/inverse/chained tenant-safe conversion service | None | List/create definitions | Product policy | Cross-tenant rejection tested | Carton→pcs stock flow | Present | PARTIAL |
+| Unit conversion | Direct/inverse/chained tenant-safe conversion service | Responsive conversion manager plus purchase, POS and Sales Order selectors | List/create definitions plus purchase/Sales Order input | Product and transaction permissions | Tenant-scoped references and cross-tenant rejection tested | UI, inverse/chained, 2 carton→48 pcs, POS selector and 43 pcs balance | Present | DONE |
 | SKU/normal barcode | Product and variant SKU/barcode | POS lookup | Partial | Product policy | Scoped | Variant/unit flow | Basic | PARTIAL |
 | Weighing barcode/labels | Configurable tenant parser for weight/price barcodes | None | Profile/create/parse | Product policy | Tenant-filtered | Parser workflow | Present | PARTIAL |
 | Price lists | Scope/date/quantity/priority resolver and audit hook | None | List/create | Product policy | Tenant-owned references | Resolver precedence | Present | PARTIAL |
@@ -89,10 +89,10 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 67% | Product Master tenant CRUD and sales documents through partial delivery are tested; later core sprints remain |
+| Core parity | 70% | Product Master and unit conversion are end-to-end; later barcode and core sprints remain |
 | SaaS parity | 46% | Billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 68% | Product Master UI/isolation/archive, commercial lifecycle, reservation and partial delivery are proven; later core matrices remain |
+| Test readiness | 70% | Product Master and unit conversion UI/integrations, commercial lifecycle, reservation and partial delivery are proven; later core matrices remain |
 | Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
 | Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
 | Production readiness | 26% | Mandatory production gates are not satisfied |

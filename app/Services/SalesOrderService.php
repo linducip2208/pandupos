@@ -14,11 +14,28 @@ use Illuminate\Support\Str;
 
 final class SalesOrderService
 {
-    public function __construct(private StockReservationService $reservations, private AuditService $audit) {}
+    public function __construct(
+        private StockReservationService $reservations,
+        private AuditService $audit,
+        private UnitConversionService $conversions,
+    ) {}
 
     public function create(int $tenantId, array $data, int $actorId): SalesOrder
     {
         $this->validateReferences($tenantId, $data);
+        $data['lines'] = collect($data['lines'])->map(function (array $line) use ($tenantId) {
+            if (empty($line['unit_id'])) {
+                return $line;
+            }
+            $variant = ProductVariant::withoutGlobalScopes()->with('product')->findOrFail($line['product_variant_id']);
+            abort_unless($variant->product?->unit_id, 422, 'Product must have a base unit.');
+            $factor = $this->conversions->convert($tenantId, 1, (int) $line['unit_id'], (int) $variant->product->unit_id);
+            $line['quantity'] = $this->conversions->convert($tenantId, $line['quantity'], (int) $line['unit_id'], (int) $variant->product->unit_id);
+            $line['unit_price'] = round((float) $line['unit_price'] / $factor, 2);
+            unset($line['unit_id']);
+
+            return $line;
+        })->all();
 
         return DB::transaction(function () use ($tenantId, $data, $actorId) {
             $total = collect($data['lines'])->sum(fn ($line) => (float) $line['quantity'] * (float) $line['unit_price'] - (float) ($line['discount'] ?? 0));

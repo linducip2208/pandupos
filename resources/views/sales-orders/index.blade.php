@@ -1,0 +1,22 @@
+@extends('layouts.tabler')
+@section('title', 'Sales Order')
+@section('header', 'Sales Order')
+@section('content')
+@if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
+@if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+<div class="row row-cards">
+<div class="col-12 col-xl-5"><div class="card"><div class="card-header"><h2 class="card-title">Buat Sales Order</h2></div><form class="card-body row g-3" method="POST" action="{{ route('sales-orders.store') }}">@csrf
+<div class="col-6"><label class="form-label">Cabang</label><select class="form-select" name="branch_id" required>@foreach($branches as $branch)<option value="{{ $branch->id }}">{{ $branch->name }}</option>@endforeach</select></div>
+<div class="col-6"><label class="form-label">Gudang</label><select class="form-select" name="warehouse_id" required>@foreach($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>@endforeach</select></div>
+<div class="col-12"><label class="form-label">Pelanggan</label><select class="form-select" name="contact_id" required>@foreach($customers as $customer)<option value="{{ $customer->id }}">{{ $customer->name }}</option>@endforeach</select></div>
+<div class="col-12"><label class="form-label">Produk / varian</label><select class="form-select" name="product_variant_id" required>@foreach($variants as $variant)<option value="{{ $variant->id }}">{{ $variant->sku }} · {{ $variant->product?->name }} (dasar {{ $variant->product?->unit?->short_name ?? '—' }})</option>@endforeach</select></div>
+<div class="col-4"><label class="form-label">Jumlah</label><input class="form-control" name="quantity" type="number" min=".001" step=".001" required></div>
+<div class="col-4"><label class="form-label">Satuan</label><select class="form-select" name="unit_id" required>@foreach($units as $unit)<option value="{{ $unit->id }}">{{ $unit->short_name }}</option>@endforeach</select></div>
+<div class="col-4"><label class="form-label">Harga/satuan</label><input class="form-control" name="unit_price" type="number" min="0" step=".01" required></div>
+<div class="col-6"><label class="form-label">Tanggal</label><input class="form-control" name="order_date" type="date" value="{{ today()->toDateString() }}" required></div>
+<div class="col-12"><label class="form-label">Catatan</label><textarea class="form-control" name="notes" rows="2"></textarea></div>
+<div class="col-12"><button class="btn btn-primary w-100">Simpan draft</button></div>
+</form></div></div>
+<div class="col-12 col-xl-7"><div class="card"><div class="card-header"><h2 class="card-title">Order terbaru</h2></div><div class="table-responsive"><table class="table table-vcenter"><thead><tr><th>Nomor</th><th>Pelanggan</th><th>Item</th><th>Total</th><th>Status</th></tr></thead><tbody>@forelse($orders as $order)<tr><td>{{ $order->order_no }}</td><td>{{ $order->contact?->name }}</td><td>@foreach($order->lines as $line)<div>{{ $line->variant?->sku }} · {{ number_format((float)$line->quantity,3,',','.') }} {{ $line->variant?->product?->unit?->short_name }}</div>@endforeach</td><td>Rp {{ number_format((float)$order->total,0,',','.') }}</td><td><span class="badge">{{ $order->status }}</span></td></tr>@empty<tr><td colspan="5" class="text-center text-secondary py-5">Belum ada Sales Order.</td></tr>@endforelse</tbody></table></div></div></div>
+</div>
+@endsection

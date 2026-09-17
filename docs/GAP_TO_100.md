@@ -23,7 +23,7 @@ Canonical readiness percentages live in `PRODUCTION_READINESS_SCORE.md`; this fi
 Execute in this order:
 
 1. Product Master tenant CRUD, images, types, tax, reorder, variants, locations, audit and safe archive are implemented; complete remaining API variant/location parity during the core API sprint.
-2. Base/sub-unit graph and precision-safe conversions; prove 2 cartons = 48 pcs, sell 5, balance 43.
+2. ~~Base/sub-unit graph and precision-safe conversions; prove 2 cartons = 48 pcs, sell 5, balance 43.~~ DONE: tenant manager, inverse/chained graph, purchasing/POS/Sales Order selectors and automated stock proof.
 3. Normal/variant/weighing parser, configurable scale rules, labels and print templates.
 4. Price lists for tenant/location/customer group/date/priority with audited resolver.
 5. Relational bundles with atomic component deduction.

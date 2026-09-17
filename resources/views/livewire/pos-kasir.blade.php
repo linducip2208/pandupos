@@ -6,10 +6,10 @@
                 @foreach($products as $p)
                     @foreach($p->variants as $v)
                         <div class="col-6 col-md-4">
-                            <button class="btn btn-outline-primary w-100 h-100 py-3" wire:click="addToCart({{ $v->id }}, '{{ addslashes($p->name) }}', {{ $v->sell_price }})">
+                            @if($p->unit_id)<button class="btn btn-outline-primary w-100 h-100 py-3" wire:click="addToCart({{ $v->id }}, '{{ addslashes($p->name) }}', {{ $v->sell_price }}, {{ $p->unit_id }}, '{{ addslashes($p->unit?->short_name ?? '') }}')">
                                 <div class="fw-bold">{{ $p->name }}</div>
-                                <div class="text-secondary">Rp {{ number_format($v->sell_price, 0, ',', '.') }}</div>
-                            </button>
+                                <div class="text-secondary">Rp {{ number_format($v->sell_price, 0, ',', '.') }} / {{ $p->unit?->short_name }}</div>
+                            </button>@endif
                         </div>
                     @endforeach
                 @endforeach
@@ -23,7 +23,7 @@
                 <table class="table table-vcenter mb-0">
                     @foreach($cart as $i => $row)
                         <tr>
-                            <td>{{ $row['name'] }}<div class="text-secondary">Rp {{ number_format($row['price'], 0, ',', '.') }}</div></td>
+                            <td>{{ $row['name'] }}<div class="text-secondary">Rp {{ number_format($row['price'], 0, ',', '.') }} / {{ $row['unit_name'] }}</div><select class="form-select form-select-sm mt-1" wire:change="changeUnit({{ $i }}, $event.target.value)" aria-label="Satuan {{ $row['name'] }}">@foreach($units as $unit)<option value="{{ $unit->id }}" @selected($unit->id===$row['unit_id'])>{{ $unit->short_name }}</option>@endforeach</select></td>
                             <td style="width:130px">
                                 <div class="input-group input-group-sm">
                                     <button class="btn btn-outline-secondary" wire:click="dec({{ $i }})">−</button>

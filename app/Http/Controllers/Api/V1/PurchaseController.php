@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\SupplierInvoice;
 use App\Services\PurchaseService;
 use App\Services\SupplierDocumentService;
+use App\Services\UnitConversionService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,7 +22,7 @@ class PurchaseController extends Controller
         );
     }
 
-    public function store(Request $request, PurchaseService $service)
+    public function store(Request $request, PurchaseService $service, UnitConversionService $conversions)
     {
         $tenantId = TenantContext::idOrFail();
         $data = $request->validate([
@@ -28,13 +30,27 @@ class PurchaseController extends Controller
             'contact_id' => ['required', Rule::exists('contacts', 'id')->where('tenant_id', $tenantId)],
             'lines' => 'required|array|min:1',
             'lines.*.product_variant_id' => ['required', Rule::exists('product_variants', 'id')->where('tenant_id', $tenantId)],
+            'lines.*.unit_id' => ['nullable', Rule::exists('units', 'id')->where('tenant_id', $tenantId)],
             'lines.*.quantity' => 'required|numeric|min:0.001',
             'lines.*.unit_cost' => 'required|numeric|min:0',
         ]);
 
+        $lines = collect($data['lines'])->map(function (array $line) use ($tenantId, $conversions) {
+            if (empty($line['unit_id'])) {
+                return $line;
+            }
+            $variant = ProductVariant::withoutGlobalScopes()->with('product')->findOrFail($line['product_variant_id']);
+            abort_unless($variant->product?->unit_id, 422, 'Product must have a base unit.');
+            $factor = $conversions->convert($tenantId, 1, (int) $line['unit_id'], (int) $variant->product->unit_id);
+            $line['quantity'] = $conversions->convert($tenantId, $line['quantity'], (int) $line['unit_id'], (int) $variant->product->unit_id);
+            $line['unit_cost'] = round((float) $line['unit_cost'] / $factor, 2);
+            unset($line['unit_id']);
+
+            return $line;
+        })->all();
         $purchase = $service->createDraft(
             $tenantId,
-            $data['warehouse_id'], $data['contact_id'], $data['lines'], $request->user()->id
+            $data['warehouse_id'], $data['contact_id'], $lines, $request->user()->id
         );
 
         return response()->json($purchase->load('lines'), 201);

@@ -7,9 +7,11 @@ use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\PurchaseReturn;
 use App\Models\SupplierInvoice;
+use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Services\PurchaseService;
 use App\Services\SupplierDocumentService;
+use App\Services\UnitConversionService;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,23 +26,29 @@ class PurchasingWorkspaceController extends Controller
         return view('purchasing.index', [
             'warehouses' => Warehouse::query()->orderBy('name')->get(),
             'suppliers' => Contact::query()->whereIn('type', ['supplier', 'both'])->orderBy('name')->get(),
-            'variants' => ProductVariant::query()->with('product')->orderBy('sku')->get(),
+            'variants' => ProductVariant::query()->with('product.unit')->orderBy('sku')->get(),
+            'units' => Unit::query()->where('is_active', true)->orderBy('name')->get(),
             'purchases' => Purchase::query()->with(['contact', 'warehouse', 'lines.variant.product', 'goodsReceipts.lines'])->latest()->limit(30)->get(),
             'invoices' => SupplierInvoice::query()->with(['supplier', 'purchase', 'payments'])->latest()->limit(30)->get(),
             'returns' => PurchaseReturn::query()->with(['purchase.contact', 'lines.variant.product'])->latest()->limit(30)->get(),
         ]);
     }
 
-    public function storePurchase(Request $request, PurchaseService $service): RedirectResponse
+    public function storePurchase(Request $request, PurchaseService $service, UnitConversionService $conversions): RedirectResponse
     {
         abort_unless($request->user()->can('purchase.create'), 403);
         $data = $request->validate([
             'warehouse_id' => ['required', 'integer'], 'contact_id' => ['required', 'integer'],
             'product_variant_id' => ['required', 'integer'], 'quantity' => ['required', 'numeric', 'gt:0'],
+            'unit_id' => ['required', 'integer'],
             'unit_cost' => ['required', 'numeric', 'min:0'],
         ]);
+        $variant = ProductVariant::query()->with('product')->findOrFail($data['product_variant_id']);
+        abort_unless($variant->product?->unit_id, 422, 'Produk harus memiliki satuan dasar.');
+        $factor = $conversions->convert(TenantContext::idOrFail(), 1, (int) $data['unit_id'], (int) $variant->product->unit_id);
+        $baseQuantity = $conversions->convert(TenantContext::idOrFail(), $data['quantity'], (int) $data['unit_id'], (int) $variant->product->unit_id);
         $purchase = $service->createDraft(TenantContext::idOrFail(), (int) $data['warehouse_id'], (int) $data['contact_id'], [[
-            'product_variant_id' => $data['product_variant_id'], 'quantity' => $data['quantity'], 'unit_cost' => $data['unit_cost'],
+            'product_variant_id' => $data['product_variant_id'], 'quantity' => $baseQuantity, 'unit_cost' => round((float) $data['unit_cost'] / $factor, 2),
         ]], $request->user()->id);
 
         return back()->with('status', $purchase->status === 'pending_approval' ? 'PO dibuat dan menunggu approval.' : 'PO berhasil dibuat.');
