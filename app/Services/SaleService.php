@@ -159,15 +159,7 @@ final class SaleService
 
                     continue;
                 }
-                $origCost = StockMovement::withoutGlobalScopes()
-                    ->where('tenant_id', $invoice->tenant_id)
-                    ->where('reference_type', 'sale')->where('reference_id', $invoice->id)
-                    ->where('product_variant_id', $line->product_variant_id)
-                    ->where('movement_type', 'out')->value('unit_cost') ?? 0;
-                $this->stock->increase(
-                    $invoice->tenant_id, $invoice->warehouse_id,
-                    $line->product_variant_id, $toRestore, (float) $origCost, 'sale_void', $invoice->id
-                );
+                $this->restoreSoldInventory($invoice, (int) $line->product_variant_id, $toRestore, 'sale_void');
             }
             $invoice->update(['status' => 'void']);
         });
@@ -212,15 +204,7 @@ final class SaleService
                         $invoice->id
                     );
                 } elseif ($variant->product->track_inventory) {
-                    $origCost = StockMovement::withoutGlobalScopes()
-                        ->where('tenant_id', $invoice->tenant_id)
-                        ->where('reference_type', 'sale')->where('reference_id', $invoice->id)
-                        ->where('product_variant_id', $rl['variant_id'])
-                        ->where('movement_type', 'out')->value('unit_cost') ?? 0;
-                    $this->stock->increase(
-                        $invoice->tenant_id, $invoice->warehouse_id,
-                        $rl['variant_id'], (float) $rl['quantity'], (float) $origCost, 'sale_return', $invoice->id
-                    );
+                    $this->restoreSoldInventory($invoice, (int) $rl['variant_id'], (float) $rl['quantity'], 'sale_return');
                 }
                 $return->lines()->create([
                     'sales_line_id' => $salesLine->id,
@@ -260,5 +244,35 @@ final class SaleService
             return;
         }
         $this->stock->decrease($tenantId, $warehouseId, $variantId, $quantity, $referenceType, $referenceId);
+    }
+
+    private function restoreSoldInventory(SalesInvoice $invoice, int $variantId, float $quantity, string $referenceType): void
+    {
+        $remaining = $quantity;
+        $sold = StockMovement::withoutGlobalScopes()
+            ->where('tenant_id', $invoice->tenant_id)->where('reference_type', 'sale')->where('reference_id', $invoice->id)
+            ->where('product_variant_id', $variantId)->where('movement_type', 'out')->orderBy('id')->get();
+        $alreadyRestored = StockMovement::withoutGlobalScopes()
+            ->where('tenant_id', $invoice->tenant_id)->whereIn('reference_type', ['sale_return', 'sale_void'])
+            ->where('reference_id', $invoice->id)->where('product_variant_id', $variantId)->where('movement_type', 'in')->get()
+            ->groupBy(fn (StockMovement $movement) => $movement->inventory_batch_id ?? 'unbatched')
+            ->map(fn ($movements) => (float) $movements->sum('quantity'));
+
+        foreach ($sold as $movement) {
+            $batchKey = $movement->inventory_batch_id ?? 'unbatched';
+            $available = (float) $movement->quantity - (float) ($alreadyRestored[$batchKey] ?? 0);
+            $take = min($remaining, max(0, $available));
+            if ($take <= 0) {
+                continue;
+            }
+            $this->stock->increase($invoice->tenant_id, $invoice->warehouse_id, $variantId, $take, (float) $movement->unit_cost, $referenceType, $invoice->id, $movement->inventory_batch_id);
+            $alreadyRestored[$batchKey] = (float) ($alreadyRestored[$batchKey] ?? 0) + $take;
+            $remaining = round($remaining - $take, 6);
+            if ($remaining <= 0) {
+                return;
+            }
+        }
+
+        abort(422, 'Return quantity exceeds remaining sold stock.');
     }
 }

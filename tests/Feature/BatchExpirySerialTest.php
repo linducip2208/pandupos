@@ -113,6 +113,10 @@ class BatchExpirySerialTest extends TestCase
 
         $this->assertDatabaseHas('stock_movements', ['reference_type' => 'sale', 'reference_id' => $invoice->id, 'inventory_batch_id' => $first->id, 'quantity' => 2]);
         $this->assertDatabaseHas('stock_movements', ['reference_type' => 'sale', 'reference_id' => $invoice->id, 'inventory_batch_id' => $second->id, 'quantity' => 1]);
+        app(SaleService::class)->return($invoice->id, [['variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 20]], $tenant->id);
+        $this->assertDatabaseHas('stock_movements', ['reference_type' => 'sale_return', 'reference_id' => $invoice->id, 'inventory_batch_id' => $first->id, 'quantity' => 1]);
+        app(SaleService::class)->void($invoice->id, true, $tenant->id);
+        $this->assertDatabaseHas('stock_movements', ['reference_type' => 'sale_void', 'reference_id' => $invoice->id, 'inventory_batch_id' => $second->id, 'quantity' => 1]);
         $this->expectException(ValidationException::class);
         app(SaleService::class)->checkout($tenant->id, $branch->id, $warehouse->id, null, [
             ['variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 20, 'inventory_batch_id' => $expired->id],
