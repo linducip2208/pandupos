@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\PurchaseController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\SalesDocumentController;
+use App\Http\Controllers\Api\V1\SalesOrderController;
 use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\SyncController;
 use App\Http\Controllers\Api\V1\WebhookController;
@@ -92,6 +93,11 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('quotations', [SalesDocumentController::class, 'store']);
         Route::post('quotations/{quotation}/transition', [SalesDocumentController::class, 'transition']);
         Route::post('quotations/{quotation}/proforma', [SalesDocumentController::class, 'proforma']);
+        Route::get('orders', [SalesOrderController::class, 'index']);
+        Route::post('orders', [SalesOrderController::class, 'store']);
+        Route::post('orders/{order}/confirm', [SalesOrderController::class, 'confirm']);
+        Route::post('orders/{order}/deliveries', [SalesOrderController::class, 'deliver']);
+        Route::post('orders/{order}/cancel', [SalesOrderController::class, 'cancel']);
     });
 
     // Reports

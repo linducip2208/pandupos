@@ -53,7 +53,7 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Supplier invoice/payment/return | Separate AP invoice, partial/full payment records, and received-minus-return controlled purchase returns | Purchasing workspace | Create invoice/payment/return | `purchase.create`/`purchase.approve` | Checked | Money balance, overpayment, over-return and workspace isolation | Present | PARTIAL |
 | Purchase request | Approval foundation only | None | None | None | N/A | None | Target only | MISSING |
 | Invoice/payment | Atomic checkout, lines, split payments | Basic POS/portal | Partial | Void gate | Checked | Partial | Present | PARTIAL |
-| Quotation/proforma/order/delivery/recurring | Audited quotation lifecycle and immutable non-posting proforma conversion | None | Quotation create/transition/proforma conversion | `sales.view`/`sales.create` | Checked | Lifecycle, cross-tenant rejection, non-posting and duplicate conversion | Partial | PARTIAL |
+| Quotation/proforma/order/delivery/recurring | Audited quotation/proforma, sales order reservation, and partial delivery | None | Quotation lifecycle plus order create/confirm/deliver/cancel | `sales.view`/`sales.create` | Checked | Non-posting, duplicate conversion, reservation and 2+4 partial delivery | Partial | PARTIAL |
 | Register | Cash-session schema | No open/count/close flow | None | None | Model scoped | None | Target only | PARTIAL |
 | Hold/cash movement/Z report | None | None | None | None | N/A | None | Reference only | MISSING |
 | Discounts/tax | Line discount arithmetic and columns | Basic inputs | Partial | No override policy | Checked | Limited | Target only | PARTIAL |
@@ -87,10 +87,10 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 61% | Purchasing workspace and quotation/proforma foundations are tested; sales order/delivery, multi-line UI and major POS workflows remain |
+| Core parity | 64% | Purchasing and sales document foundations through partial delivery are tested; tenant sales UI, posted invoice conversion and major POS workflows remain |
 | SaaS parity | 46% | Billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 64% | Purchasing plus quotation/proforma lifecycle, non-posting and tenant isolation are proven; sales order/delivery/POS tests remain |
+| Test readiness | 66% | Purchasing, commercial-document lifecycle, stock reservation and partial delivery are proven; UI/invoice/POS matrices remain |
 | Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
 | Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
 | Production readiness | 26% | Mandatory production gates are not satisfied |

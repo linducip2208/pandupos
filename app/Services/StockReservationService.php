@@ -67,6 +67,25 @@ final class StockReservationService
         });
     }
 
+    public function consumeQuantity(StockReservation $reservation, float $quantity, string $referenceType, int $referenceId, ?int $actorId = null): StockReservation
+    {
+        return DB::transaction(function () use ($reservation, $quantity, $referenceType, $referenceId, $actorId) {
+            $locked = StockReservation::withoutGlobalScopes()->lockForUpdate()->findOrFail($reservation->id);
+            $this->assertActive($locked);
+            abort_if($quantity <= 0 || $quantity > (float) $locked->quantity + 0.000001, 422, 'Consumed quantity exceeds active reservation.');
+            $before = $locked->toArray();
+            $remaining = round((float) $locked->quantity - $quantity, 6);
+            $locked->update(['status' => 'consuming']);
+            $this->stock->decrease($locked->tenant_id, $locked->warehouse_id, $locked->product_variant_id, $quantity, $referenceType, $referenceId, $locked->inventory_batch_id, null, $locked->warehouse_location_id);
+            $locked->update($remaining > 0
+                ? ['status' => 'active', 'quantity' => $remaining]
+                : ['status' => 'consumed', 'quantity' => 0, 'consumed_at' => now()]);
+            $this->audit->log($locked->tenant_id, $actorId, 'inventory.reservation.partially_consumed', StockReservation::class, $locked->id, $before, $locked->fresh()->toArray());
+
+            return $locked->fresh();
+        });
+    }
+
     public function expireDue(int $tenantId): int
     {
         return StockReservation::withoutGlobalScopes()

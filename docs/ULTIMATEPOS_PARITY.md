@@ -18,12 +18,12 @@ Legend: `D` done, `P` partial, `M` missing, `—` not applicable. `FEATURE COMPL
 | Serial tracking | Controlled lifecycle, ledger linkage and duplicate-sale prevention | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and return/transfer integration |
 | Rack/bin | Optional zone/rack/shelf/bin master with location-linked movements | D | D | D | D | D | D | D | PARTIAL | Edit/deactivate workflow and location selectors in transactions |
 | Ledger/WAC | Append-only ledger, pluggable strategy contract, WAC COGS/reversals/transfers and reconcile CLI | D | P | P | D | D | D | D | PARTIAL | Production concurrency/load evidence |
-| Reservation | Audited idempotent reserve/release/consume/expire and available-to-promise | D | P | D | D | D | D | D | PARTIAL | Sales-order/held-cart integration, consume UI and scheduler |
+| Reservation | Audited idempotent reserve/release/partial-consume/expire, ATP and sales-order integration | D | P | D | D | D | D | D | PARTIAL | Held-cart integration, consume UI and scheduler |
 | Transfer | Audited state machine with approval, transit, partial receipt and preserved cost | D | D | D | D | D | D | D | PARTIAL | Requester/approver segregation and multi-line creation UI |
 | Adjustment/count/reconcile | Audited approve/post adjustment, count snapshot-to-post, read-only reconcile CLI | D | D | D | D | D | D | D | PARTIAL | Requester/approver segregation and multi-line creation UI |
 | PO/partial receipt | PO plus configurable manager/owner approval, tenant workspace, and immutable receipt history with actor, audit and ledger reference | D | P | P | D | D | D | D | PARTIAL | Multi-line create/edit/cancel UX and configurable over-receive policy UI |
 | Supplier invoice/payment/return | Separate tenant-scoped invoice, exact payment ledger, audited return/credit documents, and tenant workspace | D | P | D | D | D | D | D | PARTIAL | Multi-line return UX, supplier statement, approval segregation and accounting posting |
-| Quotation/proforma/order/delivery | Audited quotation lifecycle and immutable non-posting proforma conversion; final invoice foundation | P | M | P | D | D | P | P | PARTIAL | Tenant UI, sales order, reservation, partial delivery and invoice conversion |
+| Quotation/proforma/order/delivery | Audited quotation/proforma plus sales-order reservation and partial delivery with stock posting only on delivery | P | M | P | D | D | D | P | PARTIAL | Tenant UI, quotation-to-order conversion and posted invoice conversion |
 | Invoice/payment | Atomic checkout, lines, split payments | P | P | P | P | D | P | P | PARTIAL | Posting/receivable state machine |
 | Recurring sale | Not found | M | M | M | M | — | M | M | NOT STARTED | Templates/scheduler |
 | Register/cash/Z | Cash-session schema only | P | M | M | M | P | M | M | PARTIAL | Open/count/close/movements/Z |

@@ -42,8 +42,12 @@ use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnLine;
 use App\Models\Register;
 use App\Models\SalePayment;
+use App\Models\SalesDelivery;
+use App\Models\SalesDeliveryLine;
 use App\Models\SalesInvoice;
 use App\Models\SalesLine;
+use App\Models\SalesOrder;
+use App\Models\SalesOrderLine;
 use App\Models\SalesQuotation;
 use App\Models\SalesQuotationLine;
 use App\Models\SalesReturn;
@@ -124,6 +128,9 @@ class DatabaseRelationshipAuditTest extends TestCase
             SalesQuotationLine::class => ['quotation', 'variant'],
             ProformaInvoice::class => ['tenant', 'quotation', 'branch', 'contact', 'creator'],
             ProformaInvoiceLine::class => ['proforma', 'variant'],
+            SalesOrder::class => ['tenant', 'branch', 'warehouse', 'contact', 'quotation', 'creator'],
+            SalesOrderLine::class => ['order', 'variant'], SalesDelivery::class => ['tenant', 'order', 'deliverer'],
+            SalesDeliveryLine::class => ['delivery', 'orderLine'],
             ServerChangeLog::class => ['tenant'], WebhookEndpoint::class => ['tenant'],
             WebhookDelivery::class => ['endpoint'], TenantSetting::class => ['tenant'],
             TenantDomain::class => ['tenant'], ImpersonationSession::class => ['platformUser', 'tenant', 'targetUser'],
