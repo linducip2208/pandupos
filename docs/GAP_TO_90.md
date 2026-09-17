@@ -14,6 +14,10 @@ Updated: 2026-09-17. This is the v1 stabilization backlog. Deferred addons are e
 | Production | 26 | Upstream core/SaaS/security/operations gates |
 | Commercial | 20 | License audit, fresh install, support diagnostics and recovery/deployment evidence |
 
+## Core milestones
+
+The Core scorer preserves a 100-point total while separating meaningful release outcomes. The 32-point verified catalog/bundle baseline is unchanged. The next milestones are evidence outcomes, not manual targets: Batch/Expiry/FEFO (4), Serial (4), Rack/Bin (2), Reservation (3), Transfer (2), Adjustment/Count (2), and Reconciliation (1) can bring Core to 50 only when each full gate passes. Purchasing (18), current sales/POS/return correctness (22), and reports/dashboard (10) then provide the remaining independently verifiable route to 90+.
+
 ## Wave 1: current inventory
 
 1. Batch/expiry selectors in current purchase and sales/POS flows; permissioned expired override only if the existing architecture permits it.
