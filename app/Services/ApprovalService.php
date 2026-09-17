@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ApprovalRequest;
+use App\Models\Purchase;
 use App\Models\SalesInvoice;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +35,15 @@ final class ApprovalService
         return DB::transaction(function () use ($approval, $actorId) {
             $approval = ApprovalRequest::withoutGlobalScopes()->lockForUpdate()->findOrFail($approval->id);
             abort_unless($approval->status === 'pending', 422, 'Approval sudah diproses.');
+            if ($approval->subject_type === 'purchase_order') {
+                $purchase = Purchase::withoutGlobalScopes()->where('tenant_id', $approval->tenant_id)->lockForUpdate()->findOrFail($approval->subject_id);
+                abort_unless($purchase->status === 'pending_approval', 422, 'Purchase order tidak menunggu approval.');
+                $purchase->update(['status' => 'ordered', 'approved_by' => $actorId, 'approved_at' => now()]);
+                $approval->update(['status' => 'approved', 'decided_by' => $actorId, 'decided_at' => now()]);
+                app(AuditService::class)->log($purchase->tenant_id, $actorId, 'purchase.order.approved', Purchase::class, $purchase->id, null, $purchase->fresh()->toArray());
+
+                return $approval->refresh();
+            }
             abort_unless($approval->subject_type === 'sales_invoice', 422, 'Jenis approval belum didukung.');
             $invoice = SalesInvoice::withoutGlobalScopes()->with('lines')->lockForUpdate()->findOrFail($approval->subject_id);
             foreach ($invoice->lines as $line) {
@@ -58,6 +68,14 @@ final class ApprovalService
     public function reject(ApprovalRequest $approval, int $actorId, string $reason): ApprovalRequest
     {
         abort_unless($approval->status === 'pending', 422, 'Approval sudah diproses.');
+        if ($approval->subject_type === 'purchase_order') {
+            Purchase::withoutGlobalScopes()->where('tenant_id', $approval->tenant_id)->whereKey($approval->subject_id)
+                ->where('status', 'pending_approval')->update(['status' => 'cancelled']);
+            $approval->update(['status' => 'rejected', 'decided_by' => $actorId, 'decided_at' => now(), 'reason' => $reason]);
+            app(AuditService::class)->log($approval->tenant_id, $actorId, 'purchase.order.rejected', Purchase::class, $approval->subject_id, null, ['reason' => $reason]);
+
+            return $approval->refresh();
+        }
         SalesInvoice::withoutGlobalScopes()->whereKey($approval->subject_id)->where('status', 'pending_approval')->update(['status' => 'void', 'fulfillment_status' => 'cancelled']);
         $approval->update(['status' => 'rejected', 'decided_by' => $actorId, 'decided_at' => now(), 'reason' => $reason]);
         app(AuditService::class)->log($approval->tenant_id, $actorId, 'transaction.rejected', SalesInvoice::class, $approval->subject_id, null, ['reason' => $reason]);

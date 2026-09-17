@@ -4,10 +4,10 @@ Updated: 2026-09-17.
 
 | Dimension | Score | Evidence |
 |---|---:|---|
-| Core parity | 54% | PO, receipt, supplier invoice, payment, and return are separate domain documents; purchasing UI/approval and major workflows remain |
+| Core parity | 56% | Purchasing documents and configurable manager/owner approval are implemented; full purchasing UI and major workflows remain |
 | SaaS parity | 46% | Functional control-plane foundations; billing and automation incomplete |
 | Addon parity | 1% | No requested addon meets the completeness rule |
-| Test readiness | 58% | Purchasing money/quantity boundaries and original-cost returns are proven; many final-matrix items remain |
+| Test readiness | 60% | Purchasing money/quantity boundaries and approval-level authorization are proven; many final-matrix items remain |
 | Security readiness | 58% | Representative isolation/auth/webhook controls; full audit absent |
 | Operations readiness | 27% | CI green; staging/load/restore/monitoring evidence absent |
 | Production readiness | 26% | Weighted mandatory release-gate completion |

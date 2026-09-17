@@ -49,7 +49,7 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Reservation | Idempotent reserve/release/consume/expire with available-to-promise and audit | Create/release workspace | List/create/release/consume | `inventory.transfer` | Tenant/warehouse/location/batch checked | Oversell/release/consume plus UI isolation | Present | PARTIAL |
 | Transfer | Audited approve/ship/transit/partial-receive/receive/cancel state machine; cost preserved | None | Full workflow endpoints | `inventory.transfer` | Tenant warehouses/variants checked | Partial receiving/no early destination stock | Present | PARTIAL |
 | Adjustment/count/reconcile | Reasoned approve/post adjustment, snapshot/review/approve/post count, read-only reconcile command | None | Full adjustment/count API; CLI reconcile | `inventory.adjust` | Tenant warehouse/variant scope | Posting/idempotency/reconcile proof | Present | PARTIAL |
-| Purchase/partial receipt | PO plus separate audited goods-receipt documents and strict cumulative receipt transaction | No full UI | List/create/receive with receipt history | Coarse | Checked | 30/40/30 receive, over-receive rejection | Present | PARTIAL |
+| Purchase/partial receipt | PO, configurable manager/owner approval, separate audited goods receipts and strict cumulative receiving | Approval UI only | List/create/receive with receipt history | Role/level checked | Checked | Threshold routing, 30/40/30 receive, over-receive rejection | Present | PARTIAL |
 | Supplier invoice/payment/return | Separate AP invoice, partial/full payment records, and received-minus-return controlled purchase returns | No tenant UI | Create invoice/payment/return | `purchase.create`/`purchase.approve` | Checked | Money balance, overpayment and over-return | Present | PARTIAL |
 | Purchase request/invoice/payment/return | Generic approval only | None | None | None | N/A | None | Target only | MISSING |
 | Invoice/payment | Atomic checkout, lines, split payments | Basic POS/portal | Partial | Void gate | Checked | Partial | Present | PARTIAL |
@@ -87,10 +87,10 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 54% | Purchasing now separates PO, receipt, supplier invoice, payment and return; purchasing UI/approval and major sales/POS workflows remain |
+| Core parity | 56% | Purchasing separates PO/receipt/invoice/payment/return and has configurable manager/owner approval; full purchasing UI and major sales/POS workflows remain |
 | SaaS parity | 46% | Billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 58% | Purchasing money balances, overpayment, original-cost returns and cumulative quantity limits are proven; many document/POS tests remain |
+| Test readiness | 60% | Purchasing boundaries plus role-level threshold approval and pre-approval stock blocking are proven; many document/POS tests remain |
 | Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
 | Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
 | Production readiness | 26% | Mandatory production gates are not satisfied |

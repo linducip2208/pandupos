@@ -34,7 +34,7 @@ class PurchaseController extends Controller
 
         $purchase = $service->createDraft(
             $tenantId,
-            $data['warehouse_id'], $data['contact_id'], $data['lines']
+            $data['warehouse_id'], $data['contact_id'], $data['lines'], $request->user()->id
         );
 
         return response()->json($purchase->load('lines'), 201);

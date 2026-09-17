@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\ApprovalRequest;
 use App\Models\Contact;
 use App\Models\GoodsReceipt;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
+use App\Models\SystemSetting;
 use App\Models\Warehouse;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +19,7 @@ final class PurchaseService
 {
     public function __construct(private StockService $stock, private AuditService $audit) {}
 
-    public function createDraft(int $tenantId, int $warehouseId, int $contactId, array $lines): Purchase
+    public function createDraft(int $tenantId, int $warehouseId, int $contactId, array $lines, ?int $actorId = null): Purchase
     {
         // Validate tenant ownership of all references (prevent IDOR, mirrors SaleService).
         abort_unless(Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $warehouseId)->exists(), 422, 'Warehouse does not belong to tenant.');
@@ -29,15 +31,29 @@ final class PurchaseService
             }
         }
 
-        return DB::transaction(function () use ($tenantId, $warehouseId, $contactId, $lines) {
+        return DB::transaction(function () use ($tenantId, $warehouseId, $contactId, $lines, $actorId) {
             $total = collect($lines)->sum(fn ($l) => $l['quantity'] * $l['unit_cost']);
+            $managerThreshold = (float) SystemSetting::scalar($tenantId, 'purchase_manager_approval_threshold', 0);
+            $ownerThreshold = (float) SystemSetting::scalar($tenantId, 'purchase_owner_approval_threshold', 0);
+            $approvalLevel = $ownerThreshold > 0 && $total >= $ownerThreshold
+                ? 'owner'
+                : ($managerThreshold > 0 && $total >= $managerThreshold ? 'manager' : null);
             $purchase = Purchase::withoutGlobalScopes()->create([
                 'tenant_id' => $tenantId, 'warehouse_id' => $warehouseId,
-                'contact_id' => $contactId, 'status' => 'ordered', 'total' => $total,
+                'contact_id' => $contactId, 'status' => $approvalLevel ? 'pending_approval' : 'ordered',
+                'approval_level' => $approvalLevel, 'requested_by' => $actorId, 'total' => $total,
             ]);
             foreach ($lines as $l) {
                 $purchase->lines()->create($l);
             }
+            if ($approvalLevel) {
+                ApprovalRequest::withoutGlobalScopes()->create([
+                    'tenant_id' => $tenantId, 'subject_type' => 'purchase_order', 'subject_id' => $purchase->id,
+                    'amount' => $total, 'status' => 'pending', 'requested_by' => $actorId,
+                    'metadata' => ['required_level' => $approvalLevel],
+                ]);
+            }
+            $this->audit->log($tenantId, $actorId, 'purchase.order.created', Purchase::class, $purchase->id, null, $purchase->load('lines')->toArray());
 
             return $purchase;
         });
@@ -56,6 +72,7 @@ final class PurchaseService
             if ($purchase->status === 'received') {
                 return $purchase; // idempotent
             }
+            abort_if($purchase->status === 'pending_approval', 422, 'Purchase order requires approval before receiving.');
             abort_if($purchase->status === 'cancelled', 422, 'Cannot receive a cancelled purchase.');
 
             $map = null;
