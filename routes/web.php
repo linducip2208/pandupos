@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BarcodeWorkspaceController;
+use App\Http\Controllers\BatchWorkspaceController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\BundleWorkspaceController;
 use App\Http\Controllers\DashboardController;
@@ -100,6 +101,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/{product}/edit', [ProductMasterController::class, 'edit'])->name('edit');
         Route::put('/{product}', [ProductMasterController::class, 'update'])->name('update');
         Route::post('/{product}/archive', [ProductMasterController::class, 'archive'])->name('archive');
+    });
+    Route::prefix('batches')->name('batches.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
+        Route::get('/', [BatchWorkspaceController::class, 'index'])->name('index');
+        Route::post('/receive', [BatchWorkspaceController::class, 'receive'])->name('receive');
     });
     Route::get('/pos', fn () => view('pos.index'))->name('pos.index')
         ->middleware(['entitlement:pos.access', 'module:pos']);

@@ -16,7 +16,7 @@ Canonical readiness percentages live in `PRODUCTION_READINESS_SCORE.md`; this ma
 | Selling price groups | Retail/wholesale/member/VIP/branch/group/promo/date/quantity resolver with POS source trace | D | D | D | D | D | D | D | FEATURE COMPLETE | Create/edit/archive, audit and automatic POS customer-group selection verified |
 | Combo/bundle | Relational components, audited tenant component manager and atomic sale/return/void stock | D | D | D | D | D | D | D | FEATURE COMPLETE | UI sync and lifecycle regression verified |
 | Opening stock/location assignment | Generic ledger increase only | P | M | M | M | P | M | P | PARTIAL | Governed workflow/audit |
-| Lot/batch/expiry/FEFO | Lot provenance, expiry report API and controlled FEFO allocation | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and purchase/sale selectors |
+| Lot/batch/expiry/FEFO | Tenant batch workspace, lot provenance, expiry visibility, receive-to-ledger and controlled FEFO allocation | D | D | P | P | D | D | D | PARTIAL | Purchase/POS batch selectors, granular override permission and end-to-end selector tests |
 | Serial tracking | Controlled lifecycle, ledger linkage and duplicate-sale prevention | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and return/transfer integration |
 | Rack/bin | Optional zone/rack/shelf/bin master with location-linked movements | D | D | D | D | D | D | D | PARTIAL | Edit/deactivate workflow and location selectors in transactions |
 | Ledger/WAC | Append-only ledger, pluggable strategy contract, WAC COGS/reversals/transfers and reconcile CLI | D | P | P | D | D | D | D | PARTIAL | Production concurrency/load evidence |
