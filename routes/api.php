@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\InventoryConfigurationController;
+use App\Http\Controllers\Api\V1\InventoryControlController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MetaController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -65,6 +66,15 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     Route::post('inventory/transfers/{transfer}/in-transit', [StockTransferController::class, 'inTransit']);
     Route::post('inventory/transfers/{transfer}/receive', [StockTransferController::class, 'receive']);
     Route::post('inventory/transfers/{transfer}/cancel', [StockTransferController::class, 'cancel']);
+    Route::get('inventory/adjustments', [InventoryControlController::class, 'adjustments']);
+    Route::post('inventory/adjustments', [InventoryControlController::class, 'storeAdjustment']);
+    Route::post('inventory/adjustments/{adjustment}/approve', [InventoryControlController::class, 'approveAdjustment']);
+    Route::post('inventory/adjustments/{adjustment}/post', [InventoryControlController::class, 'postAdjustment']);
+    Route::get('inventory/counts', [InventoryControlController::class, 'counts']);
+    Route::post('inventory/counts', [InventoryControlController::class, 'storeCount']);
+    Route::put('inventory/counts/{count}/quantities', [InventoryControlController::class, 'recordCount']);
+    Route::post('inventory/counts/{count}/approve', [InventoryControlController::class, 'approveCount']);
+    Route::post('inventory/counts/{count}/post', [InventoryControlController::class, 'postCount']);
 
     // Purchasing: stock increases ONLY on receive
     Route::apiResource('purchases', PurchaseController::class)->only(['index', 'store']);

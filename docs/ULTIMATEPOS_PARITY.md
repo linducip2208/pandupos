@@ -17,10 +17,10 @@ Legend: `D` done, `P` partial, `M` missing, `—` not applicable. `FEATURE COMPL
 | Lot/batch/expiry/FEFO | Lot provenance, expiry report API and controlled FEFO allocation | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and purchase/sale selectors |
 | Serial tracking | Controlled lifecycle, ledger linkage and duplicate-sale prevention | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and return/transfer integration |
 | Rack/bin | Optional zone/rack/shelf/bin master with location-linked movements | D | M | D | P | D | D | D | PARTIAL | Management UI and granular permission |
-| Ledger/WAC | Append-only movements, locks, WAC/valuation | P | P | P | P | D | P | P | PARTIAL | Taxonomy/cost/concurrency matrix |
+| Ledger/WAC | Append-only movements, locks, atomic balance cache, WAC/valuation and reconcile CLI | P | P | P | P | D | P | D | PARTIAL | Complete costing/concurrency matrix |
 | Reservation | Audited idempotent reserve/release/consume/expire and available-to-promise | D | M | D | P | D | D | D | PARTIAL | Sales-order/held-cart UI integration and scheduler |
 | Transfer | Audited state machine with approval, transit, partial receipt and preserved cost | D | M | D | D | D | D | D | PARTIAL | Tenant management UI |
-| Adjustment/count/reconcile | No complete workflow/command | M | M | M | M | — | M | M | NOT STARTED | All three workflows |
+| Adjustment/count/reconcile | Audited approve/post adjustment, count snapshot-to-post, read-only reconcile CLI | D | M | D | D | D | D | D | PARTIAL | Tenant UI and requester/approver segregation |
 | PO/partial receipt | Draft and cumulative receive service/API | P | M | P | P | D | P | P | PARTIAL | UI/approval/document split |
 | Supplier invoice/payment/return | No separate documents | M | M | M | M | — | M | M | NOT STARTED | Complete AP chain |
 | Quotation/proforma/order/delivery | Final invoice foundation only | M | M | M | M | — | M | M | NOT STARTED | Immutable documents/conversions |

@@ -45,10 +45,10 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Batch/expiry/FEFO | Lot provenance, expiry summary and controlled FEFO allocation | None | Receive/expiry endpoints | Product policy only | Tenant references validated | Allocation/expired blocking | Present | PARTIAL |
 | Serial lifecycle | Controlled receive/sell/return/damage/transfer service and movement links | None | Receive/list endpoints | Product policy only | Tenant/invoice references validated | Duplicate-sale/lifecycle proof | Present | PARTIAL |
 | Rack/bin | Optional zone/rack/shelf/bin master and location-linked ledger | None | List/create | Product policy only | Tenant/warehouse references checked | Location stock flow | Present | PARTIAL |
-| Inventory ledger/WAC | Append-only movements, locks, valuation | Report only | Partial | Coarse | Checked | Partial | Present | PARTIAL |
+| Inventory ledger/WAC | Append-only movements, atomic balance cache, locks and valuation | Report only | Partial | Coarse | Checked | Reconcile/cache coverage | Present | PARTIAL |
 | Reservation | Idempotent reserve/release/consume/expire with available-to-promise and audit | None | List/create/release/consume | Product policy only | Tenant/warehouse/location/batch checked | Oversell/release/consume | Present | PARTIAL |
 | Transfer | Audited approve/ship/transit/partial-receive/receive/cancel state machine; cost preserved | None | Full workflow endpoints | `inventory.transfer` | Tenant warehouses/variants checked | Partial receiving/no early destination stock | Present | PARTIAL |
-| Adjustment/count/reconcile | No governed workflow/command | None | None | None | N/A | None | Target only | MISSING |
+| Adjustment/count/reconcile | Reasoned approve/post adjustment, snapshot/review/approve/post count, read-only reconcile command | None | Full adjustment/count API; CLI reconcile | `inventory.adjust` | Tenant warehouse/variant scope | Posting/idempotency/reconcile proof | Present | PARTIAL |
 | Purchase/partial receipt | Draft plus cumulative receipt transaction | No full UI | List/create/receive | Coarse | Checked | Partial receive | Present | PARTIAL |
 | Purchase request/invoice/payment/return | Generic approval only | None | None | None | N/A | None | Target only | MISSING |
 | Invoice/payment | Atomic checkout, lines, split payments | Basic POS/portal | Partial | Void gate | Checked | Partial | Present | PARTIAL |
@@ -86,10 +86,10 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 39% | Advanced inventory foundations and transfer state machine exist; UI and major document workflows remain absent |
+| Core parity | 43% | Advanced inventory control backend/API is materially implemented; UI and major document workflows remain absent |
 | SaaS parity | 46% | Billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 46% | Transfer partial-receipt, cost preservation and destination-timing invariants are proven; most final-matrix workflows remain |
+| Test readiness | 50% | Adjustment/count/reconcile invariants and expanded FK relationships are proven; many document/POS tests remain |
 | Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
 | Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
 | Production readiness | 26% | Mandatory production gates are not satisfied |

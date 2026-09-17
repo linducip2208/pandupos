@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\InventoryBalance;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\StockReservation;
@@ -152,13 +153,19 @@ final class StockService
 
     private function record(int $tenantId, int $warehouseId, int $variantId, float $qty, float $cost, string $type, string $refType, ?int $refId, ?int $batchId = null, ?int $serialNumberId = null, ?int $locationId = null): StockMovement
     {
-        return StockMovement::withoutGlobalScopes()->create([
+        $movement = StockMovement::withoutGlobalScopes()->create([
             'tenant_id' => $tenantId, 'warehouse_id' => $warehouseId, 'warehouse_location_id' => $locationId,
             'product_variant_id' => $variantId, 'inventory_batch_id' => $batchId,
             'serial_number_id' => $serialNumberId, 'reference_type' => $refType,
             'reference_id' => $refId, 'movement_type' => $type,
             'quantity' => $qty, 'unit_cost' => $cost, 'occurred_at' => now(),
         ]);
+        $balance = InventoryBalance::withoutGlobalScopes()->firstOrCreate([
+            'tenant_id' => $tenantId, 'warehouse_id' => $warehouseId, 'product_variant_id' => $variantId,
+        ], ['quantity' => 0]);
+        $balance->increment('quantity', $type === 'in' ? $qty : -$qty);
+
+        return $movement;
     }
 
     private function validateMutation(int $tenantId, int $warehouseId, int $variantId, float $qty, ?int $locationId = null): void

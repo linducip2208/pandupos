@@ -28,8 +28,8 @@ Execute in this order:
 6. Finish UI/permissions/audit and transaction selectors for implemented batch/expiry/FEFO, serial and physical-location foundations.
 7. Integrate implemented reservation service into sales-order/held-cart UI and schedule expiry cleanup.
 8. Add tenant UI for the implemented transfer approval/ship/transit/partial-receive/receive/cancel workflow.
-9. Reasoned/authorized/audited adjustments and stock-count snapshot/review/posting.
-10. Read-only `inventory:reconcile`.
+9. Add UI and requester/approver segregation for the implemented governed adjustment and stock-count workflows.
+10. Operationalize the implemented read-only `inventory:reconcile` command and alert on differences; retain explicit-only `--fix`.
 11. Complete WAC matrix and costing-strategy contract for future FIFO.
 
 Exit only when all applicable backend/UI/API/permission/isolation/audit/tests/docs layers exist, local gates pass, main is pushed, and Actions is green.

@@ -25,6 +25,7 @@ use App\Models\IdempotencyKey;
 use App\Models\ImpersonationSession;
 use App\Models\IntegrationFeatureAssignment;
 use App\Models\IntegrationProvider;
+use App\Models\InventoryBalance;
 use App\Models\InventoryBatch;
 use App\Models\Membership;
 use App\Models\PaymentProof;
@@ -40,6 +41,10 @@ use App\Models\SalesLine;
 use App\Models\SalesReturn;
 use App\Models\SerialNumber;
 use App\Models\ServerChangeLog;
+use App\Models\StockAdjustment;
+use App\Models\StockAdjustmentLine;
+use App\Models\StockCount;
+use App\Models\StockCountLine;
 use App\Models\StockMovement;
 use App\Models\StockReservation;
 use App\Models\Subscription;
@@ -85,8 +90,13 @@ class DatabaseRelationshipAuditTest extends TestCase
             Category::class => ['tenant', 'parent'], Brand::class => ['tenant'], Unit::class => ['tenant'],
             Product::class => ['tenant', 'category', 'brand', 'unit'], ProductVariant::class => ['tenant', 'product'],
             InventoryBatch::class => ['tenant', 'variant', 'warehouse', 'supplier', 'purchase'],
+            InventoryBalance::class => ['tenant', 'warehouse', 'variant'],
             SerialNumber::class => ['tenant', 'variant', 'warehouse', 'inventoryBatch', 'purchase', 'salesInvoice'],
             StockReservation::class => ['tenant', 'warehouse', 'warehouseLocation', 'variant', 'inventoryBatch'],
+            StockAdjustment::class => ['tenant', 'warehouse', 'requester', 'approver', 'poster'],
+            StockAdjustmentLine::class => ['adjustment', 'variant'],
+            StockCount::class => ['tenant', 'warehouse', 'creator', 'approver', 'poster'],
+            StockCountLine::class => ['stockCount', 'variant'],
             StockMovement::class => ['tenant', 'warehouse', 'warehouseLocation', 'variant', 'inventoryBatch', 'serialNumber'],
             TransferOrder::class => ['tenant', 'fromWarehouse', 'toWarehouse', 'approver', 'shipper'],
             TransferLine::class => ['transferOrder', 'variant'], Contact::class => ['tenant'],
