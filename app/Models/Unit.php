@@ -9,7 +9,12 @@ class Unit extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'name', 'short_name'];
+    protected $fillable = ['tenant_id', 'name', 'short_name', 'is_active'];
+
+    protected function casts(): array
+    {
+        return ['is_active' => 'boolean'];
+    }
 
     public function products()
     {

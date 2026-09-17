@@ -2,12 +2,14 @@
 
 Updated: 2026-09-17.
 
+This file is the canonical score ledger. Other readiness documents mirror these percentages; scores change only with repository and automated-test evidence.
+
 | Dimension | Score | Evidence |
 |---|---:|---|
-| Core parity | 64% | Purchasing and sales documents through reserved orders and partial delivery are implemented; tenant sales UI and major POS workflows remain |
+| Core parity | 67% | Product Master tenant CRUD plus purchasing and sales documents through partial delivery are implemented; later core sprints remain |
 | SaaS parity | 46% | Functional control-plane foundations; billing and automation incomplete |
 | Addon parity | 1% | No requested addon meets the completeness rule |
-| Test readiness | 66% | Purchasing, commercial lifecycle, reservation and partial delivery behavior are proven; many UI/invoice/POS items remain |
+| Test readiness | 68% | Product Master UI/isolation/archive plus purchasing and sales document behavior are proven; later core matrices remain |
 | Security readiness | 58% | Representative isolation/auth/webhook controls; full audit absent |
 | Operations readiness | 27% | CI green; staging/load/restore/monitoring evidence absent |
 | Production readiness | 26% | Weighted mandatory release-gate completion |

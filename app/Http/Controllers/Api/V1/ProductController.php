@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\AuditService;
 use App\Services\UsageLimitService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -81,5 +82,34 @@ class ProductController extends Controller
         $this->authorize('view', $product);
 
         return response()->json($product->load(['variants', 'locations']));
+    }
+
+    public function update(Request $request, Product $product, AuditService $audit)
+    {
+        $this->authorize('update', $product);
+        $tenantId = TenantContext::idOrFail();
+        $data = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:255'], 'product_type' => ['sometimes', Rule::in(['stock', 'service', 'bundle'])],
+            'sku' => ['sometimes', 'nullable', 'string', 'max:64', Rule::unique('products')->where('tenant_id', $tenantId)->ignore($product)],
+            'barcode' => ['sometimes', 'nullable', 'string', 'max:64'], 'category_id' => ['sometimes', 'nullable', Rule::exists('categories', 'id')->where('tenant_id', $tenantId)],
+            'brand_id' => ['sometimes', 'nullable', Rule::exists('brands', 'id')->where('tenant_id', $tenantId)], 'unit_id' => ['sometimes', 'nullable', Rule::exists('units', 'id')->where('tenant_id', $tenantId)],
+            'alert_quantity' => ['sometimes', 'numeric', 'min:0'], 'tax_rate' => ['sometimes', 'numeric', 'min:0', 'max:100'],
+            'tax_method' => ['sometimes', Rule::in(['inclusive', 'exclusive', 'zero', 'exempt'])], 'track_inventory' => ['sometimes', 'boolean'], 'is_active' => ['sometimes', 'boolean'],
+        ]);
+        $before = $product->toArray();
+        $product->update($data);
+        $audit->log($tenantId, $request->user()->id, 'product.updated.api', Product::class, $product->id, $before, $product->fresh()->toArray());
+
+        return response()->json($product->fresh()->load(['variants', 'locations']));
+    }
+
+    public function archive(Request $request, Product $product, AuditService $audit)
+    {
+        $this->authorize('update', $product);
+        $before = $product->toArray();
+        $product->update(['is_active' => false]);
+        $audit->log($product->tenant_id, $request->user()->id, 'product.archived.api', Product::class, $product->id, $before, $product->fresh()->toArray());
+
+        return response()->json($product->fresh());
     }
 }

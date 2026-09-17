@@ -6,6 +6,7 @@
     "dependencies": [],
     "permissions": [
         "inventory.view",
+        "products.manage",
         "inventory.adjust",
         "inventory.transfer"
     ],

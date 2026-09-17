@@ -2,6 +2,8 @@
 
 Updated: 2026-09-17. This is an executable backlog derived from repository evidence, not desired documentation.
 
+Canonical readiness percentages live in `PRODUCTION_READINESS_SCORE.md`; this file contains only the remaining executable gaps.
+
 ## Release gates
 
 | Gate | State | Evidence required to close |
@@ -20,7 +22,7 @@ Updated: 2026-09-17. This is an executable backlog derived from repository evide
 
 Execute in this order:
 
-1. Product types (stock/service/bundle), inventory flag, images, tax behavior, reorder, location assignment, variant attributes/barcode.
+1. Product Master tenant CRUD, images, types, tax, reorder, variants, locations, audit and safe archive are implemented; complete remaining API variant/location parity during the core API sprint.
 2. Base/sub-unit graph and precision-safe conversions; prove 2 cartons = 48 pcs, sell 5, balance 43.
 3. Normal/variant/weighing parser, configurable scale rules, labels and print templates.
 4. Price lists for tenant/location/customer group/date/priority with audited resolver.

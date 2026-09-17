@@ -23,4 +23,9 @@ class ProductPolicy
         return $user->hasPermissionTo('inventory.adjust') || $user->is_platform_admin
             || $user->memberships()->exists();
     }
+
+    public function update(User $user, Product $product): bool
+    {
+        return $this->view($user, $product) && ($user->hasPermissionTo('products.manage') || $user->is_platform_admin || $user->memberships()->exists());
+    }
 }

@@ -4,9 +4,11 @@ Audit date: 2026-09-17
 
 Branch: `main`
 
-Verified CI commit: `b9fb38150905cf7ffd6f13d332687f37dd51bdb5`
+Verified CI commit: `8533ad7d927e6a74e2cf97686e7062c277b0d8ef`
 
-GitHub Actions run: [35129303206](https://github.com/linducip2208/pandupos/actions/runs/35129303206) — **success**
+GitHub Actions run: [35187238713](https://github.com/linducip2208/pandupos/actions/runs/35187238713) — **success**
+
+Canonical percentages are maintained in `PRODUCTION_READINESS_SCORE.md`; this audit mirrors them.
 
 This replaces earlier optimistic status reports. A class, route, migration, screen, or document by itself does not make a feature complete. `DONE` means the repository contains the relevant workflow and automated evidence. `PARTIAL` means useful implementation exists but at least one required layer or invariant is missing. `MISSING` means no meaningful implementation was found. `BLOCKED` means an external decision or environment is required.
 
@@ -36,7 +38,7 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Area | Backend | UI | API | Permission | Tenant | Tests | Docs | Status |
 |---|---|---|---|---|---|---|---|---|
 | Tenant context/scoping | Present | Present | Present | Membership/platform gates | Representative isolation proven | Present | Present | DONE |
-| Product master basics | Types, tracking, image/tax/reorder metadata, variant attributes, warehouse assignments | No complete tenant CRUD | Create/list/show | Product policy | Scoped and validated | Feature/basic flow | Present | PARTIAL |
+| Product master | Types, tracking, image/tax/reorder metadata, variants/attributes, warehouse assignments, safe archive | Responsive list/create/view/edit plus category/brand/unit management | Create/list/show/update/archive foundation | Product policy plus `products.manage` registry | Scoped and cross-tenant tested | 33 UI/isolation/archive assertions plus API basics | Present | PARTIAL |
 | Unit conversion | Direct/inverse/chained tenant-safe conversion service | None | List/create definitions | Product policy | Cross-tenant rejection tested | Carton→pcs stock flow | Present | PARTIAL |
 | SKU/normal barcode | Product and variant SKU/barcode | POS lookup | Partial | Product policy | Scoped | Variant/unit flow | Basic | PARTIAL |
 | Weighing barcode/labels | Configurable tenant parser for weight/price barcodes | None | Profile/create/parse | Product policy | Tenant-filtered | Parser workflow | Present | PARTIAL |
@@ -87,10 +89,10 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 64% | Purchasing and sales document foundations through partial delivery are tested; tenant sales UI, posted invoice conversion and major POS workflows remain |
+| Core parity | 67% | Product Master tenant CRUD and sales documents through partial delivery are tested; later core sprints remain |
 | SaaS parity | 46% | Billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 66% | Purchasing, commercial-document lifecycle, stock reservation and partial delivery are proven; UI/invoice/POS matrices remain |
+| Test readiness | 68% | Product Master UI/isolation/archive, commercial lifecycle, reservation and partial delivery are proven; later core matrices remain |
 | Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
 | Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
 | Production readiness | 26% | Mandatory production gates are not satisfied |

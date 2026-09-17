@@ -6,9 +6,11 @@ Legend: `D` done, `P` partial, `M` missing, `—` not applicable. `FEATURE COMPL
 
 ## Core parity
 
+Canonical readiness percentages live in `PRODUCTION_READINESS_SCORE.md`; this matrix supplies its row-level evidence.
+
 | Reference feature | PanduPOS evidence | BE | UI | API | Perm | Tenant | Tests | Docs | Status | Gap |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|---|
-| Product/category/brand/unit/variant | Types, tracking/tax/image metadata, variant attributes, locations and API | P | M | P | P | D | P | P | PARTIAL | Complete tenant CRUD UI and update/archive flow |
+| Product/category/brand/unit/variant | Responsive tenant CRUD, image, attributes, locations, safe archive, audit and API foundation | D | D | P | D | D | D | D | PARTIAL | Complete API variant/location update parity and Sprint 2 unit selectors |
 | Sub-units/conversion | Tenant-safe direct/inverse/chained service and API definitions | D | M | D | P | D | D | D | PARTIAL | Tenant UI and purchase/POS unit selectors |
 | SKU/barcode/weighing/labels | Normal/variant barcode and configurable weight/price parser | P | M | D | P | D | D | D | PARTIAL | Label templates and print UI |
 | Selling price groups | Global/branch/group/promo/date/quantity/priority resolver | D | M | D | P | D | D | D | PARTIAL | Tenant management UI and edit audit |

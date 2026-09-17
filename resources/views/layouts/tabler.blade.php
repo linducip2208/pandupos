@@ -26,6 +26,7 @@
                     </ul></li>
                     @can('inventory.view')
                         <li class="nav-group"><button class="nav-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#nav-inventory" aria-expanded="true"><x-nav-icon name="inventory-group"/><span>📦 Persediaan</span><span class="nav-chevron">⌄</span></button><ul class="collapse show nav-submenu" id="nav-inventory">
+                            <li class="nav-item"><a class="nav-link" href="{{ route('product-master.index') }}"><x-nav-icon name="product-master"/><span class="nav-link-title">Master Produk</span></a></li>
                             <li class="nav-item"><a class="nav-link" href="{{ route('inventory.index') }}"><x-nav-icon name="inventory-control"/><span class="nav-link-title">Kontrol Persediaan</span></a></li>
                         </ul></li>
                     @endcan

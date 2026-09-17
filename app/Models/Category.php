@@ -9,7 +9,12 @@ class Category extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'name', 'parent_id'];
+    protected $fillable = ['tenant_id', 'name', 'parent_id', 'is_active'];
+
+    protected function casts(): array
+    {
+        return ['is_active' => 'boolean'];
+    }
 
     public function parent()
     {

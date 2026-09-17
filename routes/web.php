@@ -24,6 +24,7 @@ use App\Http\Controllers\Portal\DashboardController as PortalDashboardController
 use App\Http\Controllers\Portal\InvoiceController as PortalInvoiceController;
 use App\Http\Controllers\Portal\OrderController as PortalOrderController;
 use App\Http\Controllers\Portal\PaymentProofController as PortalPaymentProofController;
+use App\Http\Controllers\ProductMasterController;
 use App\Http\Controllers\ProgrammaticSeoController;
 use App\Http\Controllers\PurchasingWorkspaceController;
 use App\Http\Controllers\ReportPageController;
@@ -78,6 +79,22 @@ Route::prefix('portal')->name('portal.')->group(function () {
 
 Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::prefix('products')->name('product-master.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
+        Route::get('/', [ProductMasterController::class, 'index'])->name('index');
+        Route::get('/create', [ProductMasterController::class, 'create'])->name('create');
+        Route::post('/', [ProductMasterController::class, 'store'])->name('store');
+        Route::post('/categories', [ProductMasterController::class, 'storeCategory'])->name('categories.store');
+        Route::put('/categories/{category}', [ProductMasterController::class, 'updateCategory'])->name('categories.update');
+        Route::post('/brands', [ProductMasterController::class, 'storeBrand'])->name('brands.store');
+        Route::put('/brands/{brand}', [ProductMasterController::class, 'updateBrand'])->name('brands.update');
+        Route::post('/units', [ProductMasterController::class, 'storeUnit'])->name('units.store');
+        Route::put('/units/{unit}', [ProductMasterController::class, 'updateUnit'])->name('units.update');
+        Route::post('/masters/{type}/{id}/archive', [ProductMasterController::class, 'archiveMaster'])->where('type', 'category|brand|unit')->name('masters.archive');
+        Route::get('/{product}', [ProductMasterController::class, 'show'])->name('show');
+        Route::get('/{product}/edit', [ProductMasterController::class, 'edit'])->name('edit');
+        Route::put('/{product}', [ProductMasterController::class, 'update'])->name('update');
+        Route::post('/{product}/archive', [ProductMasterController::class, 'archive'])->name('archive');
+    });
     Route::get('/pos', fn () => view('pos.index'))->name('pos.index')
         ->middleware(['entitlement:pos.access', 'module:pos']);
     Route::get('/reports/{type}', [ReportPageController::class, 'show'])->name('reports.show');

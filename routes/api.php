@@ -37,7 +37,8 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         ->middleware(['entitlement:pos.access', 'module:pos']);
 
     // Catalog & inventory
-    Route::apiResource('products', ProductController::class)->only(['index', 'store', 'show']);
+    Route::apiResource('products', ProductController::class)->only(['index', 'store', 'show', 'update']);
+    Route::post('products/{product}/archive', [ProductController::class, 'archive']);
     Route::apiResource('contacts', ContactController::class)->only(['index', 'store']);
     Route::get('categories', [CatalogController::class, 'categories']);
     Route::post('categories', [CatalogController::class, 'storeCategory']);
