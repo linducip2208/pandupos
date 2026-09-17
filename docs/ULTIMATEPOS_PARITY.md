@@ -12,7 +12,7 @@ Canonical readiness percentages live in `PRODUCTION_READINESS_SCORE.md`; this ma
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|---|
 | Product/category/brand/unit/variant | Responsive tenant CRUD, image, attributes, locations, safe archive, audit and API foundation | D | D | P | D | D | D | D | PARTIAL | Complete API variant/location update parity |
 | Sub-units/conversion | Tenant-safe direct/inverse/chained conversion manager integrated with purchasing, POS and Sales Order | D | D | D | D | D | D | D | FEATURE COMPLETE | Sprint 2 gates passed locally; CI verification recorded per sprint |
-| SKU/barcode/weighing/labels | Normal/variant barcode and configurable weight/price parser | P | M | D | P | D | D | D | PARTIAL | Label templates and print UI |
+| SKU/barcode/weighing/labels | Normal/variant barcode, configurable weight/price parser and Code 128 labels | D | D | D | D | D | D | D | FEATURE COMPLETE | A4 sheet and dedicated thermal layouts verified |
 | Selling price groups | Global/branch/group/promo/date/quantity/priority resolver | D | M | D | P | D | D | D | PARTIAL | Tenant management UI and edit audit |
 | Combo/bundle | Relational components and atomic sale/return/void stock | D | M | D | P | D | D | D | PARTIAL | Tenant management UI |
 | Opening stock/location assignment | Generic ledger increase only | P | M | M | M | P | M | P | PARTIAL | Governed workflow/audit |

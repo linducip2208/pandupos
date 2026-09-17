@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\SerialNumber;
 use App\Models\StockReservation;
 use App\Models\WarehouseLocation;
+use App\Services\AuditService;
 use App\Services\BarcodeParserService;
 use App\Services\BatchInventoryService;
 use App\Services\PriceResolverService;
@@ -22,7 +23,7 @@ use Illuminate\Validation\Rule;
 
 class InventoryConfigurationController extends Controller
 {
-    public function storeBarcodeProfile(Request $request)
+    public function storeBarcodeProfile(Request $request, AuditService $audit)
     {
         $this->authorize('create', Product::class);
         $tenantId = TenantContext::idOrFail();
@@ -45,7 +46,10 @@ class InventoryConfigurationController extends Controller
             'Barcode field positions exceed total length.'
         );
 
-        return response()->json(['data' => BarcodeProfile::create($data)], 201);
+        $profile = BarcodeProfile::create($data);
+        $audit->log($tenantId, $request->user()?->id, 'barcode.profile.created', BarcodeProfile::class, $profile->id, null, $profile->toArray());
+
+        return response()->json(['data' => $profile], 201);
     }
 
     public function parseBarcode(Request $request, BarcodeParserService $parser)
