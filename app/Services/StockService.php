@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\CostingStrategy;
 use App\Models\InventoryBalance;
+use App\Models\InventoryBatch;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\StockReservation;
@@ -18,7 +19,7 @@ final class StockService
 
     public function increase(int $tenantId, int $warehouseId, int $variantId, float $qty, float $unitCost, string $refType, ?int $refId, ?int $batchId = null, ?int $serialNumberId = null, ?int $locationId = null): StockMovement
     {
-        $this->validateMutation($tenantId, $warehouseId, $variantId, $qty, $locationId);
+        $this->validateMutation($tenantId, $warehouseId, $variantId, $qty, $locationId, $batchId);
 
         return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $qty, $unitCost, $refType, $refId, $batchId, $serialNumberId, $locationId) {
             $this->lockVariant($tenantId, $variantId, $warehouseId);
@@ -29,7 +30,7 @@ final class StockService
 
     public function decrease(int $tenantId, int $warehouseId, int $variantId, float $qty, string $refType, ?int $refId, ?int $batchId = null, ?int $serialNumberId = null, ?int $locationId = null, ?float $unitCostOverride = null): StockMovement
     {
-        $this->validateMutation($tenantId, $warehouseId, $variantId, $qty, $locationId);
+        $this->validateMutation($tenantId, $warehouseId, $variantId, $qty, $locationId, $batchId);
 
         return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $qty, $refType, $refId, $batchId, $serialNumberId, $locationId, $unitCostOverride) {
             $this->lockVariant($tenantId, $variantId, $warehouseId);
@@ -148,7 +149,7 @@ final class StockService
         return $movement;
     }
 
-    private function validateMutation(int $tenantId, int $warehouseId, int $variantId, float $qty, ?int $locationId = null): void
+    private function validateMutation(int $tenantId, int $warehouseId, int $variantId, float $qty, ?int $locationId = null, ?int $batchId = null): void
     {
         if ($qty <= 0) {
             abort(422, 'Quantity must be greater than zero.');
@@ -161,6 +162,14 @@ final class StockService
             $location = WarehouseLocation::withoutGlobalScopes()
                 ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)->where('is_active', true)->find($locationId);
             abort_unless($location, 422, 'Warehouse location does not belong to tenant and warehouse.');
+        }
+        if ($batchId !== null) {
+            $batch = InventoryBatch::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('warehouse_id', $warehouseId)
+                ->where('product_variant_id', $variantId)
+                ->find($batchId);
+            abort_unless($batch, 422, 'Inventory batch does not belong to tenant, warehouse, and variant.');
         }
     }
 

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class GoodsReceiptLine extends Model
 {
-    protected $fillable = ['goods_receipt_id', 'purchase_line_id', 'product_variant_id', 'quantity', 'unit_cost'];
+    protected $fillable = ['goods_receipt_id', 'purchase_line_id', 'product_variant_id', 'inventory_batch_id', 'quantity', 'unit_cost'];
 
     protected function casts(): array
     {
@@ -26,5 +26,10 @@ class GoodsReceiptLine extends Model
     public function variant()
     {
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
+    public function batch()
+    {
+        return $this->belongsTo(InventoryBatch::class, 'inventory_batch_id');
     }
 }

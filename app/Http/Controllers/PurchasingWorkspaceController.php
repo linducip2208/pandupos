@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Contact;
+use App\Models\InventoryBatch;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\PurchaseReturn;
@@ -27,6 +28,7 @@ class PurchasingWorkspaceController extends Controller
             'warehouses' => Warehouse::query()->orderBy('name')->get(),
             'suppliers' => Contact::query()->whereIn('type', ['supplier', 'both'])->orderBy('name')->get(),
             'variants' => ProductVariant::query()->with('product.unit')->orderBy('sku')->get(),
+            'batches' => InventoryBatch::query()->orderBy('batch_number')->get(),
             'units' => Unit::query()->where('is_active', true)->orderBy('name')->get(),
             'purchases' => Purchase::query()->with(['contact', 'warehouse', 'lines.variant.product', 'goodsReceipts.lines'])->latest()->limit(30)->get(),
             'invoices' => SupplierInvoice::query()->with(['supplier', 'purchase', 'payments'])->latest()->limit(30)->get(),
@@ -58,9 +60,27 @@ class PurchasingWorkspaceController extends Controller
     {
         abort_unless($request->user()->can('purchase.create'), 403);
         $this->assertTenant($purchase->tenant_id);
-        $data = $request->validate(['lines' => ['required', 'array'], 'lines.*' => ['nullable', 'numeric', 'gt:0']]);
+        $data = $request->validate([
+            'lines' => ['required', 'array'],
+            'lines.*' => ['nullable', 'numeric', 'gt:0'],
+            'batch_ids' => ['nullable', 'array'],
+            'batch_ids.*' => ['nullable', 'integer'],
+            'batch_numbers' => ['nullable', 'array'],
+            'batch_numbers.*' => ['nullable', 'string', 'max:128'],
+            'manufactured_at' => ['nullable', 'array'],
+            'manufactured_at.*' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'array'],
+            'expires_at.*' => ['nullable', 'date'],
+        ]);
         $lines = collect($data['lines'])->filter(fn ($quantity) => $quantity !== null && $quantity !== '')
-            ->map(fn ($quantity, $variantId) => ['product_variant_id' => (int) $variantId, 'quantity' => $quantity])->values()->all();
+            ->map(fn ($quantity, $variantId) => [
+                'product_variant_id' => (int) $variantId,
+                'quantity' => $quantity,
+                'inventory_batch_id' => filled($data['batch_ids'][$variantId] ?? null) ? (int) $data['batch_ids'][$variantId] : null,
+                'batch_number' => $data['batch_numbers'][$variantId] ?? null,
+                'manufactured_at' => $data['manufactured_at'][$variantId] ?? null,
+                'expires_at' => $data['expires_at'][$variantId] ?? null,
+            ])->values()->all();
         $service->receive($purchase->id, $lines, TenantContext::idOrFail(), $request->user()->id);
 
         return back()->with('status', 'Goods Receipt berhasil diposting.');

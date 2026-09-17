@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ApprovalRequest;
 use App\Models\Contact;
 use App\Models\GoodsReceipt;
+use App\Models\InventoryBatch;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\SystemSetting;
@@ -17,7 +18,11 @@ use Illuminate\Validation\ValidationException;
 /** Stock increases ONLY on receiving, never on PO creation. */
 final class PurchaseService
 {
-    public function __construct(private StockService $stock, private AuditService $audit) {}
+    public function __construct(
+        private StockService $stock,
+        private AuditService $audit,
+        private BatchInventoryService $batches,
+    ) {}
 
     public function createDraft(int $tenantId, int $warehouseId, int $contactId, array $lines, ?int $actorId = null): Purchase
     {
@@ -99,7 +104,7 @@ final class PurchaseService
                 if ($qtyToReceive <= 0) {
                     continue;
                 }
-                $receivable[] = [$line, $qtyToReceive];
+                $receivable[] = [$line, $qtyToReceive, $row ?? []];
             }
 
             if ($receivable === []) {
@@ -113,14 +118,18 @@ final class PurchaseService
             ]);
             $receipt->update(['receipt_no' => 'GR-'.str_pad((string) $receipt->id, 8, '0', STR_PAD_LEFT)]);
 
-            foreach ($receivable as [$line, $qtyToReceive]) {
-                $this->stock->increase(
-                    $purchase->tenant_id, $purchase->warehouse_id,
-                    $line->product_variant_id, $qtyToReceive,
-                    (float) $line->unit_cost, 'purchase_receipt', $receipt->id
-                );
+            foreach ($receivable as [$line, $qtyToReceive, $row]) {
+                $batchId = $this->receiveIntoBatchIfRequested($purchase, $receipt, $line, $qtyToReceive, $row);
+                if ($batchId === null) {
+                    $this->stock->increase(
+                        $purchase->tenant_id, $purchase->warehouse_id,
+                        $line->product_variant_id, $qtyToReceive,
+                        (float) $line->unit_cost, 'purchase_receipt', $receipt->id
+                    );
+                }
                 $receipt->lines()->create([
                     'purchase_line_id' => $line->id, 'product_variant_id' => $line->product_variant_id,
+                    'inventory_batch_id' => $batchId,
                     'quantity' => $qtyToReceive, 'unit_cost' => $line->unit_cost,
                 ]);
                 $line->update(['received_quantity' => (float) ($line->received_quantity ?? 0) + $qtyToReceive]);
@@ -135,5 +144,54 @@ final class PurchaseService
 
             return $purchase;
         });
+    }
+
+    /**
+     * A purchase receipt may create a new lot or receive into an existing lot.
+     * The lot, receipt line, and append-only stock movement are written in the
+     * same transaction so a GRN can never leave untraceable batch stock behind.
+     */
+    private function receiveIntoBatchIfRequested(Purchase $purchase, GoodsReceipt $receipt, $line, float $quantity, array $row): ?int
+    {
+        $batchId = isset($row['inventory_batch_id']) ? (int) $row['inventory_batch_id'] : null;
+        $batchNumber = trim((string) ($row['batch_number'] ?? ''));
+        if ($batchId === null && $batchNumber === '') {
+            return null;
+        }
+
+        if ($batchId !== null) {
+            $batch = InventoryBatch::withoutGlobalScopes()
+                ->where('tenant_id', $purchase->tenant_id)
+                ->where('warehouse_id', $purchase->warehouse_id)
+                ->where('product_variant_id', $line->product_variant_id)
+                ->lockForUpdate()
+                ->find($batchId);
+            if (! $batch) {
+                throw ValidationException::withMessages(['inventory_batch_id' => 'Selected batch does not belong to this receipt.']);
+            }
+            if (($batch->purchase_id !== null && $batch->purchase_id !== $purchase->id)
+                || ($batch->supplier_id !== null && $batch->supplier_id !== $purchase->contact_id)) {
+                throw ValidationException::withMessages(['inventory_batch_id' => 'Selected batch provenance does not match this purchase.']);
+            }
+            $batch->fill([
+                'supplier_id' => $batch->supplier_id ?? $purchase->contact_id,
+                'purchase_id' => $batch->purchase_id ?? $purchase->id,
+            ])->save();
+            $this->stock->increase(
+                $purchase->tenant_id, $purchase->warehouse_id, $line->product_variant_id,
+                $quantity, (float) $line->unit_cost, 'purchase_receipt', $receipt->id, $batch->id,
+            );
+
+            return $batch->id;
+        }
+
+        $batch = $this->batches->receive(
+            $purchase->tenant_id, $purchase->warehouse_id, $line->product_variant_id,
+            $batchNumber, $quantity, (float) $line->unit_cost,
+            $row['manufactured_at'] ?? null, $row['expires_at'] ?? null,
+            $purchase->contact_id, $purchase->id, $receipt->id,
+        );
+
+        return $batch->id;
     }
 }

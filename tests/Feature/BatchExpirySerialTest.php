@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\Contact;
+use App\Models\InventoryBatch;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\BatchInventoryService;
+use App\Services\PurchaseService;
 use App\Services\SaleService;
 use App\Services\SerialNumberService;
 use App\Services\StockService;
@@ -121,5 +124,56 @@ class BatchExpirySerialTest extends TestCase
         app(SaleService::class)->checkout($tenant->id, $branch->id, $warehouse->id, null, [
             ['variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 20, 'inventory_batch_id' => $expired->id],
         ], [['method' => 'cash', 'amount' => 20]], 'batch-expired-sale');
+    }
+
+    public function test_goods_receipt_creates_a_provenanced_batch_and_links_the_ledger_and_receipt_line(): void
+    {
+        ['tenant' => $tenant, 'warehouse' => $warehouse, 'variant' => $variant] = $this->context();
+        $supplier = Contact::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'type' => 'supplier', 'name' => 'Supplier Lot',
+        ]);
+        $purchases = app(PurchaseService::class);
+        $purchase = $purchases->createDraft($tenant->id, $warehouse->id, $supplier->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 5, 'unit_cost' => 10,
+        ]]);
+
+        $purchases->receive($purchase->id, [[
+            'product_variant_id' => $variant->id,
+            'quantity' => 5,
+            'batch_number' => 'GRN-LOT-001',
+            'manufactured_at' => today()->subDays(3)->toDateString(),
+            'expires_at' => today()->addMonths(6)->toDateString(),
+        ]], $tenant->id);
+
+        $batch = InventoryBatch::withoutGlobalScopes()->where('batch_number', 'GRN-LOT-001')->firstOrFail();
+        $this->assertSame($purchase->id, $batch->purchase_id);
+        $this->assertSame($supplier->id, $batch->supplier_id);
+        $this->assertDatabaseHas('goods_receipt_lines', ['inventory_batch_id' => $batch->id, 'quantity' => 5]);
+        $this->assertDatabaseHas('stock_movements', [
+            'inventory_batch_id' => $batch->id,
+            'reference_type' => 'purchase_receipt',
+            'movement_type' => 'in',
+            'quantity' => 5,
+        ]);
+    }
+
+    public function test_goods_receipt_rejects_a_batch_from_another_tenant(): void
+    {
+        ['tenant' => $tenant, 'warehouse' => $warehouse, 'variant' => $variant] = $this->context();
+        $supplier = Contact::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'type' => 'supplier', 'name' => 'Supplier Scoped',
+        ]);
+        $purchase = app(PurchaseService::class)->createDraft($tenant->id, $warehouse->id, $supplier->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 1, 'unit_cost' => 10,
+        ]]);
+        ['tenant' => $otherTenant, 'warehouse' => $otherWarehouse, 'variant' => $otherVariant] = $this->context();
+        $foreignBatch = app(BatchInventoryService::class)->receive(
+            $otherTenant->id, $otherWarehouse->id, $otherVariant->id, 'FOREIGN-LOT', 1, 10,
+        );
+
+        $this->expectException(ValidationException::class);
+        app(PurchaseService::class)->receive($purchase->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 1, 'inventory_batch_id' => $foreignBatch->id,
+        ]], $tenant->id);
     }
 }

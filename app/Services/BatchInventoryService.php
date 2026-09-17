@@ -25,10 +25,11 @@ final class BatchInventoryService
         ?string $expiresAt = null,
         ?int $supplierId = null,
         ?int $purchaseId = null,
+        ?int $receiptId = null,
     ): InventoryBatch {
         $this->validateReferences($tenantId, $warehouseId, $variantId, $supplierId, $purchaseId);
 
-        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $batchNumber, $quantity, $unitCost, $manufacturedAt, $expiresAt, $supplierId, $purchaseId) {
+        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $batchNumber, $quantity, $unitCost, $manufacturedAt, $expiresAt, $supplierId, $purchaseId, $receiptId) {
             $batch = InventoryBatch::withoutGlobalScopes()->firstOrCreate(
                 [
                     'tenant_id' => $tenantId,
@@ -43,9 +44,21 @@ final class BatchInventoryService
                     'purchase_id' => $purchaseId,
                 ]
             );
+            if (($batch->purchase_id !== null && $batch->purchase_id !== $purchaseId)
+                || ($batch->supplier_id !== null && $batch->supplier_id !== $supplierId)) {
+                throw ValidationException::withMessages([
+                    'batch_number' => 'Existing batch provenance does not match this purchase receipt.',
+                ]);
+            }
+            $batch->fill([
+                'manufactured_at' => $batch->manufactured_at ?? $manufacturedAt,
+                'expires_at' => $batch->expires_at ?? $expiresAt,
+                'supplier_id' => $batch->supplier_id ?? $supplierId,
+                'purchase_id' => $batch->purchase_id ?? $purchaseId,
+            ])->save();
             $this->stock->increase(
                 $tenantId, $warehouseId, $variantId, $quantity, $unitCost,
-                'purchase_receipt', $purchaseId, $batch->id
+                'purchase_receipt', $receiptId ?? $purchaseId, $batch->id
             );
 
             return $batch;
