@@ -36,6 +36,8 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\PurchaseLine;
+use App\Models\PurchaseReturn;
+use App\Models\PurchaseReturnLine;
 use App\Models\Register;
 use App\Models\SalePayment;
 use App\Models\SalesInvoice;
@@ -51,6 +53,8 @@ use App\Models\StockMovement;
 use App\Models\StockReservation;
 use App\Models\Subscription;
 use App\Models\SubscriptionEvent;
+use App\Models\SupplierInvoice;
+use App\Models\SupplierPayment;
 use App\Models\SystemSetting;
 use App\Models\TenantDomain;
 use App\Models\TenantModule;
@@ -105,6 +109,10 @@ class DatabaseRelationshipAuditTest extends TestCase
             Purchase::class => ['tenant', 'warehouse', 'contact'], PurchaseLine::class => ['purchase', 'variant'],
             GoodsReceipt::class => ['tenant', 'purchase', 'warehouse', 'receiver'],
             GoodsReceiptLine::class => ['goodsReceipt', 'purchaseLine', 'variant'],
+            SupplierInvoice::class => ['tenant', 'purchase', 'supplier'],
+            SupplierPayment::class => ['tenant', 'invoice', 'creator'],
+            PurchaseReturn::class => ['tenant', 'purchase', 'creator'],
+            PurchaseReturnLine::class => ['purchaseReturn', 'purchaseLine', 'variant'],
             CashSession::class => ['tenant', 'register', 'openedBy'], SalesInvoice::class => ['tenant', 'branch', 'warehouse', 'contact'],
             SalesLine::class => ['invoice', 'variant'], SalePayment::class => ['tenant', 'invoice'],
             SalesReturn::class => ['tenant', 'invoice'], Device::class => ['tenant'],

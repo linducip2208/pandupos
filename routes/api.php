@@ -79,6 +79,9 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     // Purchasing: stock increases ONLY on receive
     Route::apiResource('purchases', PurchaseController::class)->only(['index', 'store']);
     Route::post('purchases/{purchase}/receive', [PurchaseController::class, 'receive']);
+    Route::post('supplier-invoices', [PurchaseController::class, 'storeSupplierInvoice']);
+    Route::post('supplier-invoices/{invoice}/payments', [PurchaseController::class, 'paySupplierInvoice']);
+    Route::post('purchases/{purchase}/returns', [PurchaseController::class, 'storeReturn']);
 
     // Sales / POS: atomic checkout + idempotency
     Route::apiResource('sales', SaleController::class)->only(['index', 'store']);
