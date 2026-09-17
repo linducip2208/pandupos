@@ -111,7 +111,8 @@ class InventoryWorkspaceController extends Controller
         $data = $request->validate([
             'from_warehouse_id' => ['required', 'integer', 'different:to_warehouse_id'],
             'to_warehouse_id' => ['required', 'integer'], 'lines' => ['required', 'array', 'min:1'],
-            'lines.*.product_variant_id' => ['required', 'integer'], 'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'lines.*.product_variant_id' => ['required', 'integer'], 'lines.*.inventory_batch_id' => ['nullable', 'integer'],
+            'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
         $service->createDraft(TenantContext::idOrFail(), (int) $data['from_warehouse_id'], (int) $data['to_warehouse_id'], $data['lines'], $data['notes'] ?? null, $request->user()->id);

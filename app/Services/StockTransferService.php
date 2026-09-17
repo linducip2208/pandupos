@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\InventoryBatch;
 use App\Models\ProductVariant;
 use App\Models\TransferLine;
 use App\Models\TransferOrder;
@@ -31,8 +32,15 @@ final class StockTransferService
                 if (! $variant || (float) $line['quantity'] <= 0) {
                     throw ValidationException::withMessages(['lines' => 'Every variant must belong to the tenant and quantity must be positive.']);
                 }
+                $batchId = isset($line['inventory_batch_id']) ? (int) $line['inventory_batch_id'] : null;
+                if ($batchId !== null && ! InventoryBatch::withoutGlobalScopes()
+                    ->where('tenant_id', $tenantId)->where('warehouse_id', $fromWarehouseId)
+                    ->where('product_variant_id', $variant->id)->whereKey($batchId)->exists()) {
+                    throw ValidationException::withMessages(['lines' => 'Selected batch must belong to the source warehouse and variant.']);
+                }
                 $transfer->lines()->create([
-                    'product_variant_id' => $variant->id, 'quantity' => $line['quantity'],
+                    'product_variant_id' => $variant->id, 'source_inventory_batch_id' => $batchId,
+                    'quantity' => $line['quantity'],
                 ]);
             }
             $this->audit->log($tenantId, $actorId, 'inventory.transfer.created', TransferOrder::class, $transfer->id, null, $transfer->load('lines')->toArray());
@@ -66,7 +74,14 @@ final class StockTransferService
             $before = $locked->load('lines')->toArray();
             foreach ($locked->lines as $line) {
                 $cost = $this->stock->weightedAverageCost($locked->tenant_id, $locked->from_warehouse_id, $line->product_variant_id);
-                $this->stock->decrease($locked->tenant_id, $locked->from_warehouse_id, $line->product_variant_id, (float) $line->quantity, 'transfer_out', $locked->id);
+                if ($line->source_inventory_batch_id !== null
+                    && $this->stock->onHandByBatch($locked->tenant_id, $locked->from_warehouse_id, $line->product_variant_id, $line->source_inventory_batch_id) < (float) $line->quantity) {
+                    throw ValidationException::withMessages(['lines' => 'Selected source batch has insufficient stock.']);
+                }
+                $this->stock->decrease(
+                    $locked->tenant_id, $locked->from_warehouse_id, $line->product_variant_id,
+                    (float) $line->quantity, 'transfer_out', $locked->id, $line->source_inventory_batch_id,
+                );
                 $line->update(['unit_cost' => $cost]);
             }
             $locked->update(['status' => 'shipped', 'shipped_by' => $actorId, 'shipped_at' => now()]);
@@ -94,7 +109,11 @@ final class StockTransferService
                 if ($quantity <= 0 || $quantity > $remaining) {
                     throw ValidationException::withMessages(['quantities' => "Receipt for line {$line->id} exceeds remaining quantity {$remaining}."]);
                 }
-                $this->stock->increase($locked->tenant_id, $locked->to_warehouse_id, $line->product_variant_id, $quantity, (float) $line->unit_cost, 'transfer_in', $locked->id);
+                $destinationBatchId = $this->destinationBatchId($locked, $line);
+                $this->stock->increase(
+                    $locked->tenant_id, $locked->to_warehouse_id, $line->product_variant_id,
+                    $quantity, (float) $line->unit_cost, 'transfer_in', $locked->id, $destinationBatchId,
+                );
                 $line->increment('received_quantity', $quantity);
             }
             $complete = ! $locked->lines()->whereColumn('received_quantity', '<', 'quantity')->exists();
@@ -145,5 +164,36 @@ final class StockTransferService
         if ($fromWarehouseId === $toWarehouseId || $count !== 2) {
             throw ValidationException::withMessages(['warehouse' => 'Source and destination must be different tenant warehouses.']);
         }
+    }
+
+    /** Copy the immutable lot identity and provenance into the destination warehouse once. */
+    private function destinationBatchId(TransferOrder $transfer, TransferLine $line): ?int
+    {
+        if ($line->source_inventory_batch_id === null) {
+            return null;
+        }
+
+        $source = InventoryBatch::withoutGlobalScopes()
+            ->where('tenant_id', $transfer->tenant_id)
+            ->where('warehouse_id', $transfer->from_warehouse_id)
+            ->where('product_variant_id', $line->product_variant_id)
+            ->lockForUpdate()
+            ->findOrFail($line->source_inventory_batch_id);
+        $destination = InventoryBatch::withoutGlobalScopes()->firstOrCreate([
+            'tenant_id' => $transfer->tenant_id,
+            'warehouse_id' => $transfer->to_warehouse_id,
+            'product_variant_id' => $line->product_variant_id,
+            'batch_number' => $source->batch_number,
+        ], [
+            'manufactured_at' => $source->manufactured_at,
+            'expires_at' => $source->expires_at,
+            'supplier_id' => $source->supplier_id,
+            'purchase_id' => $source->purchase_id,
+        ]);
+        if ($line->destination_inventory_batch_id === null) {
+            $line->update(['destination_inventory_batch_id' => $destination->id]);
+        }
+
+        return $destination->id;
     }
 }

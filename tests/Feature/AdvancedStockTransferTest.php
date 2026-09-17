@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\InventoryBatch;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
@@ -92,6 +93,35 @@ class AdvancedStockTransferTest extends TestCase
         $this->assertCount(2, $transfer->lines);
         $this->expectException(ValidationException::class);
         app(StockTransferService::class)->approve($transfer, $owner->id);
+    }
+
+    public function test_transfer_preserves_batch_provenance_without_destination_stock_before_receipt(): void
+    {
+        [$tenant, $owner, $source, $destination, $variant] = $this->context();
+        $batch = InventoryBatch::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $source->id, 'product_variant_id' => $variant->id,
+            'batch_number' => 'LOT-TRANSFER', 'manufactured_at' => today()->subDay(), 'expires_at' => today()->addMonth(),
+        ]);
+        $stock = app(StockService::class);
+        $stock->increase($tenant->id, $source->id, $variant->id, 5, 8, 'purchase_receipt', 1, $batch->id);
+        $service = app(StockTransferService::class);
+        $transfer = $service->createDraft($tenant->id, $source->id, $destination->id, [[
+            'product_variant_id' => $variant->id, 'inventory_batch_id' => $batch->id, 'quantity' => 5,
+        ]], null, $owner->id);
+
+        $service->approve($transfer, User::factory()->create()->id);
+        $service->ship($transfer, $owner->id);
+        $this->assertSame(0.0, $stock->onHand($tenant->id, $destination->id, $variant->id));
+        $received = $service->receive($transfer->fresh('lines'), [$transfer->lines->first()->id => 5], $owner->id);
+        $line = $received->lines->first();
+        $destinationBatch = InventoryBatch::withoutGlobalScopes()->findOrFail($line->destination_inventory_batch_id);
+
+        $this->assertSame($batch->batch_number, $destinationBatch->batch_number);
+        $this->assertSame($batch->expires_at->toDateString(), $destinationBatch->expires_at->toDateString());
+        $this->assertSame(5.0, $stock->onHandByBatch($tenant->id, $destination->id, $variant->id, $destinationBatch->id));
+        $this->assertDatabaseHas('stock_movements', [
+            'reference_type' => 'transfer_in', 'reference_id' => $transfer->id, 'inventory_batch_id' => $destinationBatch->id,
+        ]);
     }
 
     private function context(): array
