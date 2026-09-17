@@ -25,6 +25,7 @@ use App\Http\Controllers\Portal\InvoiceController as PortalInvoiceController;
 use App\Http\Controllers\Portal\OrderController as PortalOrderController;
 use App\Http\Controllers\Portal\PaymentProofController as PortalPaymentProofController;
 use App\Http\Controllers\ProgrammaticSeoController;
+use App\Http\Controllers\PurchasingWorkspaceController;
 use App\Http\Controllers\ReportPageController;
 use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
@@ -100,6 +101,14 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/counts', [InventoryWorkspaceController::class, 'storeCount'])->name('counts.store');
         Route::post('/counts/{count}/record', [InventoryWorkspaceController::class, 'recordCount'])->name('counts.record');
         Route::post('/counts/{count}/{action}', [InventoryWorkspaceController::class, 'countAction'])->where('action', 'approve|post')->name('counts.action');
+    });
+    Route::prefix('purchasing')->name('purchasing.')->middleware(['entitlement:purchase.access', 'module:purchasing'])->group(function () {
+        Route::get('/', [PurchasingWorkspaceController::class, 'index'])->name('index');
+        Route::post('/orders', [PurchasingWorkspaceController::class, 'storePurchase'])->name('orders.store');
+        Route::post('/orders/{purchase}/receive', [PurchasingWorkspaceController::class, 'receive'])->name('orders.receive');
+        Route::post('/orders/{purchase}/returns', [PurchasingWorkspaceController::class, 'storeReturn'])->name('returns.store');
+        Route::post('/invoices', [PurchasingWorkspaceController::class, 'storeInvoice'])->name('invoices.store');
+        Route::post('/invoices/{invoice}/payments', [PurchasingWorkspaceController::class, 'pay'])->name('payments.store');
     });
 });
 

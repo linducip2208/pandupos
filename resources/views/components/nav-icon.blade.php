@@ -5,6 +5,8 @@
 @case('report-group')<path d="M4 19V9M10 19V5M16 19v-8M22 19H2M4 3h16"/>@break
 @case('inventory-group')<path d="M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10"/>@break
 @case('inventory-control')<path d="M4 6h16v14H4zM8 6V4h8v2M8 11h8M8 15h5"/>@break
+@case('purchasing-group')<path d="M3 4h2l2 11h10l3-8H6M9 20h.01M17 20h.01"/>@break
+@case('purchasing-workspace')<path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5M16 16l2 2 3-4"/>@break
 @case('platform-group')<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6V20h-4v-.08a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1H4v-4h.08a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6V4h4v.08a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.14.37.35.7.6 1H20v4h-.08c-.25.3-.46.63-.52 1z"/>@break
 @case('platform-dashboard')<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 9h8V3h-8z"/>@break
 @case('dashboard')<path d="M4 4h6v6H4zM14 4h6v10h-6zM4 14h6v6H4zM14 18h6v2h-6z"/>@break

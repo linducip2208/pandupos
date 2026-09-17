@@ -35,8 +35,8 @@ Exit only when all applicable backend/UI/API/permission/isolation/audit/tests/do
 
 ## Sprint 2 — purchasing, sales documents, and POS
 
-1. Separate request, PO, receipts, supplier invoice/payment and purchase return.
-2. Configurable purchase approval levels and over-receive policy.
+1. Complete purchase request plus multi-line PO/return edit/cancel UX; PO, receipt, supplier invoice/payment and purchase return foundations and workspace now exist.
+2. Complete requester/approver segregation and configurable over-receive policy UI; manager/owner threshold routing now exists.
 3. Separate quotation, proforma, order, delivery, invoice, payment, return and credit note.
 4. Reservation on confirmed orders and partial delivery.
 5. Recurring templates without implicit charging.
