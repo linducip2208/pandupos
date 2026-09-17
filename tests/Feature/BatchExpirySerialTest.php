@@ -9,6 +9,7 @@ use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\BatchInventoryService;
+use App\Services\SaleService;
 use App\Services\SerialNumberService;
 use App\Services\StockService;
 use App\Services\TenantProvisioningService;
@@ -96,5 +97,25 @@ class BatchExpirySerialTest extends TestCase
         $serials->transition($tenant->id, $serial->id, 'returned');
         $serials->transition($tenant->id, $serial->id, 'available');
         $this->assertSame('available', $serial->refresh()->status);
+    }
+
+    public function test_sale_uses_fefo_for_batch_stock_and_rejects_expired_selected_batch(): void
+    {
+        ['tenant' => $tenant, 'branch' => $branch, 'warehouse' => $warehouse, 'variant' => $variant] = $this->context();
+        $batches = app(BatchInventoryService::class);
+        $expired = $batches->receive($tenant->id, $warehouse->id, $variant->id, 'EXPIRED', 2, 10, null, today()->subDay()->toDateString());
+        $first = $batches->receive($tenant->id, $warehouse->id, $variant->id, 'FIRST', 2, 10, null, today()->addDay()->toDateString());
+        $second = $batches->receive($tenant->id, $warehouse->id, $variant->id, 'SECOND', 2, 10, null, today()->addDays(7)->toDateString());
+
+        $invoice = app(SaleService::class)->checkout($tenant->id, $branch->id, $warehouse->id, null, [
+            ['variant_id' => $variant->id, 'quantity' => 3, 'unit_price' => 20],
+        ], [['method' => 'cash', 'amount' => 60]], 'batch-fefo-sale');
+
+        $this->assertDatabaseHas('stock_movements', ['reference_type' => 'sale', 'reference_id' => $invoice->id, 'inventory_batch_id' => $first->id, 'quantity' => 2]);
+        $this->assertDatabaseHas('stock_movements', ['reference_type' => 'sale', 'reference_id' => $invoice->id, 'inventory_batch_id' => $second->id, 'quantity' => 1]);
+        $this->expectException(ValidationException::class);
+        app(SaleService::class)->checkout($tenant->id, $branch->id, $warehouse->id, null, [
+            ['variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 20, 'inventory_batch_id' => $expired->id],
+        ], [['method' => 'cash', 'amount' => 20]], 'batch-expired-sale');
     }
 }

@@ -108,6 +108,42 @@ final class BatchInventoryService
         });
     }
 
+    public function allocateSpecific(
+        int $tenantId,
+        int $warehouseId,
+        int $variantId,
+        int $batchId,
+        float $quantity,
+        string $referenceType,
+        int $referenceId,
+    ): array {
+        if ($quantity <= 0) {
+            throw ValidationException::withMessages(['quantity' => 'Quantity must be greater than zero.']);
+        }
+
+        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $batchId, $quantity, $referenceType, $referenceId) {
+            $batch = InventoryBatch::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)
+                ->where('product_variant_id', $variantId)->lockForUpdate()->findOrFail($batchId);
+            if ($batch->expires_at?->isBefore(today())) {
+                throw ValidationException::withMessages(['inventory_batch_id' => 'Expired batch cannot be sold without a controlled override.']);
+            }
+            if ($this->stock->onHandByBatch($tenantId, $warehouseId, $variantId, $batch->id) < $quantity) {
+                throw ValidationException::withMessages(['quantity' => 'Selected batch has insufficient stock.']);
+            }
+            $this->stock->decrease($tenantId, $warehouseId, $variantId, $quantity, $referenceType, $referenceId, $batch->id);
+
+            return [['batch_id' => $batch->id, 'quantity' => $quantity]];
+        });
+    }
+
+    public function hasTrackedBatches(int $tenantId, int $warehouseId, int $variantId): bool
+    {
+        return InventoryBatch::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)
+            ->where('product_variant_id', $variantId)->exists();
+    }
+
     public function expirySummary(int $tenantId, int $days): array
     {
         return InventoryBatch::withoutGlobalScopes()

@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Branch;
 use App\Models\Contact;
+use App\Models\InventoryBatch;
 use App\Models\Product;
 use App\Models\Unit;
 use App\Models\Warehouse;
@@ -17,7 +18,7 @@ class PosKasir extends Component
 {
     public string $search = '';
 
-    /** @var array<int, array{variant_id:int,name:string,base_price:float,price:float,qty:float,base_unit_id:int,unit_id:int,unit_name:string,factor:float}> */
+    /** @var array<int, array{variant_id:int,name:string,base_price:float,price:float,qty:float,base_unit_id:int,unit_id:int,unit_name:string,factor:float,inventory_batch_id:?int}> */
     public array $cart = [];
 
     /** @var array<int, array{method:string,amount:float}> */
@@ -48,7 +49,7 @@ class PosKasir extends Component
         $this->cart[] = [
             'variant_id' => $variantId, 'name' => $name, 'base_price' => $resolved['price'], 'price' => $resolved['price'], 'qty' => 1,
             'base_unit_id' => $baseUnitId, 'unit_id' => $baseUnitId, 'unit_name' => $unitName, 'factor' => 1,
-            'price_source' => $resolved['source'],
+            'price_source' => $resolved['source'], 'inventory_batch_id' => null,
         ];
     }
 
@@ -62,6 +63,23 @@ class PosKasir extends Component
         $this->cart[$index]['unit_name'] = $unit->short_name;
         $this->cart[$index]['factor'] = $factor;
         $this->cart[$index]['price'] = round((float) $row['base_price'] * $factor, 2);
+    }
+
+    public function selectBatch(int $index, ?int $batchId): void
+    {
+        abort_unless(isset($this->cart[$index]), 404);
+        if ($batchId === null) {
+            $this->cart[$index]['inventory_batch_id'] = null;
+
+            return;
+        }
+        $tenantId = TenantContext::idOrFail();
+        $warehouseId = Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id');
+        $batch = InventoryBatch::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)
+            ->where('product_variant_id', $this->cart[$index]['variant_id'])->findOrFail($batchId);
+        abort_if($batch->expires_at?->isBefore(today()), 422, 'Batch kedaluwarsa tidak dapat dipilih.');
+        $this->cart[$index]['inventory_batch_id'] = $batch->id;
     }
 
     public function inc(int $i): void
@@ -129,6 +147,7 @@ class PosKasir extends Component
             $tenantId, $branchId, $warehouseId, $this->customerId,
             collect($this->cart)->map(fn ($r) => [
                 'variant_id' => $r['variant_id'], 'quantity' => $r['qty'] * $r['factor'], 'unit_price' => $r['base_price'],
+                'inventory_batch_id' => $r['inventory_batch_id'] ?? null,
             ])->all(),
             $this->payments,
             'web-'.uniqid(),
@@ -152,6 +171,9 @@ class PosKasir extends Component
             'products' => $products,
             'units' => Unit::query()->where('is_active', true)->orderBy('name')->get(),
             'customers' => Contact::query()->with('customerGroup')->whereIn('type', ['customer', 'both'])->orderBy('name')->get(),
+            'batches' => InventoryBatch::query()->where('warehouse_id', Warehouse::query()->value('id'))
+                ->where(fn ($query) => $query->whereNull('expires_at')->orWhereDate('expires_at', '>=', today()))
+                ->orderByRaw('CASE WHEN expires_at IS NULL THEN 1 ELSE 0 END')->orderBy('expires_at')->get(),
         ]);
     }
 

@@ -27,6 +27,7 @@ class SaleController extends Controller
             'contact_id' => ['nullable', Rule::exists('contacts', 'id')->where('tenant_id', $tenantId)],
             'lines' => 'required|array|min:1',
             'lines.*.variant_id' => ['required', Rule::exists('product_variants', 'id')->where('tenant_id', $tenantId)],
+            'lines.*.inventory_batch_id' => ['nullable', Rule::exists('inventory_batches', 'id')->where('tenant_id', $tenantId)],
             'lines.*.quantity' => 'required|numeric|min:0.001',
             'lines.*.unit_price' => 'required|numeric|min:0',
             'payments' => 'required|array|min:1',

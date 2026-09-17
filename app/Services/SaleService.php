@@ -21,6 +21,7 @@ final class SaleService
         private StockService $stock,
         private ApprovalService $approvals,
         private BundleInventoryService $bundles,
+        private BatchInventoryService $batches,
     ) {}
 
     /**
@@ -88,7 +89,8 @@ final class SaleService
                             (int) $l['variant_id'],
                             (float) $l['quantity'],
                             'sale',
-                            $invoice->id
+                            $invoice->id,
+                            $l['inventory_batch_id'] ?? null,
                         );
                     }
                 }
@@ -236,6 +238,7 @@ final class SaleService
         float $quantity,
         string $referenceType,
         int $referenceId,
+        ?int $batchId = null,
     ): void {
         $variant = ProductVariant::withoutGlobalScopes()->with('product')->findOrFail($variantId);
         if (! $variant->product->track_inventory || $variant->product->product_type === 'service') {
@@ -243,6 +246,16 @@ final class SaleService
         }
         if ($variant->product->product_type === 'bundle') {
             $this->bundles->decrease($tenantId, $warehouseId, $variant, $quantity, $referenceType, $referenceId);
+
+            return;
+        }
+        if ($batchId !== null) {
+            $this->batches->allocateSpecific($tenantId, $warehouseId, $variantId, $batchId, $quantity, $referenceType, $referenceId);
+
+            return;
+        }
+        if ($this->batches->hasTrackedBatches($tenantId, $warehouseId, $variantId)) {
+            $this->batches->allocateFefo($tenantId, $warehouseId, $variantId, $quantity, $referenceType, $referenceId);
 
             return;
         }
