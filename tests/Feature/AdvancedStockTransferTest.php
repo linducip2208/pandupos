@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\SerialNumberService;
 use App\Services\StockService;
 use App\Services\StockTransferService;
 use App\Services\TenantProvisioningService;
@@ -121,6 +122,29 @@ class AdvancedStockTransferTest extends TestCase
         $this->assertSame(5.0, $stock->onHandByBatch($tenant->id, $destination->id, $variant->id, $destinationBatch->id));
         $this->assertDatabaseHas('stock_movements', [
             'reference_type' => 'transfer_in', 'reference_id' => $transfer->id, 'inventory_batch_id' => $destinationBatch->id,
+        ]);
+    }
+
+    public function test_serialized_transfer_moves_each_serial_exactly_once_after_receipt(): void
+    {
+        [$tenant, $owner, $source, $destination, $variant] = $this->context();
+        $serial = app(SerialNumberService::class)->receive($tenant->id, $source->id, $variant->id, 'TRANSFER-IMEI', 8);
+        $service = app(StockTransferService::class);
+        $transfer = $service->createDraft($tenant->id, $source->id, $destination->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 1, 'serial_number_ids' => [$serial->id],
+        ]], null, $owner->id);
+        $service->approve($transfer, User::factory()->create()->id);
+        $service->ship($transfer, $owner->id);
+        $this->assertSame('transferred', $serial->refresh()->status);
+        $this->assertSame(0.0, app(StockService::class)->onHand($tenant->id, $destination->id, $variant->id));
+
+        $line = $transfer->fresh('lines')->lines->first();
+        $service->receive($transfer->fresh('lines'), [$line->id => 1], $owner->id);
+        $this->assertSame('available', $serial->refresh()->status);
+        $this->assertSame($destination->id, $serial->warehouse_id);
+        $this->assertSame(1.0, app(StockService::class)->onHand($tenant->id, $destination->id, $variant->id));
+        $this->assertDatabaseHas('stock_movements', [
+            'reference_type' => 'transfer_in', 'reference_id' => $transfer->id, 'serial_number_id' => $serial->id,
         ]);
     }
 

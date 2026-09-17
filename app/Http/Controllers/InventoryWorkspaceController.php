@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\InventoryBatch;
 use App\Models\ProductVariant;
+use App\Models\SerialNumber;
 use App\Models\StockAdjustment;
 use App\Models\StockCount;
 use App\Models\StockReservation;
@@ -31,6 +32,7 @@ class InventoryWorkspaceController extends Controller
             'variants' => ProductVariant::query()->with('product')->orderBy('sku')->get(),
             'locations' => WarehouseLocation::query()->with('warehouse')->latest()->limit(30)->get(),
             'batches' => InventoryBatch::query()->latest()->limit(100)->get(),
+            'serials' => SerialNumber::query()->where('status', 'available')->orderBy('serial_number')->limit(200)->get(),
             'reservations' => StockReservation::query()->with(['warehouse', 'variant.product'])->latest()->limit(30)->get(),
             'transfers' => TransferOrder::query()->with(['fromWarehouse', 'toWarehouse', 'requester', 'lines.variant.product'])->latest()->limit(30)->get(),
             'adjustments' => StockAdjustment::query()->with(['warehouse', 'lines.variant.product'])->latest()->limit(30)->get(),
@@ -112,6 +114,7 @@ class InventoryWorkspaceController extends Controller
             'from_warehouse_id' => ['required', 'integer', 'different:to_warehouse_id'],
             'to_warehouse_id' => ['required', 'integer'], 'lines' => ['required', 'array', 'min:1'],
             'lines.*.product_variant_id' => ['required', 'integer'], 'lines.*.inventory_batch_id' => ['nullable', 'integer'],
+            'lines.*.serial_number_ids' => ['nullable', 'array'], 'lines.*.serial_number_ids.*' => ['integer', 'distinct'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);

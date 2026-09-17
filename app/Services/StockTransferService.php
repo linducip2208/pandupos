@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\InventoryBatch;
 use App\Models\ProductVariant;
+use App\Models\SerialNumber;
 use App\Models\TransferLine;
 use App\Models\TransferOrder;
 use App\Models\Warehouse;
@@ -12,7 +13,11 @@ use Illuminate\Validation\ValidationException;
 
 final class StockTransferService
 {
-    public function __construct(private StockService $stock, private AuditService $audit) {}
+    public function __construct(
+        private StockService $stock,
+        private AuditService $audit,
+        private SerialNumberService $serials,
+    ) {}
 
     public function createDraft(int $tenantId, int $fromWarehouseId, int $toWarehouseId, array $lines, ?string $notes = null, ?int $actorId = null): TransferOrder
     {
@@ -38,10 +43,26 @@ final class StockTransferService
                     ->where('product_variant_id', $variant->id)->whereKey($batchId)->exists()) {
                     throw ValidationException::withMessages(['lines' => 'Selected batch must belong to the source warehouse and variant.']);
                 }
-                $transfer->lines()->create([
+                $serialIds = collect($line['serial_number_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->values();
+                if ($serialIds->isNotEmpty()) {
+                    if ($serialIds->count() !== (int) $line['quantity'] || $serialIds->unique()->count() !== $serialIds->count()) {
+                        throw ValidationException::withMessages(['lines' => 'Each serialized transfer line requires one unique serial per unit.']);
+                    }
+                    $serialCount = SerialNumber::withoutGlobalScopes()
+                        ->where('tenant_id', $tenantId)->where('warehouse_id', $fromWarehouseId)
+                        ->where('product_variant_id', $variant->id)->where('status', 'available')
+                        ->whereIn('id', $serialIds)->count();
+                    if ($serialCount !== $serialIds->count()) {
+                        throw ValidationException::withMessages(['lines' => 'Every selected serial must be available in the source warehouse.']);
+                    }
+                }
+                $transferLine = $transfer->lines()->create([
                     'product_variant_id' => $variant->id, 'source_inventory_batch_id' => $batchId,
                     'quantity' => $line['quantity'],
                 ]);
+                foreach ($serialIds as $serialId) {
+                    $transferLine->serials()->create(['serial_number_id' => $serialId]);
+                }
             }
             $this->audit->log($tenantId, $actorId, 'inventory.transfer.created', TransferOrder::class, $transfer->id, null, $transfer->load('lines')->toArray());
 
@@ -72,8 +93,16 @@ final class StockTransferService
             $locked = $this->lock($transfer);
             $this->expectStatus($locked, ['approved']);
             $before = $locked->load('lines')->toArray();
-            foreach ($locked->lines as $line) {
+            foreach ($locked->lines()->with('serials.serialNumber')->get() as $line) {
                 $cost = $this->stock->weightedAverageCost($locked->tenant_id, $locked->from_warehouse_id, $line->product_variant_id);
+                if ($line->serials->isNotEmpty()) {
+                    foreach ($line->serials as $serial) {
+                        $this->serials->shipForTransfer($locked->tenant_id, $serial->serial_number_id, $locked->id);
+                    }
+                    $line->update(['unit_cost' => $cost]);
+
+                    continue;
+                }
                 if ($line->source_inventory_batch_id !== null
                     && $this->stock->onHandByBatch($locked->tenant_id, $locked->from_warehouse_id, $line->product_variant_id, $line->source_inventory_batch_id) < (float) $line->quantity) {
                     throw ValidationException::withMessages(['lines' => 'Selected source batch has insufficient stock.']);
@@ -109,11 +138,22 @@ final class StockTransferService
                 if ($quantity <= 0 || $quantity > $remaining) {
                     throw ValidationException::withMessages(['quantities' => "Receipt for line {$line->id} exceeds remaining quantity {$remaining}."]);
                 }
-                $destinationBatchId = $this->destinationBatchId($locked, $line);
-                $this->stock->increase(
-                    $locked->tenant_id, $locked->to_warehouse_id, $line->product_variant_id,
-                    $quantity, (float) $line->unit_cost, 'transfer_in', $locked->id, $destinationBatchId,
-                );
+                $serials = $line->serials()->with('serialNumber')->get();
+                if ($serials->isNotEmpty()) {
+                    $inTransit = $serials->filter(fn ($serial) => $serial->serialNumber?->status === 'transferred')->take((int) $quantity);
+                    if ($inTransit->count() !== (int) $quantity) {
+                        throw ValidationException::withMessages(['quantities' => 'Serialized receipt exceeds serials currently in transit.']);
+                    }
+                    foreach ($inTransit as $serial) {
+                        $this->serials->receiveFromTransfer($locked->tenant_id, $serial->serial_number_id, $locked->id);
+                    }
+                } else {
+                    $destinationBatchId = $this->destinationBatchId($locked, $line);
+                    $this->stock->increase(
+                        $locked->tenant_id, $locked->to_warehouse_id, $line->product_variant_id,
+                        $quantity, (float) $line->unit_cost, 'transfer_in', $locked->id, $destinationBatchId,
+                    );
+                }
                 $line->increment('received_quantity', $quantity);
             }
             $complete = ! $locked->lines()->whereColumn('received_quantity', '<', 'quantity')->exists();

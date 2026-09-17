@@ -35,4 +35,9 @@ class TransferLine extends Model
     {
         return $this->belongsTo(InventoryBatch::class, 'destination_inventory_batch_id');
     }
+
+    public function serials()
+    {
+        return $this->hasMany(TransferLineSerial::class);
+    }
 }
