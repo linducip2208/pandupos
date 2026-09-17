@@ -159,7 +159,7 @@ class UnitConversionTest extends TestCase
 
         TenantContext::set($tenant);
         Livewire::actingAs($owner)->test(PosKasir::class)
-            ->call('addToCart', $variant->id, $product->name, 2000, $piece->id, 'pcs')
+            ->call('addToCart', $variant->id, $product->name, $piece->id, 'pcs')
             ->call('changeUnit', 0, $carton->id)
             ->assertSet('cart.0.unit_name', 'ctn')
             ->assertSet('cart.0.factor', 24.0)

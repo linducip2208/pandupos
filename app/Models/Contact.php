@@ -9,7 +9,7 @@ class Contact extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'type', 'name', 'company', 'email', 'phone', 'address', 'tax_id', 'credit_limit', 'opening_balance'];
+    protected $fillable = ['tenant_id', 'customer_group_id', 'type', 'name', 'company', 'email', 'phone', 'address', 'tax_id', 'credit_limit', 'opening_balance'];
 
     protected function casts(): array
     {

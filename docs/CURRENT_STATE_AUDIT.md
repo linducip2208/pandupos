@@ -42,7 +42,7 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Unit conversion | Direct/inverse/chained tenant-safe conversion service | Responsive conversion manager plus purchase, POS and Sales Order selectors | List/create definitions plus purchase/Sales Order input | Product and transaction permissions | Tenant-scoped references and cross-tenant rejection tested | UI, inverse/chained, 2 carton→48 pcs, POS selector and 43 pcs balance | Present | DONE |
 | SKU/normal barcode | Product and variant SKU/barcode plus Code 128 SVG generation | POS lookup and responsive A4/thermal label workspace | Product CRUD and label preview | Product policy | Scoped and cross-tenant label rejection | Product/variant and scannable label workflow | Present | DONE |
 | Weighing barcode/labels | Configurable tenant parser for weight/price barcodes | Profile manager, parser preview, archive and print UI | Profile create/parse | Product policy | Tenant-filtered | Parser, UI, audit and isolation workflow | Present | DONE |
-| Price lists | Scope/date/quantity/priority resolver and audit hook | None | List/create | Product policy | Tenant-owned references | Resolver precedence | Present | PARTIAL |
+| Price lists | Scope/date/quantity/priority resolver with traceable source | Responsive create/edit/archive UI and POS customer/source display | List/create and resolver | Product/transaction permissions | Tenant-owned references | Resolver precedence, UI audit and POS customer group | Present | DONE |
 | Bundle/combo | Relational components; checkout/return/void component stock | None | Component API | Product policy | Tenant validations | Full stock lifecycle | Present | PARTIAL |
 | Batch/expiry/FEFO | Lot provenance, expiry summary and controlled FEFO allocation | None | Receive/expiry endpoints | Product policy only | Tenant references validated | Allocation/expired blocking | Present | PARTIAL |
 | Serial lifecycle | Controlled receive/sell/return/damage/transfer service and movement links | None | Receive/list endpoints | Product policy only | Tenant/invoice references validated | Duplicate-sale/lifecycle proof | Present | PARTIAL |
@@ -89,10 +89,10 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 72% | Product Master, unit conversion and barcode workflows are end-to-end; later core sprints remain |
+| Core parity | 76% | Product Master, units, barcode and selling price groups are end-to-end; later core sprints remain |
 | SaaS parity | 46% | Billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 72% | Product Master, unit conversion and barcode/label isolation are proven; later core matrices remain |
+| Test readiness | 76% | Product Master, units, barcode and price resolver/POS integration are proven; later core matrices remain |
 | Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
 | Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
 | Production readiness | 26% | Mandatory production gates are not satisfied |

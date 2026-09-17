@@ -3,9 +3,11 @@
 namespace App\Livewire;
 
 use App\Models\Branch;
+use App\Models\Contact;
 use App\Models\Product;
 use App\Models\Unit;
 use App\Models\Warehouse;
+use App\Services\PriceResolverService;
 use App\Services\SaleService;
 use App\Services\UnitConversionService;
 use App\Support\TenantContext;
@@ -25,10 +27,12 @@ class PosKasir extends Component
 
     public float $lastChange = 0;
 
+    public ?int $customerId = null;
+
     /** @var array<string,array> held carts keyed by label */
     public array $held = [];
 
-    public function addToCart(int $variantId, string $name, float $price, int $baseUnitId, string $unitName): void
+    public function addToCart(int $variantId, string $name, int $baseUnitId, string $unitName, PriceResolverService $prices): void
     {
         foreach ($this->cart as &$row) {
             if ($row['variant_id'] === $variantId) {
@@ -37,9 +41,14 @@ class PosKasir extends Component
                 return;
             }
         }
+        $tenantId = TenantContext::idOrFail();
+        $branchId = $this->branchId($tenantId);
+        $groupId = $this->customerId ? Contact::query()->find($this->customerId)?->customer_group_id : null;
+        $resolved = $prices->resolveDetails($tenantId, $variantId, 1, $branchId, $groupId);
         $this->cart[] = [
-            'variant_id' => $variantId, 'name' => $name, 'base_price' => $price, 'price' => $price, 'qty' => 1,
+            'variant_id' => $variantId, 'name' => $name, 'base_price' => $resolved['price'], 'price' => $resolved['price'], 'qty' => 1,
             'base_unit_id' => $baseUnitId, 'unit_id' => $baseUnitId, 'unit_name' => $unitName, 'factor' => 1,
+            'price_source' => $resolved['source'],
         ];
     }
 
@@ -113,12 +122,11 @@ class PosKasir extends Component
         $user = auth()->user();
         $tenantId = TenantContext::idOrFail();
         abort_unless($user->memberships()->withoutGlobalScopes()->where('tenant_id', $tenantId)->exists() || $user->is_platform_admin, 403);
-        $branchId = $user->memberships()->where('tenant_id', $tenantId)->first()?->branch_ids[0]
-            ?? Branch::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id');
+        $branchId = $this->branchId($tenantId);
         $warehouseId = Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id');
 
         $invoice = $sales->checkout(
-            $tenantId, $branchId, $warehouseId, null,
+            $tenantId, $branchId, $warehouseId, $this->customerId,
             collect($this->cart)->map(fn ($r) => [
                 'variant_id' => $r['variant_id'], 'quantity' => $r['qty'] * $r['factor'], 'unit_price' => $r['base_price'],
             ])->all(),
@@ -140,6 +148,16 @@ class PosKasir extends Component
             ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->limit(24)->get();
 
-        return view('livewire.pos-kasir', ['products' => $products, 'units' => Unit::query()->where('is_active', true)->orderBy('name')->get()]);
+        return view('livewire.pos-kasir', [
+            'products' => $products,
+            'units' => Unit::query()->where('is_active', true)->orderBy('name')->get(),
+            'customers' => Contact::query()->with('customerGroup')->whereIn('type', ['customer', 'both'])->orderBy('name')->get(),
+        ]);
+    }
+
+    private function branchId(int $tenantId): int
+    {
+        return (int) (auth()->user()->memberships()->where('tenant_id', $tenantId)->first()?->branch_ids[0]
+            ?? Branch::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id'));
     }
 }

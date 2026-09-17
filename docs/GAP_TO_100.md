@@ -25,7 +25,7 @@ Execute in this order:
 1. Product Master tenant CRUD, images, types, tax, reorder, variants, locations, audit and safe archive are implemented; complete remaining API variant/location parity during the core API sprint.
 2. ~~Base/sub-unit graph and precision-safe conversions; prove 2 cartons = 48 pcs, sell 5, balance 43.~~ DONE: tenant manager, inverse/chained graph, purchasing/POS/Sales Order selectors and automated stock proof.
 3. ~~Normal/variant/weighing parser, configurable scale rules, labels and print templates.~~ DONE: audited tenant UI, parser preview, Code 128 SVG, A4/thermal print and isolation tests.
-4. Price lists for tenant/location/customer group/date/priority with audited resolver.
+4. ~~Price lists for tenant/location/customer group/date/priority with audited resolver.~~ DONE: responsive CRUD, date/min-qty/priority rules, automatic POS resolution, customer selection and visible price source.
 5. Relational bundles with atomic component deduction.
 6. Finish UI/permissions/audit and transaction selectors for implemented batch/expiry/FEFO and serial foundations; physical-location creation now has tenant UI.
 7. Integrate the reservation workflow, whose create/release UI now exists, into sales-order/held-cart flows and schedule expiry cleanup.

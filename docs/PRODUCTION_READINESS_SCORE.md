@@ -6,10 +6,10 @@ This file is the canonical score ledger. Other readiness documents mirror these 
 
 | Dimension | Score | Evidence |
 |---|---:|---|
-| Core parity | 72% | Product Master, unit conversion and barcode/label workflows are end-to-end; later core sprints remain |
+| Core parity | 76% | Product Master, units, barcode and selling price groups are end-to-end; later core sprints remain |
 | SaaS parity | 46% | Functional control-plane foundations; billing and automation incomplete |
 | Addon parity | 1% | No requested addon meets the completeness rule |
-| Test readiness | 72% | Product Master, unit conversion and barcode/label isolation plus commercial document behavior are proven; later core matrices remain |
+| Test readiness | 76% | Product Master, units, barcode and audited price resolver/POS integration are proven; later core matrices remain |
 | Security readiness | 58% | Representative isolation/auth/webhook controls; full audit absent |
 | Operations readiness | 27% | CI green; staging/load/restore/monitoring evidence absent |
 | Production readiness | 26% | Weighted mandatory release-gate completion |

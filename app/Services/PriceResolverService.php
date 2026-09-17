@@ -16,6 +16,18 @@ final class PriceResolverService
         ?int $customerGroupId = null,
         ?CarbonInterface $at = null,
     ): float {
+        return $this->resolveDetails($tenantId, $variantId, $quantity, $branchId, $customerGroupId, $at)['price'];
+    }
+
+    /** @return array{price:float,source:string,price_list_id:?int,scope:string} */
+    public function resolveDetails(
+        int $tenantId,
+        int $variantId,
+        float $quantity = 1,
+        ?int $branchId = null,
+        ?int $customerGroupId = null,
+        ?CarbonInterface $at = null,
+    ): array {
         $at ??= now();
         $variant = ProductVariant::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)->findOrFail($variantId);
@@ -36,10 +48,15 @@ final class PriceResolverService
             ->orderByDesc('price_lists.priority')
             ->orderByRaw('(CASE WHEN price_lists.branch_id IS NULL THEN 0 ELSE 1 END + CASE WHEN price_lists.customer_group_id IS NULL THEN 0 ELSE 1 END) DESC')
             ->orderByDesc('price_list_items.minimum_quantity')
-            ->select('price_list_items.*')
+            ->select('price_list_items.*', 'price_lists.name as source_name', 'price_lists.scope as source_scope')
             ->first();
 
-        return (float) ($item?->price ?? $variant->sell_price);
+        return [
+            'price' => (float) ($item?->price ?? $variant->sell_price),
+            'source' => $item?->source_name ?? 'Harga dasar varian',
+            'price_list_id' => $item?->price_list_id,
+            'scope' => $item?->source_scope ?? 'base',
+        ];
     }
 
     public function auditChange(int $tenantId, int $priceListId, ?array $before, array $after, ?int $actorId): void

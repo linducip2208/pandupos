@@ -25,6 +25,7 @@ use App\Http\Controllers\Portal\DashboardController as PortalDashboardController
 use App\Http\Controllers\Portal\InvoiceController as PortalInvoiceController;
 use App\Http\Controllers\Portal\OrderController as PortalOrderController;
 use App\Http\Controllers\Portal\PaymentProofController as PortalPaymentProofController;
+use App\Http\Controllers\PriceListWorkspaceController;
 use App\Http\Controllers\ProductMasterController;
 use App\Http\Controllers\ProgrammaticSeoController;
 use App\Http\Controllers\PurchasingWorkspaceController;
@@ -111,6 +112,12 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::prefix('sales-orders')->name('sales-orders.')->middleware(['entitlement:sales.access', 'module:sales'])->group(function () {
         Route::get('/', [SalesOrderWorkspaceController::class, 'index'])->name('index');
         Route::post('/', [SalesOrderWorkspaceController::class, 'store'])->name('store');
+    });
+    Route::prefix('price-lists')->name('price-lists.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
+        Route::get('/', [PriceListWorkspaceController::class, 'index'])->name('index');
+        Route::post('/', [PriceListWorkspaceController::class, 'store'])->name('store');
+        Route::put('/{priceList}', [PriceListWorkspaceController::class, 'update'])->name('update');
+        Route::post('/{priceList}/archive', [PriceListWorkspaceController::class, 'archive'])->name('archive');
     });
     Route::get('/reports/{type}', [ReportPageController::class, 'show'])->name('reports.show');
     Route::get('/reports/{type}/csv', [ReportPageController::class, 'csv'])->name('reports.csv');
