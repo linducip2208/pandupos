@@ -6,14 +6,14 @@ This file renders the canonical score ledger from `app/Support/Readiness/Readine
 
 | Dimension | Score | Evidence |
 |---|---:|---|
-| Core parity | 32% | Catalog, pricing and bundle workflows are evidenced; advanced inventory, purchasing, sales/POS and reporting remain incomplete |
-| SaaS parity | 28% | Tenant/plan/entitlement foundations exist; billing and automation remain incomplete |
+| Core parity | 26% | Product, units, barcode, pricing, bundle and WAC have independently verified gates; advanced inventory, purchasing, sales/POS and reporting remain incomplete |
+| SaaS parity | 27% | Tenant lifecycle and plan/entitlement foundations are evidenced; limits, billing and automation remain incomplete |
 | Future addon parity | FROZEN / OUT OF SCOPE | Deferred post-v1 work; excluded from v1 release scoring by [SCOPE_FREEZE.md](SCOPE_FREEZE.md) |
-| Test readiness | 70% | Current unit/feature suite is green; E2E, concurrency and full security matrices remain absent |
-| Security readiness | 58% | Representative isolation/auth/webhook controls; full audit absent |
-| Operations readiness | 27% | CI green; staging/load/restore/monitoring evidence absent |
-| Production readiness | 26% | Weighted mandatory release-gate completion |
-| Commercial readiness | 20% | Product, operational and redistribution gates remain open |
+| Test readiness | 60% | The regression suite is green; E2E, concurrency, security and recovery matrices remain absent |
+| Security readiness | 44% | Foundation regressions are evidenced; complete IDOR/RBAC/web/API/upload/secret audits remain absent |
+| Operations readiness | 20% | CI/build is verified; backup, restore, staging, deployment, rollback, monitoring, alerting and load evidence are absent |
+| Production readiness | 0% | All upstream 90-point prerequisites are deliberately unmet |
+| Commercial readiness | 0% | Commercial release is gated by the missing production, license, install, recovery and customer-documentation evidence |
 
 ## Decision
 

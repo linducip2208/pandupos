@@ -6,17 +6,17 @@ Updated: 2026-09-17. This is the v1 stabilization backlog. Deferred addons are e
 
 | Dimension | Score | Evidence still required for 90 |
 |---|---:|---|
-| Core | 32 | Stable current inventory, purchasing, sales/POS, report/dashboard flows and stock/money correctness proof |
-| SaaS | 28 | Lifecycle, entitlement, billing/webhook, coupon/affiliate, domain/API/offline hardening |
-| Tests | 70 | Browser critical paths, concurrency and complete security regressions |
-| Security | 58 | IDOR/RBAC/API/upload/secret matrix and resolution of findings |
-| Operations | 27 | Actual restore, staging, rollback, monitoring/alerts and load evidence |
-| Production | 26 | Upstream core/SaaS/security/operations gates |
-| Commercial | 20 | License audit, fresh install, support diagnostics and recovery/deployment evidence |
+| Core | 26 | Stable current inventory, purchasing, sales/POS, report/dashboard flows and stock/money correctness proof |
+| SaaS | 27 | Lifecycle, usage limits, billing/webhook, coupon/affiliate, domain/API/offline hardening |
+| Tests | 60 | Browser critical paths, concurrency, security and recovery regressions |
+| Security | 44 | Complete IDOR/RBAC/web/API/upload/secret matrix and resolution of findings |
+| Operations | 20 | Actual backup, restore, staging, deployment, rollback, monitoring/alerts and load evidence |
+| Production | 0 | All upstream 90-point gates plus staging/deployment evidence |
+| Commercial | 0 | Production gate, license audit, fresh install, support diagnostics and recovery/deployment evidence |
 
 ## Core milestones
 
-The Core scorer preserves a 100-point total while separating meaningful release outcomes. The 32-point verified catalog/bundle baseline is unchanged. The next milestones are evidence outcomes, not manual targets: Batch/Expiry/FEFO (4), Serial (4), Rack/Bin (2), Reservation (3), Transfer (2), Adjustment/Count (2), and Reconciliation (1) can bring Core to 50 only when each full gate passes. Purchasing (18), current sales/POS/return correctness (22), and reports/dashboard (10) then provide the remaining independently verifiable route to 90+.
+The Core scorer preserves a 100-point total while separating meaningful release outcomes. The 26-point verified baseline is Product Master (10), Units (4), Barcode (4), Price Groups (4), Bundle (2) and WAC (2). The next milestones are evidence outcomes, not manual targets: Batch/Expiry/FEFO (4), Serial (4), Rack/Bin (2), Reservation (3), Transfer (3), Adjustment (2), Stock Count (2), and Reconciliation (1) can bring Core to 49 only when each full gate passes. Purchasing (18), current sales/POS/return correctness (25), and reports/dashboard/export/API (10) then provide the remaining independently verifiable route to 90+.
 
 ## Wave 1: current inventory
 

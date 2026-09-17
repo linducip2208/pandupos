@@ -89,4 +89,4 @@ No deferred addon is currently FEATURE COMPLETE, TESTED, or STABLE.
 
 ## Current scores
 
-**Core 32%, SaaS 28%, test readiness 70%, security readiness 58%, operations readiness 27%, production readiness 26%, commercial readiness 20%. Future addon parity is FROZEN / OUT OF SCOPE FOR V1.** These values are produced by `php artisan readiness:score`; see `PRODUCTION_READINESS_SCORE.md`, `GAP_TO_99.md`, and `SCOPE_FREEZE.md`.
+**Core 26%, SaaS 27%, test readiness 60%, security readiness 44%, operations readiness 20%, production readiness 0%, commercial readiness 0%. Future addon parity is FROZEN / OUT OF SCOPE FOR V1.** These values are produced by `php artisan readiness:score`; see `PRODUCTION_READINESS_SCORE.md`, `GAP_TO_90.md`, and `SCOPE_FREEZE.md`. The stricter granular release ledger replaced earlier broad foundation gates; no capability was removed.

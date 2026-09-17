@@ -89,14 +89,14 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 32% | Catalog, pricing and bundle workflows have end-to-end evidence; advanced inventory, purchasing, sales/POS and reporting remain incomplete |
-| SaaS parity | 28% | Tenant/plan/entitlement foundations exist; billing, gateways, affiliate, domains and renewal automation remain partial |
+| Core parity | 26% | Product, units, barcode, pricing, bundle and WAC have independently verified gates; advanced inventory, purchasing, sales/POS and reporting remain incomplete |
+| SaaS parity | 27% | Tenant lifecycle and plan/entitlement foundations exist; limits, billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
-| Test readiness | 70% | Existing suite is green; browser E2E, full concurrency and security matrices remain incomplete |
-| Security readiness | 58% | Representative controls exist; full audit/pentest matrix is incomplete |
-| Operations readiness | 27% | CI is green; restore/load/staging/alerting/rollback proof is missing |
-| Production readiness | 26% | Mandatory production gates are not satisfied |
-| Commercial readiness | 20% | Core/addons/license/deploy/restore evidence remains incomplete |
+| Test readiness | 60% | Existing regression suite is green; browser E2E, full concurrency, security and recovery matrices remain incomplete |
+| Security readiness | 44% | Foundation controls exist; full IDOR/RBAC/web/API/upload/secret audit matrix is incomplete |
+| Operations readiness | 20% | CI/build is green; backup/restore/staging/deploy/alerting/rollback/load proof is missing |
+| Production readiness | 0% | Upstream 90-point release gates are not satisfied |
+| Commercial readiness | 0% | Production, license, install, support and recovery evidence remains incomplete |
 
 ## Release decision
 
