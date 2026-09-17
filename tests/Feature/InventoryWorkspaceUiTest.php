@@ -9,6 +9,7 @@ use App\Models\StockAdjustment;
 use App\Models\StockReservation;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use App\Services\StockService;
 use App\Services\TenantProvisioningService;
 use Database\Seeders\PlatformSeeder;
@@ -31,6 +32,11 @@ class InventoryWorkspaceUiTest extends TestCase
             'warehouse_id' => $warehouse->id, 'code' => 'Z1-R1-B1', 'zone' => 'Z1', 'rack' => 'R1', 'bin' => 'B1',
         ])->assertRedirect()->assertSessionHas('status');
         $this->assertDatabaseHas('warehouse_locations', ['tenant_id' => $tenant->id, 'code' => 'Z1-R1-B1']);
+        $location = WarehouseLocation::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
+        $this->put(route('inventory.locations.update', $location), ['code' => 'Z1-R1-B2', 'zone' => 'Z1', 'rack' => 'R1', 'bin' => 'B2'])->assertRedirect();
+        $this->post(route('inventory.locations.deactivate', $location))->assertRedirect();
+        $this->assertDatabaseHas('warehouse_locations', ['id' => $location->id, 'is_active' => false]);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'action' => 'inventory.location.deactivated']);
 
         $this->post(route('inventory.adjustments.store'), [
             'warehouse_id' => $warehouse->id, 'reason' => 'damage', 'notes' => 'Kemasan rusak saat penanganan',

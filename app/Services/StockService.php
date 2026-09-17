@@ -159,7 +159,7 @@ final class StockService
         abort_unless($variant, 422, 'Product variant does not belong to tenant.');
         if ($locationId !== null) {
             $location = WarehouseLocation::withoutGlobalScopes()
-                ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)->find($locationId);
+                ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)->where('is_active', true)->find($locationId);
             abort_unless($location, 422, 'Warehouse location does not belong to tenant and warehouse.');
         }
     }

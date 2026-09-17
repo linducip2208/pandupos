@@ -47,6 +47,20 @@
                         <thead><tr><th>Kode</th><th>Gudang</th><th>Posisi</th></tr></thead>
                         <tbody>@forelse ($locations as $location)<tr><td class="fw-semibold">{{ $location->code }}</td><td>{{ $location->warehouse?->name }}</td><td>{{ collect([$location->zone, $location->rack, $location->shelf, $location->bin])->filter()->join(' / ') ?: '—' }}</td></tr>@empty<tr><td colspan="3" class="text-center text-secondary py-4">Belum ada lokasi fisik.</td></tr>@endforelse</tbody>
                     </table></div>
+                    @if ($locations->isNotEmpty())
+                        <div class="mt-3 vstack gap-2">
+                            @foreach ($locations as $location)
+                                <details class="border rounded p-2"><summary class="fw-semibold">Kelola {{ $location->code }} · {{ $location->warehouse?->name }}</summary>
+                                    <form method="POST" action="{{ route('inventory.locations.update', $location) }}" class="row g-2 mt-1">@csrf @method('PUT')
+                                        <div class="col-12"><input name="code" value="{{ $location->code }}" class="form-control form-control-sm" required></div>
+                                        @foreach (['zone', 'rack', 'shelf', 'bin'] as $field)<div class="col-6"><input name="{{ $field }}" value="{{ $location->$field }}" class="form-control form-control-sm" placeholder="{{ ucfirst($field) }}"></div>@endforeach
+                                        <div class="col-12 d-flex gap-2"><button class="btn btn-sm btn-primary">Simpan</button>@if ($location->is_active)<button form="deactivate-location-{{ $location->id }}" class="btn btn-sm btn-outline-danger">Nonaktifkan</button>@endif</div>
+                                    </form>
+                                    @if ($location->is_active)<form id="deactivate-location-{{ $location->id }}" method="POST" action="{{ route('inventory.locations.deactivate', $location) }}">@csrf</form>@endif
+                                </details>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -59,6 +73,8 @@
                         @csrf
                         <div class="col-12 col-md-6"><label class="form-label">Gudang</label><select name="warehouse_id" class="form-select" required>@foreach ($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>@endforeach</select></div>
                         <div class="col-12 col-md-6"><label class="form-label">Varian</label><select name="product_variant_id" class="form-select" required>@foreach ($variants as $variant)<option value="{{ $variant->id }}">{{ $variant->sku }} · {{ $variant->product?->name }}</option>@endforeach</select></div>
+                        <div class="col-12 col-md-6"><label class="form-label">Lokasi fisik (opsional)</label><select name="warehouse_location_id" class="form-select"><option value="">Seluruh gudang</option>@foreach ($locations->where('is_active', true) as $location)<option value="{{ $location->id }}">{{ $location->warehouse?->name }} · {{ $location->code }}</option>@endforeach</select></div>
+                        <div class="col-12 col-md-6"><label class="form-label">Batch (opsional)</label><select name="inventory_batch_id" class="form-select"><option value="">Otomatis / tanpa batch</option>@foreach ($batches as $batch)<option value="{{ $batch->id }}">{{ $batch->batch_number }}</option>@endforeach</select></div>
                         <div class="col-6"><label class="form-label">Jumlah</label><input name="quantity" type="number" min="0.001" step="0.001" class="form-control" required></div>
                         <div class="col-6"><label class="form-label">Sumber</label><input name="source_type" class="form-control" value="manual_hold" required></div>
                         <div class="col-12"><button class="btn btn-primary w-100 w-md-auto">Reservasi stok</button></div>

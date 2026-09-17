@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\InventoryBatch;
 use App\Models\ProductVariant;
 use App\Models\StockAdjustment;
 use App\Models\StockCount;
@@ -9,6 +10,7 @@ use App\Models\StockReservation;
 use App\Models\TransferOrder;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
+use App\Services\AuditService;
 use App\Services\StockAdjustmentService;
 use App\Services\StockCountService;
 use App\Services\StockReservationService;
@@ -28,6 +30,7 @@ class InventoryWorkspaceController extends Controller
             'warehouses' => Warehouse::query()->orderBy('name')->get(),
             'variants' => ProductVariant::query()->with('product')->orderBy('sku')->get(),
             'locations' => WarehouseLocation::query()->with('warehouse')->latest()->limit(30)->get(),
+            'batches' => InventoryBatch::query()->latest()->limit(100)->get(),
             'reservations' => StockReservation::query()->with(['warehouse', 'variant.product'])->latest()->limit(30)->get(),
             'transfers' => TransferOrder::query()->with(['fromWarehouse', 'toWarehouse', 'lines.variant.product'])->latest()->limit(30)->get(),
             'adjustments' => StockAdjustment::query()->with(['warehouse', 'lines.variant.product'])->latest()->limit(30)->get(),
@@ -35,7 +38,7 @@ class InventoryWorkspaceController extends Controller
         ]);
     }
 
-    public function storeLocation(Request $request): RedirectResponse
+    public function storeLocation(Request $request, AuditService $audit): RedirectResponse
     {
         $this->requirePermission($request, 'inventory.adjust');
         $data = $request->validate([
@@ -44,16 +47,47 @@ class InventoryWorkspaceController extends Controller
             'shelf' => ['nullable', 'string', 'max:80'], 'bin' => ['nullable', 'string', 'max:80'],
         ]);
         abort_unless(Warehouse::query()->whereKey($data['warehouse_id'])->exists(), 404);
-        WarehouseLocation::create($data + ['tenant_id' => TenantContext::idOrFail(), 'is_active' => true]);
+        $location = WarehouseLocation::create($data + ['tenant_id' => TenantContext::idOrFail(), 'is_active' => true]);
+        $audit->log($location->tenant_id, $request->user()->id, 'inventory.location.created', WarehouseLocation::class, $location->id, null, $location->toArray());
 
         return back()->with('status', 'Lokasi gudang berhasil dibuat.');
+    }
+
+    public function updateLocation(Request $request, WarehouseLocation $location, AuditService $audit): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.adjust');
+        $this->assertTenant($location->tenant_id);
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:50'],
+            'zone' => ['nullable', 'string', 'max:80'], 'rack' => ['nullable', 'string', 'max:80'],
+            'shelf' => ['nullable', 'string', 'max:80'], 'bin' => ['nullable', 'string', 'max:80'],
+        ]);
+        $exists = WarehouseLocation::query()->where('warehouse_id', $location->warehouse_id)->where('code', $data['code'])->whereKeyNot($location->id)->exists();
+        abort_if($exists, 422, 'Kode lokasi sudah digunakan di gudang ini.');
+        $before = $location->toArray();
+        $location->update($data);
+        $audit->log($location->tenant_id, $request->user()->id, 'inventory.location.updated', WarehouseLocation::class, $location->id, $before, $location->fresh()->toArray());
+
+        return back()->with('status', 'Lokasi gudang diperbarui.');
+    }
+
+    public function deactivateLocation(Request $request, WarehouseLocation $location, AuditService $audit): RedirectResponse
+    {
+        $this->requirePermission($request, 'inventory.adjust');
+        $this->assertTenant($location->tenant_id);
+        abort_unless($location->is_active, 422, 'Lokasi sudah nonaktif.');
+        $before = $location->toArray();
+        $location->update(['is_active' => false]);
+        $audit->log($location->tenant_id, $request->user()->id, 'inventory.location.deactivated', WarehouseLocation::class, $location->id, $before, $location->fresh()->toArray());
+
+        return back()->with('status', 'Lokasi dinonaktifkan untuk mutasi stok baru; histori tetap tersedia.');
     }
 
     public function storeReservation(Request $request, StockReservationService $service): RedirectResponse
     {
         $this->requirePermission($request, 'inventory.transfer');
         $data = $request->validate([
-            'warehouse_id' => ['required', 'integer'], 'product_variant_id' => ['required', 'integer'],
+            'warehouse_id' => ['required', 'integer'], 'warehouse_location_id' => ['nullable', 'integer'], 'inventory_batch_id' => ['nullable', 'integer'], 'product_variant_id' => ['required', 'integer'],
             'quantity' => ['required', 'numeric', 'gt:0'], 'source_type' => ['required', 'string', 'max:80'],
             'source_id' => ['nullable', 'integer'], 'expires_at' => ['nullable', 'date', 'after:now'],
         ]);

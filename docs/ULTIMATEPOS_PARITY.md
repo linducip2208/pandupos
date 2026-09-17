@@ -18,7 +18,7 @@ Canonical readiness percentages live in `PRODUCTION_READINESS_SCORE.md`; this ma
 | Opening stock/location assignment | Generic ledger increase only | P | M | M | M | P | M | P | PARTIAL | Governed workflow/audit |
 | Lot/batch/expiry/FEFO | Tenant batch workspace, lot provenance, expiry visibility, receive-to-ledger and controlled FEFO allocation | D | D | P | P | D | D | D | PARTIAL | Purchase/POS batch selectors, granular override permission and end-to-end selector tests |
 | Serial tracking | Tenant receive/register UI, provenance/history, controlled lifecycle, ledger linkage and duplicate-sale prevention | D | D | P | P | D | D | D | PARTIAL | Document-driven return/transfer UI/integration, granular permission and end-to-end sales selector tests |
-| Rack/bin | Optional zone/rack/shelf/bin master with location-linked movements | D | D | D | D | D | D | D | PARTIAL | Edit/deactivate workflow and location selectors in transactions |
+| Rack/bin | Optional zone/rack/shelf/bin master with audited lifecycle, reservation selector and location-linked movements | D | D | D | D | D | D | D | PARTIAL | Transfer, goods-receipt and POS location selectors |
 | Ledger/WAC | Append-only ledger, pluggable strategy contract, WAC COGS/reversals/transfers and reconcile CLI | D | P | P | D | D | D | D | PARTIAL | Production concurrency/load evidence |
 | Reservation | Audited idempotent reserve/release/partial-consume/expire, ATP and sales-order integration | D | P | D | D | D | D | D | PARTIAL | Held-cart integration, consume UI and scheduler |
 | Transfer | Audited state machine with approval, transit, partial receipt and preserved cost | D | D | D | D | D | D | D | PARTIAL | Requester/approver segregation and multi-line creation UI |

@@ -145,6 +145,8 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::prefix('inventory')->name('inventory.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
         Route::get('/', [InventoryWorkspaceController::class, 'index'])->name('index');
         Route::post('/locations', [InventoryWorkspaceController::class, 'storeLocation'])->name('locations.store');
+        Route::put('/locations/{location}', [InventoryWorkspaceController::class, 'updateLocation'])->name('locations.update');
+        Route::post('/locations/{location}/deactivate', [InventoryWorkspaceController::class, 'deactivateLocation'])->name('locations.deactivate');
         Route::post('/reservations', [InventoryWorkspaceController::class, 'storeReservation'])->name('reservations.store');
         Route::post('/reservations/{reservation}/release', [InventoryWorkspaceController::class, 'releaseReservation'])->name('reservations.release');
         Route::post('/transfers', [InventoryWorkspaceController::class, 'storeTransfer'])->name('transfers.store');
