@@ -77,6 +77,33 @@ final class SerialNumberService
         });
     }
 
+    /** Restore the exact serial and its historical cost as part of a sale reversal. */
+    public function restoreFromSale(
+        int $tenantId,
+        int $serialNumberId,
+        int $invoiceId,
+        float $unitCost,
+        string $referenceType,
+    ): SerialNumber {
+        return DB::transaction(function () use ($tenantId, $serialNumberId, $invoiceId, $unitCost, $referenceType) {
+            $number = SerialNumber::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)->lockForUpdate()->findOrFail($serialNumberId);
+            if ($number->status !== 'sold' || (int) $number->sales_invoice_id !== $invoiceId) {
+                throw ValidationException::withMessages(['serial_number' => 'Serial is not sold on this invoice.']);
+            }
+            $this->stock->increase(
+                $tenantId, $number->warehouse_id, $number->product_variant_id, 1, $unitCost,
+                $referenceType, $invoiceId, $number->inventory_batch_id, $number->id,
+            );
+            $number->update([
+                'status' => $referenceType === 'sale_void' ? 'available' : 'returned',
+                'sales_invoice_id' => null,
+            ]);
+
+            return $number;
+        });
+    }
+
     public function transition(int $tenantId, int $serialNumberId, string $status, ?int $warehouseId = null): SerialNumber
     {
         $allowed = [

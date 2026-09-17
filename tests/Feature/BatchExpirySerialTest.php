@@ -176,4 +176,32 @@ class BatchExpirySerialTest extends TestCase
             'product_variant_id' => $variant->id, 'quantity' => 1, 'inventory_batch_id' => $foreignBatch->id,
         ]], $tenant->id);
     }
+
+    public function test_serial_checkout_return_and_void_keep_serial_status_and_ledger_in_lockstep(): void
+    {
+        ['tenant' => $tenant, 'branch' => $branch, 'warehouse' => $warehouse, 'variant' => $variant] = $this->context();
+        $serials = app(SerialNumberService::class);
+        $returned = $serials->receive($tenant->id, $warehouse->id, $variant->id, 'IMEI-RETURN', 10);
+        $voided = $serials->receive($tenant->id, $warehouse->id, $variant->id, 'IMEI-VOID', 10);
+        $sales = app(SaleService::class);
+
+        $returnInvoice = $sales->checkout($tenant->id, $branch->id, $warehouse->id, null, [[
+            'variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 20, 'serial_number_ids' => [$returned->id],
+        ]], [['method' => 'cash', 'amount' => 20]], 'serial-return');
+        $this->assertSame('sold', $returned->refresh()->status);
+        $sales->return($returnInvoice->id, [['variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 20]], $tenant->id);
+        $this->assertSame('returned', $returned->refresh()->status);
+        $this->assertDatabaseHas('stock_movements', [
+            'reference_type' => 'sale_return', 'serial_number_id' => $returned->id, 'movement_type' => 'in',
+        ]);
+
+        $voidInvoice = $sales->checkout($tenant->id, $branch->id, $warehouse->id, null, [[
+            'variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 20, 'serial_number_ids' => [$voided->id],
+        ]], [['method' => 'cash', 'amount' => 20]], 'serial-void');
+        $sales->void($voidInvoice->id, true, $tenant->id);
+        $this->assertSame('available', $voided->refresh()->status);
+        $this->assertDatabaseHas('stock_movements', [
+            'reference_type' => 'sale_void', 'serial_number_id' => $voided->id, 'movement_type' => 'in',
+        ]);
+    }
 }

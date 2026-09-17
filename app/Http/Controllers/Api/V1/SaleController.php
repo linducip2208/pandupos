@@ -28,6 +28,8 @@ class SaleController extends Controller
             'lines' => 'required|array|min:1',
             'lines.*.variant_id' => ['required', Rule::exists('product_variants', 'id')->where('tenant_id', $tenantId)],
             'lines.*.inventory_batch_id' => ['nullable', Rule::exists('inventory_batches', 'id')->where('tenant_id', $tenantId)],
+            'lines.*.serial_number_ids' => ['nullable', 'array'],
+            'lines.*.serial_number_ids.*' => ['integer', 'distinct', Rule::exists('serial_numbers', 'id')->where('tenant_id', $tenantId)],
             'lines.*.quantity' => 'required|numeric|min:0.001',
             'lines.*.unit_price' => 'required|numeric|min:0',
             'payments' => 'required|array|min:1',

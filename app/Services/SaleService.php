@@ -22,6 +22,7 @@ final class SaleService
         private ApprovalService $approvals,
         private BundleInventoryService $bundles,
         private BatchInventoryService $batches,
+        private SerialNumberService $serials,
     ) {}
 
     /**
@@ -55,6 +56,10 @@ final class SaleService
                     if (($l['quantity'] ?? 0) <= 0) {
                         abort(422, 'Line quantity must be greater than zero.');
                     }
+                    $serialIds = collect($l['serial_number_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->values();
+                    if ($serialIds->isNotEmpty() && ($serialIds->count() !== (int) $l['quantity'] || $serialIds->unique()->count() !== $serialIds->count())) {
+                        abort(422, 'Each serialized sale line requires one unique serial per unit.');
+                    }
                 }
 
                 $subtotal = collect($lines)->sum(fn ($l) => $l['quantity'] * $l['unit_price'] - ($l['discount'] ?? 0));
@@ -83,15 +88,22 @@ final class SaleService
                         'unit_price' => $l['unit_price'], 'discount' => $l['discount'] ?? 0,
                     ]);
                     if (! $requiresApproval) {
-                        $this->decreaseSoldInventory(
-                            $tenantId,
-                            $warehouseId,
-                            (int) $l['variant_id'],
-                            (float) $l['quantity'],
-                            'sale',
-                            $invoice->id,
-                            $l['inventory_batch_id'] ?? null,
-                        );
+                        $serialIds = collect($l['serial_number_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->values();
+                        if ($serialIds->isNotEmpty()) {
+                            foreach ($serialIds as $serialId) {
+                                $this->serials->sell($tenantId, $serialId, $invoice->id);
+                            }
+                        } else {
+                            $this->decreaseSoldInventory(
+                                $tenantId,
+                                $warehouseId,
+                                (int) $l['variant_id'],
+                                (float) $l['quantity'],
+                                'sale',
+                                $invoice->id,
+                                $l['inventory_batch_id'] ?? null,
+                            );
+                        }
                     }
                 }
 
@@ -255,17 +267,29 @@ final class SaleService
         $alreadyRestored = StockMovement::withoutGlobalScopes()
             ->where('tenant_id', $invoice->tenant_id)->whereIn('reference_type', ['sale_return', 'sale_void'])
             ->where('reference_id', $invoice->id)->where('product_variant_id', $variantId)->where('movement_type', 'in')->get()
-            ->groupBy(fn (StockMovement $movement) => $movement->inventory_batch_id ?? 'unbatched')
+            ->groupBy(fn (StockMovement $movement) => $movement->serial_number_id ?? ($movement->inventory_batch_id ?? 'unbatched'))
             ->map(fn ($movements) => (float) $movements->sum('quantity'));
 
         foreach ($sold as $movement) {
-            $batchKey = $movement->inventory_batch_id ?? 'unbatched';
+            $batchKey = $movement->serial_number_id ?? ($movement->inventory_batch_id ?? 'unbatched');
             $available = (float) $movement->quantity - (float) ($alreadyRestored[$batchKey] ?? 0);
             $take = min($remaining, max(0, $available));
             if ($take <= 0) {
                 continue;
             }
-            $this->stock->increase($invoice->tenant_id, $invoice->warehouse_id, $variantId, $take, (float) $movement->unit_cost, $referenceType, $invoice->id, $movement->inventory_batch_id);
+            if ($movement->serial_number_id !== null) {
+                // A serial can only be restored as a whole; serialized sale lines are one unit each.
+                abort_if(abs($take - 1.0) > 0.000001, 422, 'Serialized return must contain complete serial units.');
+                $this->serials->restoreFromSale(
+                    $invoice->tenant_id, $movement->serial_number_id, $invoice->id,
+                    (float) $movement->unit_cost, $referenceType,
+                );
+            } else {
+                $this->stock->increase(
+                    $invoice->tenant_id, $invoice->warehouse_id, $variantId, $take,
+                    (float) $movement->unit_cost, $referenceType, $invoice->id, $movement->inventory_batch_id,
+                );
+            }
             $alreadyRestored[$batchKey] = (float) ($alreadyRestored[$batchKey] ?? 0) + $take;
             $remaining = round($remaining - $take, 6);
             if ($remaining <= 0) {
