@@ -95,19 +95,20 @@
                         @csrf
                         <div class="col-12 col-md-3"><label class="form-label">Dari gudang</label><select name="from_warehouse_id" class="form-select" required>@foreach ($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>@endforeach</select></div>
                         <div class="col-12 col-md-3"><label class="form-label">Ke gudang</label><select name="to_warehouse_id" class="form-select" required>@foreach ($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>@endforeach</select></div>
-                        <div class="col-12 col-md-3"><label class="form-label">Varian</label><select name="product_variant_id" class="form-select" required>@foreach ($variants as $variant)<option value="{{ $variant->id }}">{{ $variant->sku }}</option>@endforeach</select></div>
-                        <div class="col-6 col-md-1"><label class="form-label">Qty</label><input name="quantity" type="number" min="0.001" step="0.001" class="form-control" required></div>
-                        <div class="col-6 col-md-2 d-flex align-items-end"><button class="btn btn-primary w-100">Buat draft</button></div>
+                        <div class="col-12"><label class="form-label">Baris transfer</label><div id="transfer-lines" class="vstack gap-2"><div class="row g-2 transfer-line"><div class="col-8"><select name="lines[0][product_variant_id]" class="form-select" required>@foreach ($variants as $variant)<option value="{{ $variant->id }}">{{ $variant->sku }} · {{ $variant->product?->name }}</option>@endforeach</select></div><div class="col-4"><input name="lines[0][quantity]" type="number" min="0.001" step="0.001" class="form-control" placeholder="Qty" required></div></div></div><button type="button" id="add-transfer-line" class="btn btn-sm btn-outline-secondary mt-2">+ Tambah baris</button></div>
+                        <div class="col-12 col-md-8"><label class="form-label">Catatan (opsional)</label><input name="notes" class="form-control" maxlength="1000" placeholder="Alasan atau referensi transfer"></div>
+                        <div class="col-12 col-md-4 d-flex align-items-end"><button class="btn btn-primary w-100">Buat permintaan</button></div>
                     </form>
-                    <div class="table-responsive"><table class="table table-vcenter"><thead><tr><th>ID</th><th>Rute</th><th>Item</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
-                        @forelse ($transfers as $transfer)<tr><td>#{{ $transfer->id }}</td><td>{{ $transfer->fromWarehouse?->name }} → {{ $transfer->toWarehouse?->name }}</td><td>@foreach ($transfer->lines as $line)<div>{{ $line->variant?->sku }} · {{ number_format((float) $line->received_quantity, 3) }}/{{ number_format((float) $line->quantity, 3) }}</div>@endforeach</td><td><span class="badge">{{ str_replace('_', ' ', $transfer->status) }}</span></td><td><div class="d-flex flex-wrap gap-2">
+                    <div class="text-secondary small mb-3">Pembuat tidak dapat menyetujui permintaan transfernya sendiri. Stok tujuan baru bertambah saat penerimaan dicatat.</div>
+                    <div class="table-responsive"><table class="table table-vcenter"><thead><tr><th>ID</th><th>Rute</th><th>Item</th><th>Pembuat</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
+                        @forelse ($transfers as $transfer)<tr><td>#{{ $transfer->id }}</td><td>{{ $transfer->fromWarehouse?->name }} → {{ $transfer->toWarehouse?->name }}</td><td>@foreach ($transfer->lines as $line)<div>{{ $line->variant?->sku }} · {{ number_format((float) $line->received_quantity, 3) }}/{{ number_format((float) $line->quantity, 3) }}</div>@endforeach</td><td>{{ $transfer->requester?->name ?? 'Riwayat lama' }}</td><td><span class="badge">{{ str_replace('_', ' ', $transfer->status) }}</span></td><td><div class="d-flex flex-wrap gap-2">
                             @foreach (['draft' => ['approve' => 'Setujui', 'cancel' => 'Batal'], 'approved' => ['ship' => 'Kirim', 'cancel' => 'Batal'], 'shipped' => ['transit' => 'Dalam perjalanan']] as $status => $actions)
                                 @if ($transfer->status === $status) @foreach ($actions as $action => $label)<form method="POST" action="{{ route('inventory.transfers.action', [$transfer, $action]) }}">@csrf<button class="btn btn-sm btn-outline-primary">{{ $label }}</button></form>@endforeach @endif
                             @endforeach
                             @if (in_array($transfer->status, ['shipped', 'in_transit', 'partial_received'], true))
                                 <form method="POST" action="{{ route('inventory.transfers.receive', $transfer) }}" class="d-flex flex-wrap gap-1">@csrf @foreach ($transfer->lines as $line)<input name="quantities[{{ $line->id }}]" type="number" step="0.001" min="0.001" max="{{ (float) $line->quantity - (float) $line->received_quantity }}" class="form-control form-control-sm" style="width:7rem" placeholder="Terima">@endforeach<button class="btn btn-sm btn-success">Terima</button></form>
                             @endif
-                        </div></td></tr>@empty<tr><td colspan="5" class="text-center text-secondary py-4">Belum ada transfer.</td></tr>@endforelse
+                        </div></td></tr>@empty<tr><td colspan="6" class="text-center text-secondary py-4">Belum ada transfer.</td></tr>@endforelse
                     </tbody></table></div>
                 </div>
             </div>
@@ -142,3 +143,24 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    (() => {
+        const container = document.getElementById('transfer-lines');
+        const add = document.getElementById('add-transfer-line');
+        if (!container || !add) return;
+
+        let index = 1;
+        add.addEventListener('click', () => {
+            const row = container.firstElementChild.cloneNode(true);
+            row.querySelector('select').name = `lines[${index}][product_variant_id]`;
+            const quantity = row.querySelector('input');
+            quantity.name = `lines[${index}][quantity]`;
+            quantity.value = '';
+            container.appendChild(row);
+            index += 1;
+        });
+    })();
+</script>
+@endpush

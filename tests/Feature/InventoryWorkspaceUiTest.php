@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockAdjustment;
 use App\Models\StockReservation;
+use App\Models\TransferOrder;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
@@ -62,6 +63,34 @@ class InventoryWorkspaceUiTest extends TestCase
         $this->actingAs($userA)->get(route('inventory.index'))->assertForbidden();
         $userA->givePermissionTo('inventory.view');
         $this->post(route('inventory.reservations.release', $reservationB))->assertNotFound();
+    }
+
+    public function test_authorized_user_can_submit_multi_line_transfer_request(): void
+    {
+        [$user, $tenant, $source, $variant] = $this->context('Transfer UI');
+        $branch = Branch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
+        $destination = Warehouse::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'branch_id' => $branch->id, 'name' => 'Tujuan Transfer', 'code' => 'DST-'.uniqid(),
+        ]);
+        $secondVariant = ProductVariant::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'product_id' => $variant->product_id, 'name' => 'Second',
+            'sku' => 'V2-'.uniqid(), 'purchase_price' => 5500, 'sell_price' => 8500,
+        ]);
+
+        $this->actingAs($user)->post(route('inventory.transfers.store'), [
+            'from_warehouse_id' => $source->id,
+            'to_warehouse_id' => $destination->id,
+            'notes' => 'Permintaan antar gudang dua baris',
+            'lines' => [
+                ['product_variant_id' => $variant->id, 'quantity' => 2],
+                ['product_variant_id' => $secondVariant->id, 'quantity' => 3],
+            ],
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $transfer = TransferOrder::withoutGlobalScopes()->where('tenant_id', $tenant->id)->latest('id')->firstOrFail();
+        $this->assertSame($user->id, $transfer->requested_by);
+        $this->assertCount(2, $transfer->lines);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'action' => 'inventory.transfer.created']);
     }
 
     private function context(string $name): array

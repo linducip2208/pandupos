@@ -29,7 +29,7 @@ class AdvancedStockTransferTest extends TestCase
             ['product_variant_id' => $variant->id, 'quantity' => 10],
         ], null, $owner->id);
 
-        $service->approve($transfer, $owner->id);
+        $service->approve($transfer, User::factory()->create()->id);
         $this->assertEquals(10, $stock->onHand($tenant->id, $source->id, $variant->id));
         $this->assertEquals(0, $stock->onHand($tenant->id, $destination->id, $variant->id));
 
@@ -70,10 +70,28 @@ class AdvancedStockTransferTest extends TestCase
         $second = $service->createDraft($tenant->id, $source->id, $destination->id, [
             ['product_variant_id' => $variant->id, 'quantity' => 1],
         ]);
-        $service->approve($second, $owner->id);
+        $service->approve($second, User::factory()->create()->id);
         $shipped = $service->ship($second, $owner->id);
         $this->expectException(ValidationException::class);
         $service->cancel($shipped, $owner->id);
+    }
+
+    public function test_requester_cannot_approve_own_multi_line_transfer(): void
+    {
+        [$tenant, $owner, $source, $destination, $variant] = $this->context();
+        $secondVariant = ProductVariant::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'product_id' => $variant->product_id,
+            'name' => 'Second', 'sku' => 'TRF-2', 'purchase_price' => 9, 'sell_price' => 13,
+        ]);
+        $transfer = app(StockTransferService::class)->createDraft($tenant->id, $source->id, $destination->id, [
+            ['product_variant_id' => $variant->id, 'quantity' => 1],
+            ['product_variant_id' => $secondVariant->id, 'quantity' => 2],
+        ], 'Two item request', $owner->id);
+
+        $this->assertSame($owner->id, $transfer->requested_by);
+        $this->assertCount(2, $transfer->lines);
+        $this->expectException(ValidationException::class);
+        app(StockTransferService::class)->approve($transfer, $owner->id);
     }
 
     private function context(): array

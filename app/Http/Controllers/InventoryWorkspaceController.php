@@ -32,7 +32,7 @@ class InventoryWorkspaceController extends Controller
             'locations' => WarehouseLocation::query()->with('warehouse')->latest()->limit(30)->get(),
             'batches' => InventoryBatch::query()->latest()->limit(100)->get(),
             'reservations' => StockReservation::query()->with(['warehouse', 'variant.product'])->latest()->limit(30)->get(),
-            'transfers' => TransferOrder::query()->with(['fromWarehouse', 'toWarehouse', 'lines.variant.product'])->latest()->limit(30)->get(),
+            'transfers' => TransferOrder::query()->with(['fromWarehouse', 'toWarehouse', 'requester', 'lines.variant.product'])->latest()->limit(30)->get(),
             'adjustments' => StockAdjustment::query()->with(['warehouse', 'lines.variant.product'])->latest()->limit(30)->get(),
             'counts' => StockCount::query()->with(['warehouse', 'lines.variant.product'])->latest()->limit(30)->get(),
         ]);
@@ -110,12 +110,11 @@ class InventoryWorkspaceController extends Controller
         $this->requirePermission($request, 'inventory.transfer');
         $data = $request->validate([
             'from_warehouse_id' => ['required', 'integer', 'different:to_warehouse_id'],
-            'to_warehouse_id' => ['required', 'integer'], 'product_variant_id' => ['required', 'integer'],
-            'quantity' => ['required', 'numeric', 'gt:0'], 'notes' => ['nullable', 'string', 'max:1000'],
+            'to_warehouse_id' => ['required', 'integer'], 'lines' => ['required', 'array', 'min:1'],
+            'lines.*.product_variant_id' => ['required', 'integer'], 'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'notes' => ['nullable', 'string', 'max:1000'],
         ]);
-        $service->createDraft(TenantContext::idOrFail(), (int) $data['from_warehouse_id'], (int) $data['to_warehouse_id'], [[
-            'product_variant_id' => $data['product_variant_id'], 'quantity' => $data['quantity'],
-        ]], $data['notes'] ?? null, $request->user()->id);
+        $service->createDraft(TenantContext::idOrFail(), (int) $data['from_warehouse_id'], (int) $data['to_warehouse_id'], $data['lines'], $data['notes'] ?? null, $request->user()->id);
 
         return back()->with('status', 'Draft transfer berhasil dibuat.');
     }

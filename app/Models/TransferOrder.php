@@ -10,7 +10,7 @@ class TransferOrder extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id', 'from_warehouse_id', 'to_warehouse_id', 'status', 'approved_by', 'shipped_by',
+        'tenant_id', 'from_warehouse_id', 'to_warehouse_id', 'status', 'requested_by', 'approved_by', 'shipped_by',
         'approved_at', 'shipped_at', 'in_transit_at', 'received_at', 'cancelled_at', 'notes',
     ];
 
@@ -40,6 +40,11 @@ class TransferOrder extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function requester()
+    {
+        return $this->belongsTo(User::class, 'requested_by');
     }
 
     public function shipper()

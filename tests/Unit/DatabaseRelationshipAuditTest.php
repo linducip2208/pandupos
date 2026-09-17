@@ -112,7 +112,7 @@ class DatabaseRelationshipAuditTest extends TestCase
             StockCount::class => ['tenant', 'warehouse', 'creator', 'approver', 'poster'],
             StockCountLine::class => ['stockCount', 'variant'],
             StockMovement::class => ['tenant', 'warehouse', 'warehouseLocation', 'variant', 'inventoryBatch', 'serialNumber'],
-            TransferOrder::class => ['tenant', 'fromWarehouse', 'toWarehouse', 'approver', 'shipper'],
+            TransferOrder::class => ['tenant', 'fromWarehouse', 'toWarehouse', 'requester', 'approver', 'shipper'],
             TransferLine::class => ['transferOrder', 'variant'], Contact::class => ['tenant'],
             Purchase::class => ['tenant', 'warehouse', 'contact', 'requester', 'approver'], PurchaseLine::class => ['purchase', 'variant'],
             GoodsReceipt::class => ['tenant', 'purchase', 'warehouse', 'receiver'],

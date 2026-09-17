@@ -24,7 +24,7 @@ The Core scorer preserves a 100-point total while separating meaningful release 
 2. Serial lifecycle document integration: reserve, sell, return, transfer, damage, with no manual ledger divergence.
 3. Rack/bin selectors and stock visibility in current receiving, transfer and POS paths.
 4. Reservation consume UI/sales-order lifecycle and scheduler cleanup. Cleanup is now scheduled and audited; UI/document consume evidence remains.
-5. Transfer requester/approver separation and multi-line current UI.
+5. Transfer requester/approver separation and multi-line current UI are now covered by server-side validation, audit and regression tests. Location/batch selectors and complete tenant UI acceptance remain open, so the transfer score gate remains unverified.
 6. Adjustment/count multi-line current UI and post-immutability evidence.
 7. Reconciliation visibility in existing system health.
 

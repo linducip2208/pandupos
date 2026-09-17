@@ -24,6 +24,7 @@ final class StockTransferService
             $transfer = TransferOrder::withoutGlobalScopes()->create([
                 'tenant_id' => $tenantId, 'from_warehouse_id' => $fromWarehouseId,
                 'to_warehouse_id' => $toWarehouseId, 'status' => 'draft', 'notes' => $notes,
+                'requested_by' => $actorId,
             ]);
             foreach ($lines as $line) {
                 $variant = ProductVariant::withoutGlobalScopes()->where('tenant_id', $tenantId)->find($line['product_variant_id']);
@@ -42,9 +43,19 @@ final class StockTransferService
 
     public function approve(TransferOrder $transfer, int $actorId): TransferOrder
     {
-        return $this->transition($transfer, ['draft'], 'approved', [
-            'approved_by' => $actorId, 'approved_at' => now(),
-        ], 'approved', $actorId);
+        return DB::transaction(function () use ($transfer, $actorId) {
+            $locked = $this->lock($transfer);
+            $this->expectStatus($locked, ['draft']);
+            if ($locked->requested_by !== null && (int) $locked->requested_by === $actorId) {
+                throw ValidationException::withMessages(['approval' => 'Pembuat transfer tidak dapat menyetujui transfer sendiri.']);
+            }
+
+            $before = $locked->toArray();
+            $locked->update(['status' => 'approved', 'approved_by' => $actorId, 'approved_at' => now()]);
+            $this->audit->log($locked->tenant_id, $actorId, 'inventory.transfer.approved', TransferOrder::class, $locked->id, $before, $locked->fresh()->toArray());
+
+            return $locked->fresh('lines');
+        });
     }
 
     public function ship(TransferOrder $transfer, int $actorId): TransferOrder
