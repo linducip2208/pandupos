@@ -40,4 +40,9 @@ class ProductVariant extends Model
     {
         return $this->hasMany(SerialNumber::class);
     }
+
+    public function stockReservations()
+    {
+        return $this->hasMany(StockReservation::class);
+    }
 }

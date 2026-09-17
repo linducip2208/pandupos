@@ -8,10 +8,13 @@ use App\Models\BundleItem;
 use App\Models\PriceList;
 use App\Models\Product;
 use App\Models\SerialNumber;
+use App\Models\StockReservation;
+use App\Models\WarehouseLocation;
 use App\Services\BarcodeParserService;
 use App\Services\BatchInventoryService;
 use App\Services\PriceResolverService;
 use App\Services\SerialNumberService;
+use App\Services\StockReservationService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -191,5 +194,82 @@ class InventoryConfigurationController extends Controller
         $this->authorize('viewAny', Product::class);
 
         return response()->json(['data' => SerialNumber::with(['variant', 'warehouse'])->latest()->paginate(20)]);
+    }
+
+    public function locations(Request $request)
+    {
+        $this->authorize('viewAny', Product::class);
+        $tenantId = TenantContext::idOrFail();
+        $data = $request->validate([
+            'warehouse_id' => ['nullable', Rule::exists('warehouses', 'id')->where('tenant_id', $tenantId)],
+        ]);
+
+        return response()->json(['data' => WarehouseLocation::query()
+            ->when($data['warehouse_id'] ?? null, fn ($query, $warehouseId) => $query->where('warehouse_id', $warehouseId))
+            ->orderBy('code')->paginate(50)]);
+    }
+
+    public function storeLocation(Request $request)
+    {
+        $this->authorize('create', Product::class);
+        $tenantId = TenantContext::idOrFail();
+        $data = $request->validate([
+            'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('tenant_id', $tenantId)],
+            'code' => ['required', 'string', 'max:64', Rule::unique('warehouse_locations')->where('tenant_id', $tenantId)->where('warehouse_id', $request->integer('warehouse_id'))],
+            'zone' => 'nullable|string|max:64',
+            'rack' => 'nullable|string|max:64',
+            'shelf' => 'nullable|string|max:64',
+            'bin' => 'nullable|string|max:64',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        return response()->json(['data' => WarehouseLocation::create($data + ['tenant_id' => $tenantId])], 201);
+    }
+
+    public function reservations()
+    {
+        $this->authorize('viewAny', Product::class);
+
+        return response()->json(['data' => StockReservation::with(['variant', 'warehouse', 'warehouseLocation'])
+            ->latest()->paginate(50)]);
+    }
+
+    public function storeReservation(Request $request, StockReservationService $reservations)
+    {
+        $this->authorize('create', Product::class);
+        $tenantId = TenantContext::idOrFail();
+        $data = $request->validate([
+            'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('tenant_id', $tenantId)],
+            'warehouse_location_id' => ['nullable', Rule::exists('warehouse_locations', 'id')->where('tenant_id', $tenantId)],
+            'product_variant_id' => ['required', Rule::exists('product_variants', 'id')->where('tenant_id', $tenantId)],
+            'inventory_batch_id' => ['nullable', Rule::exists('inventory_batches', 'id')->where('tenant_id', $tenantId)],
+            'quantity' => 'required|numeric|gt:0',
+            'source_type' => 'required|in:sales_order,held_sale,ecommerce_order',
+            'source_id' => 'nullable|integer|min:1',
+            'idempotency_key' => 'nullable|string|max:100',
+            'expires_at' => 'nullable|date|after:now',
+        ]);
+
+        return response()->json(['data' => $reservations->reserve($data + ['tenant_id' => $tenantId], $request->user()?->id)], 201);
+    }
+
+    public function releaseReservation(Request $request, StockReservation $reservation, StockReservationService $reservations)
+    {
+        $this->authorize('create', Product::class);
+
+        return response()->json(['data' => $reservations->release($reservation, $request->user()?->id)]);
+    }
+
+    public function consumeReservation(Request $request, StockReservation $reservation, StockReservationService $reservations)
+    {
+        $this->authorize('create', Product::class);
+        $data = $request->validate([
+            'reference_type' => 'required|in:sale,delivery,ecommerce_order',
+            'reference_id' => 'required|integer|min:1',
+        ]);
+
+        return response()->json(['data' => $reservations->consume(
+            $reservation, $data['reference_type'], (int) $data['reference_id'], $request->user()?->id
+        )]);
     }
 }

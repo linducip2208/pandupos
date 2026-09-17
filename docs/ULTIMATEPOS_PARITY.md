@@ -16,9 +16,9 @@ Legend: `D` done, `P` partial, `M` missing, `—` not applicable. `FEATURE COMPL
 | Opening stock/location assignment | Generic ledger increase only | P | M | M | M | P | M | P | PARTIAL | Governed workflow/audit |
 | Lot/batch/expiry/FEFO | Lot provenance, expiry report API and controlled FEFO allocation | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and purchase/sale selectors |
 | Serial tracking | Controlled lifecycle, ledger linkage and duplicate-sale prevention | D | M | P | P | D | D | D | PARTIAL | UI, granular permission/audit and return/transfer integration |
-| Rack/bin | Warehouse only | M | M | M | M | — | M | M | NOT STARTED | Zone/rack/shelf/bin |
+| Rack/bin | Optional zone/rack/shelf/bin master with location-linked movements | D | M | D | P | D | D | D | PARTIAL | Management UI and granular permission |
 | Ledger/WAC | Append-only movements, locks, WAC/valuation | P | P | P | P | D | P | P | PARTIAL | Taxonomy/cost/concurrency matrix |
-| Reservation | Checkout oversell lock only | P | M | M | M | P | P | M | PARTIAL | Entity/expiry/release |
+| Reservation | Audited idempotent reserve/release/consume/expire and available-to-promise | D | M | D | P | D | D | D | PARTIAL | Sales-order/held-cart UI integration and scheduler |
 | Transfer | Direct transfer and order schema | P | M | M | M | D | P | P | PARTIAL | Approval/transit/partial receive |
 | Adjustment/count/reconcile | No complete workflow/command | M | M | M | M | — | M | M | NOT STARTED | All three workflows |
 | PO/partial receipt | Draft and cumulative receive service/API | P | M | P | P | D | P | P | PARTIAL | UI/approval/document split |

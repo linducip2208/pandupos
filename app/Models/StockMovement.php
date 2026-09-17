@@ -10,7 +10,7 @@ class StockMovement extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id', 'warehouse_id', 'product_variant_id', 'inventory_batch_id', 'serial_number_id', 'reference_type',
+        'tenant_id', 'warehouse_id', 'warehouse_location_id', 'product_variant_id', 'inventory_batch_id', 'serial_number_id', 'reference_type',
         'reference_id', 'movement_type', 'quantity', 'unit_cost', 'occurred_at',
     ];
 
@@ -29,6 +29,11 @@ class StockMovement extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function warehouseLocation()
+    {
+        return $this->belongsTo(WarehouseLocation::class);
     }
 
     public function variant()

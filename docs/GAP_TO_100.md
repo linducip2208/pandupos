@@ -25,8 +25,8 @@ Execute in this order:
 3. Normal/variant/weighing parser, configurable scale rules, labels and print templates.
 4. Price lists for tenant/location/customer group/date/priority with audited resolver.
 5. Relational bundles with atomic component deduction.
-6. Finish UI/permissions/audit and transaction selectors for implemented batch/expiry/FEFO and serial foundations; add physical bin locations.
-7. Reservation service with expiry/release.
+6. Finish UI/permissions/audit and transaction selectors for implemented batch/expiry/FEFO, serial and physical-location foundations.
+7. Integrate implemented reservation service into sales-order/held-cart UI and schedule expiry cleanup.
 8. Transfer approval, ship, transit, partial receive, receive/cancel; destination stock only on receipt.
 9. Reasoned/authorized/audited adjustments and stock-count snapshot/review/posting.
 10. Read-only `inventory:reconcile`.
