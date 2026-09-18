@@ -72,12 +72,8 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const locations = @json($locations->map(fn ($location) => [
-        'id' => $location->id,
-        'warehouse_id' => $location->warehouse_id,
-        'code' => $location->code,
-    ])->values());
-    const purchaseWarehouses = @json($purchases->mapWithKeys(fn ($purchase) => [$purchase->id => $purchase->warehouse_id]));
+    const locations = {!! $receiptLocationsJson !!};
+    const purchaseWarehouses = {!! $purchaseWarehousesJson !!};
 
     document.querySelectorAll('form[action*="/receive"]').forEach((form) => {
         const match = form.action.match(/\/purchasing\/orders\/(\d+)\/receive$/);
