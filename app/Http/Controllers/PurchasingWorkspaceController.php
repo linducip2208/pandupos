@@ -122,6 +122,16 @@ class PurchasingWorkspaceController extends Controller
         return back()->with('status', 'Pembayaran pemasok berhasil dicatat.');
     }
 
+    public function printInvoice(Request $request, SupplierInvoice $invoice): View
+    {
+        abort_unless($request->user()->can('purchase.create') || $request->user()->can('purchase.approve'), 403);
+        $this->assertTenant($invoice->tenant_id);
+
+        return view('purchasing.supplier-invoice-print', [
+            'invoice' => $invoice->load(['supplier', 'purchase', 'payments.creator']),
+        ]);
+    }
+
     public function storeReturn(Request $request, Purchase $purchase, SupplierDocumentService $service): RedirectResponse
     {
         abort_unless($request->user()->can('purchase.approve'), 403);

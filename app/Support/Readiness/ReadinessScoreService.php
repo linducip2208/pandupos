@@ -35,7 +35,7 @@ final class ReadinessScoreService
                 ['WAC/costing', 2, true, 'WeightedAverageCostTest: purchase, sale, return, transfer and purchase-return cost preservation'],
                 ['Purchasing UI', 5, false, 'PO multi-line draft/edit/approval/document UI'],
                 ['Purchase receipt', 4, false, 'Goods receipt and partial-receipt UI with audit and tenant checks'],
-                ['Supplier invoice', 3, false, 'Separate AP invoice UI, validation and document output'],
+                ['Supplier invoice', 3, true, 'PurchasingWorkspaceUiTest, SupplierDocumentTest and PurchasingSafetyTest: tenant-scoped AP UI/API, supplier/PO validation, duplicate protection, immutable money totals, audit and printable document output'],
                 ['Supplier payment', 2, false, 'Partial/full payment UI, validation and audit'],
                 ['Purchase return', 2, false, 'Received-minus-return workflow UI and supplier credit evidence'],
                 ['Purchasing safety', 2, true, 'PurchasingSafetyTest, PurchaseApprovalTest and SupplierDocumentTest: PO stock timing, 30/40/30 partial receipt, idempotent completed retry, over-receipt, duplicate supplier invoice, overpayment, over-return, approval and cross-tenant proof'],

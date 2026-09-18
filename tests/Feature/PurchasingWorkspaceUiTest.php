@@ -9,6 +9,8 @@ use App\Models\ProductVariant;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\PurchaseService;
+use App\Services\SupplierDocumentService;
 use App\Services\TenantProvisioningService;
 use Database\Seeders\PlatformSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,6 +41,31 @@ class PurchasingWorkspaceUiTest extends TestCase
         $user->revokePermissionTo(['purchase.create', 'purchase.approve']);
 
         $this->actingAs($user)->get(route('purchasing.index'))->assertForbidden();
+    }
+
+    public function test_authorized_tenant_can_print_supplier_invoice_but_not_another_tenants_document(): void
+    {
+        [$user, $tenant, $warehouse, $supplier, $variant] = $this->context();
+        $purchase = app(PurchaseService::class)->createDraft($tenant->id, $warehouse->id, $supplier->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 1, 'unit_cost' => 100,
+        ]], $user->id);
+        $invoice = app(SupplierDocumentService::class)->createInvoice($tenant->id, [
+            'purchase_id' => $purchase->id, 'supplier_id' => $supplier->id,
+            'invoice_number' => 'PRINT-001', 'invoice_date' => today()->toDateString(), 'subtotal' => 100,
+        ], $user->id);
+
+        $this->actingAs($user)->get(route('purchasing.invoices.print', $invoice))
+            ->assertOk()->assertSeeText('Invoice Pemasok')->assertSeeText('PRINT-001');
+
+        $foreignUser = User::factory()->create();
+        $foreign = app(TenantProvisioningService::class)->provision('Foreign Print', $foreignUser);
+        $foreignSupplier = Contact::withoutGlobalScopes()->create(['tenant_id' => $foreign->id, 'type' => 'supplier', 'name' => 'Foreign Supplier']);
+        $foreignInvoice = app(SupplierDocumentService::class)->createInvoice($foreign->id, [
+            'supplier_id' => $foreignSupplier->id,
+            'invoice_number' => 'FOREIGN-PRINT', 'invoice_date' => today()->toDateString(), 'subtotal' => 100,
+        ], $foreignUser->id);
+
+        $this->actingAs($user)->get(route('purchasing.invoices.print', $foreignInvoice))->assertNotFound();
     }
 
     private function context(): array

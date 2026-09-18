@@ -169,6 +169,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/orders/{purchase}/receive', [PurchasingWorkspaceController::class, 'receive'])->name('orders.receive');
         Route::post('/orders/{purchase}/returns', [PurchasingWorkspaceController::class, 'storeReturn'])->name('returns.store');
         Route::post('/invoices', [PurchasingWorkspaceController::class, 'storeInvoice'])->name('invoices.store');
+        Route::get('/invoices/{invoice}/print', [PurchasingWorkspaceController::class, 'printInvoice'])->name('invoices.print');
         Route::post('/invoices/{invoice}/payments', [PurchasingWorkspaceController::class, 'pay'])->name('payments.store');
     });
 });
