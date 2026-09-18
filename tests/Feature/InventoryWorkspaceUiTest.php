@@ -7,6 +7,7 @@ use App\Models\Membership;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockAdjustment;
+use App\Models\StockCount;
 use App\Models\StockReservation;
 use App\Models\TransferOrder;
 use App\Models\User;
