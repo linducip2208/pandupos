@@ -35,6 +35,21 @@
                     @endforeach
                 </table>
             </div>
+            @if($cart !== [])
+                <div class="card-body border-top py-2">
+                    @foreach($cart as $i => $row)
+                        @php($variantSerials = $serials->where('product_variant_id', $row['variant_id']))
+                        @if($variantSerials->isNotEmpty())
+                            <label class="form-label small mb-1">Serial {{ $row['name'] }} <span class="text-secondary">(pilih sesuai qty)</span></label>
+                            <select class="form-select form-select-sm mb-2" multiple wire:model.live="cart.{{ $i }}.serial_number_ids" aria-label="Serial {{ $row['name'] }}">
+                                @foreach($variantSerials as $serial)
+                                    <option value="{{ $serial->id }}">{{ $serial->serial_number }}{{ $serial->warehouseLocation ? ' · '.$serial->warehouseLocation->code : '' }}</option>
+                                @endforeach
+                            </select>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
             <div class="card-footer">
                 @if($lastInvoiceNo)<div class="alert alert-success">Struk: {{ $lastInvoiceNo }} @if($lastChange>0)| Kembali Rp {{ number_format($lastChange,0,',','.') }}@endif</div>@endif
                 <div class="text-muted mb-2">Dibayar Rp {{ number_format($this->paid,0,',','.') }} • Kembali Rp {{ number_format(max(0,$this->change),0,',','.') }}</div>

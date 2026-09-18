@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Contact;
 use App\Models\InventoryBatch;
 use App\Models\Product;
+use App\Models\SerialNumber;
 use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Services\PriceResolverService;
@@ -18,7 +19,7 @@ class PosKasir extends Component
 {
     public string $search = '';
 
-    /** @var array<int, array{variant_id:int,name:string,base_price:float,price:float,qty:float,base_unit_id:int,unit_id:int,unit_name:string,factor:float,inventory_batch_id:?int}> */
+    /** @var array<int, array{variant_id:int,name:string,base_price:float,price:float,qty:float,base_unit_id:int,unit_id:int,unit_name:string,factor:float,inventory_batch_id:?int,serial_number_ids:array<int,int>}> */
     public array $cart = [];
 
     /** @var array<int, array{method:string,amount:float}> */
@@ -49,7 +50,7 @@ class PosKasir extends Component
         $this->cart[] = [
             'variant_id' => $variantId, 'name' => $name, 'base_price' => $resolved['price'], 'price' => $resolved['price'], 'qty' => 1,
             'base_unit_id' => $baseUnitId, 'unit_id' => $baseUnitId, 'unit_name' => $unitName, 'factor' => 1,
-            'price_source' => $resolved['source'], 'inventory_batch_id' => null,
+            'price_source' => $resolved['source'], 'inventory_batch_id' => null, 'serial_number_ids' => [],
         ];
     }
 
@@ -148,6 +149,7 @@ class PosKasir extends Component
             collect($this->cart)->map(fn ($r) => [
                 'variant_id' => $r['variant_id'], 'quantity' => $r['qty'] * $r['factor'], 'unit_price' => $r['base_price'],
                 'inventory_batch_id' => $r['inventory_batch_id'] ?? null,
+                'serial_number_ids' => $r['serial_number_ids'] ?? [],
             ])->all(),
             $this->payments,
             'web-'.uniqid(),
@@ -174,6 +176,8 @@ class PosKasir extends Component
             'batches' => InventoryBatch::query()->where('warehouse_id', Warehouse::query()->value('id'))
                 ->where(fn ($query) => $query->whereNull('expires_at')->orWhereDate('expires_at', '>=', today()))
                 ->orderByRaw('CASE WHEN expires_at IS NULL THEN 1 ELSE 0 END')->orderBy('expires_at')->get(),
+            'serials' => SerialNumber::query()->with('warehouseLocation')->where('warehouse_id', Warehouse::query()->value('id'))
+                ->whereIn('status', ['available', 'returned'])->orderBy('serial_number')->get(),
         ]);
     }
 
