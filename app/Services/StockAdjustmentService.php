@@ -91,6 +91,9 @@ final class StockAdjustmentService
                     $cost = $line->unit_cost ?? $this->stock->weightedAverageCost($locked->tenant_id, $locked->warehouse_id, $line->product_variant_id);
                     $this->stock->increase($locked->tenant_id, $locked->warehouse_id, $line->product_variant_id, $change, (float) $cost, 'adjustment_in', $locked->id, $line->inventory_batch_id, null, $line->warehouse_location_id);
                 } else {
+                    if ($line->warehouse_location_id !== null && $this->stock->onHandAtLocation($locked->tenant_id, $locked->warehouse_id, $line->product_variant_id, $line->warehouse_location_id) < abs($change)) {
+                        throw ValidationException::withMessages(['lines' => 'Adjustment would make rack/bin stock negative.']);
+                    }
                     $this->stock->decrease($locked->tenant_id, $locked->warehouse_id, $line->product_variant_id, abs($change), 'adjustment_out', $locked->id, $line->inventory_batch_id, null, $line->warehouse_location_id);
                 }
             }

@@ -36,7 +36,7 @@ class InventoryWorkspaceController extends Controller
             'reservations' => StockReservation::query()->with(['warehouse', 'variant.product'])->latest()->limit(30)->get(),
             'transfers' => TransferOrder::query()->with(['fromWarehouse', 'toWarehouse', 'requester', 'lines.variant.product'])->latest()->limit(30)->get(),
             'adjustments' => StockAdjustment::query()->with(['warehouse', 'lines.variant.product'])->latest()->limit(30)->get(),
-            'counts' => StockCount::query()->with(['warehouse', 'lines.variant.product'])->latest()->limit(30)->get(),
+            'counts' => StockCount::query()->with(['warehouse', 'warehouseLocation', 'lines.variant.product', 'lines.inventoryBatch', 'lines.serialNumber'])->latest()->limit(30)->get(),
         ]);
     }
 
@@ -187,8 +187,9 @@ class InventoryWorkspaceController extends Controller
         $data = $request->validate([
             'warehouse_id' => ['required', 'integer'], 'reference' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'warehouse_location_id' => ['nullable', 'integer'],
         ]);
-        $service->createAndSnapshot(TenantContext::idOrFail(), (int) $data['warehouse_id'], $data['reference'] ?? null, $data['notes'] ?? null, $request->user()->id);
+        $service->createAndSnapshot(TenantContext::idOrFail(), (int) $data['warehouse_id'], $data['reference'] ?? null, $data['notes'] ?? null, $request->user()->id, $data['warehouse_location_id'] ?? null);
 
         return back()->with('status', 'Stock count dan snapshot berhasil dibuat.');
     }

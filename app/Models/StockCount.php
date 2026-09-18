@@ -9,7 +9,7 @@ class StockCount extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'warehouse_id', 'status', 'reference', 'notes', 'created_by', 'approved_by', 'posted_by', 'snapshot_at', 'approved_at', 'posted_at'];
+    protected $fillable = ['tenant_id', 'warehouse_id', 'warehouse_location_id', 'status', 'reference', 'notes', 'created_by', 'approved_by', 'posted_by', 'snapshot_at', 'approved_at', 'posted_at'];
 
     protected function casts(): array
     {
@@ -19,6 +19,11 @@ class StockCount extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function warehouseLocation()
+    {
+        return $this->belongsTo(WarehouseLocation::class);
     }
 
     public function creator()

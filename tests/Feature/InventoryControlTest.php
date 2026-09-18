@@ -134,6 +134,47 @@ class InventoryControlTest extends TestCase
         ]);
     }
 
+    public function test_cycle_count_snapshots_batch_serial_and_rack_bin_without_double_posting(): void
+    {
+        [$tenant, $owner, $warehouse, $variant] = $this->context();
+        $approver = User::factory()->create();
+        $location = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'code' => 'COUNT-A-01', 'is_active' => true,
+        ]);
+        $batch = InventoryBatch::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'product_variant_id' => $variant->id,
+            'batch_number' => 'COUNT-LOT', 'expires_at' => today()->addMonth(),
+        ]);
+        $stock = app(StockService::class);
+        $stock->increase($tenant->id, $warehouse->id, $variant->id, 10, 5, 'opening', 1, $batch->id, null, $location->id);
+        $serial = app(SerialNumberService::class)->receive($tenant->id, $warehouse->id, $variant->id, 'COUNT-SERIAL', 5, $batch->id);
+
+        $service = app(StockCountService::class);
+        $locationCount = $service->createAndSnapshot($tenant->id, $warehouse->id, 'LOC-COUNT', null, $owner->id, $location->id);
+        $locationLine = $locationCount->lines->sole();
+        $this->assertSame($batch->id, $locationLine->inventory_batch_id);
+        $this->assertEquals(10, $locationLine->expected_quantity);
+        $postedLocation = $service->post(
+            $service->approve($service->recordCounts($locationCount, [$locationLine->id => 8], $owner->id), $approver->id),
+            $approver->id,
+        );
+        $this->assertSame('posted', $postedLocation->status);
+        $this->assertSame(8.0, $stock->onHandAtLocation($tenant->id, $warehouse->id, $variant->id, $location->id));
+
+        $warehouseCount = $service->createAndSnapshot($tenant->id, $warehouse->id, 'SERIAL-COUNT', null, $owner->id);
+        $serialLine = $warehouseCount->lines->firstWhere('serial_number_id', $serial->id);
+        $this->assertNotNull($serialLine);
+        $quantities = $warehouseCount->lines->mapWithKeys(fn ($line) => [$line->id => $line->serial_number_id === $serial->id ? 0 : $line->expected_quantity])->all();
+        $postedWarehouse = $service->post(
+            $service->approve($service->recordCounts($warehouseCount, $quantities, $owner->id), $approver->id),
+            $approver->id,
+        );
+        $this->assertSame('posted', $postedWarehouse->status);
+        $this->assertSame('damaged', $serial->refresh()->status);
+        $this->expectException(ValidationException::class);
+        $service->post($postedWarehouse, $approver->id);
+    }
+
     public function test_reconcile_is_read_only_without_explicit_fix(): void
     {
         [$tenant, , $warehouse, $variant] = $this->context();

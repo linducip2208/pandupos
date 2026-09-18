@@ -74,6 +74,11 @@ class InventoryWorkspaceUiTest extends TestCase
             'status' => 'draft', 'reason' => 'damage', 'notes' => 'Tenant B only', 'requested_by' => $userB->id,
         ]);
         $this->actingAs($userA)->post(route('inventory.adjustments.action', [$adjustmentB, 'submit']))->assertNotFound();
+        $countB = StockCount::withoutGlobalScopes()->create([
+            'tenant_id' => $userB->current_tenant_id, 'warehouse_id' => $warehouseB->id,
+            'status' => 'counting', 'created_by' => $userB->id,
+        ]);
+        $this->actingAs($userA)->post(route('inventory.counts.record', $countB), ['quantities' => []])->assertNotFound();
     }
 
     public function test_authorized_user_can_submit_multi_line_transfer_request(): void

@@ -30,7 +30,7 @@ final class ReadinessScoreService
                 ['Reservation', 3, false, 'Sales-order reserve/release/consume/partial/expiry, scheduler and end-to-end evidence'],
                 ['Transfer', 3, false, 'Multi-line UI and requester segregation exist; batch/location selectors and complete acceptance remain'],
                 ['Adjustment', 2, true, 'InventoryControlTest and InventoryWorkspaceUiTest: multi-line draft/review/segregated approval/post, batch/rack-bin/serial trace, tenant rejection, audit and idempotency'],
-                ['Stock count', 2, false, 'Snapshot/count/variance/review/approve/post tenant workflow and tests'],
+                ['Stock count', 2, true, 'InventoryControlTest and InventoryWorkspaceUiTest: immutable snapshot/count/variance/review/segregated approval/post with batch, serial and rack/bin trace'],
                 ['Reconciliation', 1, false, 'Safe command, health visibility, alert and regression proof'],
                 ['WAC/costing', 2, true, 'WeightedAverageCostTest: purchase, sale, return, transfer and purchase-return cost preservation'],
                 ['Purchasing UI', 5, false, 'PO multi-line draft/edit/approval/document UI'],

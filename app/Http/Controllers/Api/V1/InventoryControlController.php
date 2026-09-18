@@ -26,6 +26,7 @@ class InventoryControlController extends Controller
         $tenantId = TenantContext::idOrFail();
         $data = $request->validate([
             'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('tenant_id', $tenantId)],
+            'warehouse_location_id' => ['nullable', Rule::exists('warehouse_locations', 'id')->where('tenant_id', $tenantId)],
             'reason' => 'required|in:damage,expired,loss,count_correction,opening_correction,other',
             'notes' => 'required|string|max:2000',
             'lines' => 'required|array|min:1',
@@ -78,7 +79,7 @@ class InventoryControlController extends Controller
             'reference' => 'nullable|string|max:64',
             'notes' => 'nullable|string|max:2000',
         ]);
-        $count = $service->createAndSnapshot($tenantId, (int) $data['warehouse_id'], $data['reference'] ?? null, $data['notes'] ?? null, $request->user()->id);
+        $count = $service->createAndSnapshot($tenantId, (int) $data['warehouse_id'], $data['reference'] ?? null, $data['notes'] ?? null, $request->user()->id, $data['warehouse_location_id'] ?? null);
 
         return response()->json(['data' => $count], 201);
     }
