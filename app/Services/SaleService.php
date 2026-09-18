@@ -23,6 +23,7 @@ final class SaleService
         private BundleInventoryService $bundles,
         private BatchInventoryService $batches,
         private SerialNumberService $serials,
+        private AuditService $audit,
     ) {}
 
     /**
@@ -118,6 +119,12 @@ final class SaleService
                     }
                 }
 
+                $this->audit->log($tenantId, auth()->id(), 'sale.checkout.posted', SalesInvoice::class, $invoice->id, null, [
+                    'invoice_no' => $invoice->invoice_no,
+                    'total' => $invoice->total,
+                    'payment_status' => $invoice->payment_status,
+                ]);
+
                 return $invoice;
             });
         } catch (QueryException $e) {
@@ -174,6 +181,7 @@ final class SaleService
                 $this->restoreSoldInventory($invoice, (int) $line->product_variant_id, $toRestore, 'sale_void');
             }
             $invoice->update(['status' => 'void']);
+            $this->audit->log($invoice->tenant_id, auth()->id(), 'sale.void.posted', SalesInvoice::class, $invoice->id, ['status' => 'final'], ['status' => 'void']);
         });
     }
 
@@ -224,6 +232,7 @@ final class SaleService
                     'unit_price' => $rl['unit_price'] ?? $salesLine->unit_price,
                 ]);
             }
+            $this->audit->log($invoice->tenant_id, auth()->id(), 'sale.return.posted', SalesReturn::class, $return->id, null, ['sales_invoice_id' => $invoice->id, 'total' => $return->total]);
         });
     }
 
