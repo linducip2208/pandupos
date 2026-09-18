@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\BarcodeProfile;
 use App\Models\BundleItem;
+use App\Models\InventoryBatch;
 use App\Models\PriceList;
 use App\Models\Product;
 use App\Models\SerialNumber;
@@ -126,7 +127,7 @@ class InventoryConfigurationController extends Controller
         return response()->json(['data' => $product->load('bundleItems.componentVariant')]);
     }
 
-    public function storeBatch(Request $request, BatchInventoryService $batches)
+    public function storeBatch(Request $request, BatchInventoryService $batches, AuditService $audit)
     {
         $this->authorize('create', Product::class);
         $tenantId = TenantContext::idOrFail();
@@ -157,6 +158,12 @@ class InventoryConfigurationController extends Controller
             null,
             $data['warehouse_location_id'] ?? null,
         );
+        $audit->log($tenantId, $request->user()?->id, 'inventory.batch.received', InventoryBatch::class, $batch->id, null, [
+            'batch' => $batch->fresh()->toArray(),
+            'quantity' => $data['quantity'],
+            'unit_cost' => $data['unit_cost'],
+            'source' => 'api',
+        ]);
 
         return response()->json(['data' => $batch], 201);
     }

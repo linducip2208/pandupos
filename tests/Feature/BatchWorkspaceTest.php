@@ -52,4 +52,62 @@ class BatchWorkspaceTest extends TestCase
 
         $this->actingAs($owner)->get(route('batches.index'))->assertOk()->assertDontSeeText('FOREIGN');
     }
+
+    public function test_batch_receipt_api_is_tenant_scoped_and_audited(): void
+    {
+        $this->seed(PlatformSeeder::class);
+        $owner = User::factory()->create();
+        $tenant = app(TenantProvisioningService::class)->provision('Batch API Tenant', $owner);
+        $warehouse = Warehouse::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => Branch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->value('id'),
+            'name' => 'API Warehouse',
+            'code' => 'API',
+        ]);
+        $product = Product::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'API Product',
+            'product_type' => 'stock',
+        ]);
+        $variant = ProductVariant::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'product_id' => $product->id,
+            'name' => 'Default',
+            'sku' => 'BATCH-API',
+        ]);
+
+        $this->actingAs($owner)->postJson('/api/v1/inventory/batches', [
+            'warehouse_id' => $warehouse->id,
+            'product_variant_id' => $variant->id,
+            'batch_number' => 'API-LOT-001',
+            'quantity' => 3,
+            'unit_cost' => 15000,
+            'expires_at' => today()->addDays(30)->toDateString(),
+        ], ['X-Tenant-ID' => $tenant->id])->assertCreated();
+
+        $batch = InventoryBatch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
+        $this->assertDatabaseHas('audit_logs', [
+            'tenant_id' => $tenant->id,
+            'action' => 'inventory.batch.received',
+            'subject_id' => $batch->id,
+        ]);
+
+        $foreign = app(TenantProvisioningService::class)->provision('Foreign Batch API Tenant', User::factory()->create());
+        $this->actingAs($owner)->postJson('/api/v1/inventory/batches', [
+            'warehouse_id' => $warehouse->id,
+            'product_variant_id' => $variant->id,
+            'batch_number' => 'BAD-API-LOT',
+            'quantity' => 1,
+            'unit_cost' => 100,
+        ], ['X-Tenant-ID' => $foreign->id])->assertCreated();
+
+        $this->assertDatabaseMissing('inventory_batches', [
+            'tenant_id' => $foreign->id,
+            'batch_number' => 'BAD-API-LOT',
+        ]);
+        $this->assertDatabaseHas('inventory_batches', [
+            'tenant_id' => $tenant->id,
+            'batch_number' => 'BAD-API-LOT',
+        ]);
+    }
 }

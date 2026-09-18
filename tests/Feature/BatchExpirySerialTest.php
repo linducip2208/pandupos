@@ -18,6 +18,7 @@ use App\Services\SerialNumberService;
 use App\Services\StockService;
 use App\Services\TenantProvisioningService;
 use Database\Seeders\PlatformSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -70,6 +71,20 @@ class BatchExpirySerialTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $service->allocateFefo($tenant->id, $warehouse->id, $variant->id, 4, 'sale', 101);
+    }
+
+    public function test_fefo_uses_batch_id_as_a_deterministic_tie_breaker_for_equal_expiry_dates(): void
+    {
+        ['tenant' => $tenant, 'warehouse' => $warehouse, 'variant' => $variant] = $this->context();
+        $service = app(BatchInventoryService::class);
+        $expiry = today()->addDays(14)->toDateString();
+        $first = $service->receive($tenant->id, $warehouse->id, $variant->id, 'TIE-A', 2, 10, null, $expiry);
+        $second = $service->receive($tenant->id, $warehouse->id, $variant->id, 'TIE-B', 2, 10, null, $expiry);
+
+        $this->assertSame([
+            ['batch_id' => $first->id, 'quantity' => 2.0],
+            ['batch_id' => $second->id, 'quantity' => 1.0],
+        ], $service->allocateFefo($tenant->id, $warehouse->id, $variant->id, 3, 'sale', 200));
     }
 
     public function test_serial_number_cannot_be_sold_twice_and_has_controlled_lifecycle(): void
@@ -176,6 +191,23 @@ class BatchExpirySerialTest extends TestCase
         app(PurchaseService::class)->receive($purchase->id, [[
             'product_variant_id' => $variant->id, 'quantity' => 1, 'inventory_batch_id' => $foreignBatch->id,
         ]], $tenant->id);
+    }
+
+    public function test_sale_rejects_a_selected_batch_from_another_tenant(): void
+    {
+        ['tenant' => $tenant, 'branch' => $branch, 'warehouse' => $warehouse, 'variant' => $variant] = $this->context();
+        ['tenant' => $otherTenant, 'warehouse' => $otherWarehouse, 'variant' => $otherVariant] = $this->context();
+        $foreignBatch = app(BatchInventoryService::class)->receive(
+            $otherTenant->id, $otherWarehouse->id, $otherVariant->id, 'FOREIGN-SALE-LOT', 1, 10,
+        );
+
+        $this->expectException(ModelNotFoundException::class);
+        app(SaleService::class)->checkout($tenant->id, $branch->id, $warehouse->id, null, [[
+            'variant_id' => $variant->id,
+            'quantity' => 1,
+            'unit_price' => 20,
+            'inventory_batch_id' => $foreignBatch->id,
+        ]], [['method' => 'cash', 'amount' => 20]], 'foreign-batch-sale');
     }
 
     public function test_goods_receipt_and_direct_batch_receipt_trace_active_rack_bin_and_reject_foreign_location(): void
