@@ -32,6 +32,7 @@ use App\Http\Controllers\ProductMasterController;
 use App\Http\Controllers\ProgrammaticSeoController;
 use App\Http\Controllers\PurchasingWorkspaceController;
 use App\Http\Controllers\ReportPageController;
+use App\Http\Controllers\RegisterWorkspaceController;
 use App\Http\Controllers\SalesDocumentWorkspaceController;
 use App\Http\Controllers\SalesOrderWorkspaceController;
 use App\Http\Controllers\SerialWorkspaceController;
@@ -116,6 +117,14 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     });
     Route::get('/pos', fn () => view('pos.index'))->name('pos.index')
         ->middleware(['entitlement:pos.access', 'module:pos']);
+    Route::prefix('registers')->name('registers.')->middleware(['entitlement:pos.access', 'module:pos'])->group(function () {
+        Route::get('/', [RegisterWorkspaceController::class, 'index'])->name('index');
+        Route::post('/', [RegisterWorkspaceController::class, 'storeRegister'])->name('store');
+        Route::post('/{register}/open', [RegisterWorkspaceController::class, 'open'])->name('open');
+        Route::post('/{register}/deactivate', [RegisterWorkspaceController::class, 'deactivate'])->name('deactivate');
+        Route::post('/sessions/{session}/movements', [RegisterWorkspaceController::class, 'movement'])->name('movements.store');
+        Route::post('/sessions/{session}/close', [RegisterWorkspaceController::class, 'close'])->name('close');
+    });
     Route::prefix('barcodes')->name('barcodes.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
         Route::get('/', [BarcodeWorkspaceController::class, 'index'])->name('index');
         Route::post('/profiles', [BarcodeWorkspaceController::class, 'storeProfile'])->name('profiles.store');

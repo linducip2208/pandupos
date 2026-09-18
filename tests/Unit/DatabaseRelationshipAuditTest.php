@@ -16,6 +16,7 @@ use App\Models\BlogPost;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\CashSession;
+use App\Models\CashSessionMovement;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\CouponRedemption;
@@ -121,7 +122,7 @@ class DatabaseRelationshipAuditTest extends TestCase
             SupplierPayment::class => ['tenant', 'invoice', 'creator'],
             PurchaseReturn::class => ['tenant', 'purchase', 'creator'],
             PurchaseReturnLine::class => ['purchaseReturn', 'purchaseLine', 'variant'],
-            CashSession::class => ['tenant', 'register', 'openedBy'], SalesInvoice::class => ['tenant', 'branch', 'warehouse', 'contact'],
+            CashSession::class => ['tenant', 'register', 'openedBy', 'closedBy'], CashSessionMovement::class => ['tenant', 'session', 'creator'], SalesInvoice::class => ['tenant', 'branch', 'warehouse', 'cashSession', 'contact'],
             SalesLine::class => ['invoice', 'variant'], SalePayment::class => ['tenant', 'invoice'],
             SalesReturn::class => ['tenant', 'invoice'], Device::class => ['tenant'],
             SalesQuotation::class => ['tenant', 'branch', 'contact', 'creator'],

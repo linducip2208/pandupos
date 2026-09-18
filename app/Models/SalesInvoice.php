@@ -10,7 +10,7 @@ class SalesInvoice extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'uuid', 'tenant_id', 'branch_id', 'warehouse_id', 'contact_id',
+        'uuid', 'tenant_id', 'branch_id', 'warehouse_id', 'cash_session_id', 'contact_id',
         'invoice_no', 'status', 'payment_status', 'fulfillment_status',
         'subtotal', 'discount', 'tax', 'total', 'idempotency_key',
     ];
@@ -43,6 +43,11 @@ class SalesInvoice extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function cashSession()
+    {
+        return $this->belongsTo(CashSession::class);
     }
 
     public function paymentProofs()

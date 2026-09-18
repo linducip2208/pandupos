@@ -46,7 +46,7 @@ final class TenantProvisioningService
             // Direct grants preserve explicit revoke semantics; platform grants
             // are never included here.
             $tenantPermissions = Permission::query()->whereIn('name', [
-                'pos.sale.create', 'pos.sale.void', 'inventory.view', 'products.manage',
+                'pos.sale.create', 'pos.sale.void', 'register.manage', 'register.open', 'register.close', 'inventory.view', 'products.manage',
                 'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve',
                 'sales.view', 'sales.create', 'reports.view', 'settings.manage',
             ])->get();

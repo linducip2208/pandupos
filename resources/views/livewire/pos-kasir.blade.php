@@ -18,7 +18,7 @@
     </div>
     <div class="col-lg-5">
         <div class="card">
-            <div class="card-header"><h3 class="card-title">Keranjang • Total Rp {{ number_format($this->total, 0, ',', '.') }}</h3></div>
+            <div class="card-header d-flex flex-column gap-2"><h3 class="card-title">Keranjang • Total Rp {{ number_format($this->total, 0, ',', '.') }}</h3><select class="form-select form-select-sm" wire:model.live="cashSessionId" aria-label="Sesi register"><option value="">Pilih sesi register Anda</option>@foreach($cashSessions as $cashSession)<option value="{{ $cashSession->id }}">{{ $cashSession->register?->name }} · buka {{ $cashSession->opened_at?->format('d/m H:i') }}</option>@endforeach</select>@if($cashSessions->isEmpty())<div class="small text-danger">Buka sesi register terlebih dahulu sebelum checkout.</div><a class="btn btn-sm btn-outline-primary" href="{{ route('registers.index') }}">Buka register</a>@endif</div>
             <div class="card-body p-0">
                 <table class="table table-vcenter mb-0">
                     @foreach($cart as $i => $row)

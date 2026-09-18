@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Branch;
+use App\Models\CashSession;
 use App\Models\Contact;
 use App\Models\ProductVariant;
 use App\Models\SalesInvoice;
@@ -32,13 +33,13 @@ final class SaleService
      */
     public function checkout(
         int $tenantId, int $branchId, int $warehouseId, ?int $contactId,
-        array $lines, array $payments, string $idempotencyKey,
+        array $lines, array $payments, string $idempotencyKey, ?int $cashSessionId = null,
     ): SalesInvoice {
         abort_if(trim($idempotencyKey) === '', 422, 'Idempotency-Key required.');
         // Sort lines for deterministic lock order (prevents deadlock on multi-variant checkout).
         $lines = collect($lines)->sortBy('variant_id')->values()->all();
         try {
-            return DB::transaction(function () use ($tenantId, $branchId, $warehouseId, $contactId, $lines, $payments, $idempotencyKey) {
+            return DB::transaction(function () use ($tenantId, $branchId, $warehouseId, $contactId, $lines, $payments, $idempotencyKey, $cashSessionId) {
                 // Idempotency: same key returns existing invoice, never duplicates.
                 $existing = SalesInvoice::withoutGlobalScopes()
                     ->where('tenant_id', $tenantId)->where('idempotency_key', $idempotencyKey)->first();
@@ -51,6 +52,11 @@ final class SaleService
                 abort_unless(Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $warehouseId)->exists(), 422, 'Warehouse does not belong to tenant.');
                 if ($contactId) {
                     abort_unless(Contact::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $contactId)->exists(), 422, 'Customer does not belong to tenant.');
+                }
+                if ($cashSessionId !== null) {
+                    $session = CashSession::withoutGlobalScopes()->lockForUpdate()
+                        ->where('tenant_id', $tenantId)->where('status', 'open')->findOrFail($cashSessionId);
+                    abort_unless($session->register?->branch_id === null || $session->register?->branch_id === $branchId, 422, 'Register session does not belong to the sale branch.');
                 }
                 foreach ($lines as $l) {
                     abort_unless(ProductVariant::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $l['variant_id'])->exists(), 422, 'Variant does not belong to tenant.');
@@ -75,7 +81,7 @@ final class SaleService
                 $invoice = SalesInvoice::withoutGlobalScopes()->create([
                     'uuid' => (string) Str::uuid(),
                     'tenant_id' => $tenantId, 'branch_id' => $branchId, 'warehouse_id' => $warehouseId,
-                    'contact_id' => $contactId, 'invoice_no' => 'S-'.now()->format('YmdHis').'-'.Str::upper(Str::random(4)),
+                    'contact_id' => $contactId, 'cash_session_id' => $cashSessionId, 'invoice_no' => 'S-'.now()->format('YmdHis').'-'.Str::upper(Str::random(4)),
                     'status' => $requiresApproval ? 'pending_approval' : 'final',
                     'payment_status' => $requiresApproval ? 'unpaid' : ($paid > 0 ? ($paid < $subtotal - 0.01 ? 'partial' : 'paid') : 'unpaid'),
                     'fulfillment_status' => $requiresApproval ? 'pending' : 'fulfilled',

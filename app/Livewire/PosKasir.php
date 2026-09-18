@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Branch;
+use App\Models\CashSession;
 use App\Models\Contact;
 use App\Models\InventoryBatch;
 use App\Models\Product;
@@ -31,8 +32,15 @@ class PosKasir extends Component
 
     public ?int $customerId = null;
 
+    public ?int $cashSessionId = null;
+
     /** @var array<string,array> held carts keyed by label */
     public array $held = [];
+
+    public function mount(): void
+    {
+        $this->cashSessionId = CashSession::query()->where('status', 'open')->where('opened_by', auth()->id())->value('id');
+    }
 
     public function addToCart(int $variantId, string $name, int $baseUnitId, string $unitName, PriceResolverService $prices): void
     {
@@ -136,11 +144,14 @@ class PosKasir extends Component
             'cart' => 'required|array|min:1',
             'payments' => 'required|array|min:1',
             'payments.*.amount' => 'required|numeric|min:0',
+            'cashSessionId' => 'required|integer',
         ]);
 
         $user = auth()->user();
         $tenantId = TenantContext::idOrFail();
         abort_unless($user->memberships()->withoutGlobalScopes()->where('tenant_id', $tenantId)->exists() || $user->is_platform_admin, 403);
+        abort_unless($user->can('pos.sale.create'), 403);
+        abort_unless(CashSession::query()->whereKey($this->cashSessionId)->where('status', 'open')->where('opened_by', $user->id)->exists(), 422, 'Pilih sesi register Anda yang masih terbuka.');
         $branchId = $this->branchId($tenantId);
         $warehouseId = Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id');
 
@@ -153,6 +164,7 @@ class PosKasir extends Component
             ])->all(),
             $this->payments,
             'web-'.uniqid(),
+            $this->cashSessionId,
         );
 
         $this->lastInvoiceNo = $invoice->invoice_no;
@@ -178,6 +190,7 @@ class PosKasir extends Component
                 ->orderByRaw('CASE WHEN expires_at IS NULL THEN 1 ELSE 0 END')->orderBy('expires_at')->get(),
             'serials' => SerialNumber::query()->with('warehouseLocation')->where('warehouse_id', Warehouse::query()->value('id'))
                 ->whereIn('status', ['available', 'returned'])->orderBy('serial_number')->get(),
+            'cashSessions' => CashSession::query()->with('register')->where('status', 'open')->where('opened_by', auth()->id())->orderBy('opened_at')->get(),
         ]);
     }
 

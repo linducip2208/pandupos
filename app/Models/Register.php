@@ -21,4 +21,9 @@ class Register extends Model
     {
         return $this->belongsTo(Branch::class);
     }
+
+    public function cashSessions()
+    {
+        return $this->hasMany(CashSession::class);
+    }
 }
