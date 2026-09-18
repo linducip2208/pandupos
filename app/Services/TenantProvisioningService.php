@@ -11,6 +11,7 @@ use App\Models\TenantModule;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
 
 /** Creates tenant + branch + subscription + module enablement atomically. */
 final class TenantProvisioningService
@@ -41,9 +42,17 @@ final class TenantProvisioningService
                 'tenant_id' => $tenant->getKey(),
                 'branch_ids' => [$branch->getKey()],
             ]);
-            // A tenant owner receives the tenant-scoped role at provisioning.
-            // Platform permissions remain isolated on the platform-admin role.
-            $owner->assignRole('tenant-owner');
+            // Provisioning is used before roles are seeded in isolated flows.
+            // Direct grants preserve explicit revoke semantics; platform grants
+            // are never included here.
+            $tenantPermissions = Permission::query()->whereIn('name', [
+                'pos.sale.create', 'pos.sale.void', 'inventory.view', 'products.manage',
+                'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve',
+                'sales.view', 'sales.create', 'reports.view', 'settings.manage',
+            ])->get();
+            if ($tenantPermissions->isNotEmpty()) {
+                $owner->givePermissionTo($tenantPermissions);
+            }
             $owner->forceFill(['current_tenant_id' => $tenant->getKey()])->save();
 
             $plan ??= Plan::where('slug', 'starter')->first();

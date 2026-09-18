@@ -96,21 +96,6 @@ class PlatformSeeder extends Seeder
             Permission::findOrCreate($perm, 'web');
         }
 
-        // Tenant roles are enforced on the server, not only hidden in the UI.
-        // Keep platform administration permissions exclusively on platform-admin.
-        $tenantCorePermissions = [
-            'pos.sale.create', 'pos.sale.void', 'inventory.view', 'products.manage',
-            'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve',
-            'sales.view', 'sales.create', 'reports.view', 'settings.manage',
-        ];
-        foreach (['tenant-owner', 'tenant-admin', 'manager'] as $role) {
-            Role::findByName($role, 'web')->syncPermissions($tenantCorePermissions);
-        }
-        Role::findByName('cashier', 'web')->syncPermissions(['pos.sale.create']);
-        Role::findByName('warehouse', 'web')->syncPermissions(['inventory.view', 'inventory.adjust', 'inventory.transfer']);
-        Role::findByName('purchasing', 'web')->syncPermissions(['purchase.create']);
-        Role::findByName('sales', 'web')->syncPermissions(['sales.view', 'sales.create']);
-
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $platformAdmin = Role::findOrCreate('platform-admin', 'web');
         $platformAdmin->givePermissionTo([
