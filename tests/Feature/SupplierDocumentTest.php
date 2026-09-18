@@ -79,6 +79,28 @@ class SupplierDocumentTest extends TestCase
         ]], 'Melebihi sisa diterima', 'supplier_credit', $owner->id);
     }
 
+    public function test_payment_reference_cannot_be_reused_within_a_tenant(): void
+    {
+        [$tenant, $owner, $warehouse, $supplier, $variant] = $this->context();
+        $purchase = app(PurchaseService::class)->createDraft($tenant->id, $warehouse->id, $supplier->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 2, 'unit_cost' => 100,
+        ]]);
+        $service = app(SupplierDocumentService::class);
+        $first = $service->createInvoice($tenant->id, [
+            'purchase_id' => $purchase->id, 'supplier_id' => $supplier->id, 'invoice_number' => 'REF-001',
+            'invoice_date' => '2026-09-18', 'subtotal' => 100,
+        ], $owner->id);
+        $second = $service->createInvoice($tenant->id, [
+            'purchase_id' => $purchase->id, 'supplier_id' => $supplier->id, 'invoice_number' => 'REF-002',
+            'invoice_date' => '2026-09-18', 'subtotal' => 100,
+        ], $owner->id);
+
+        $service->pay($first, 100, 'bank_transfer', 'BANK-REF-001', $owner->id);
+
+        $this->expectException(ValidationException::class);
+        $service->pay($second, 100, 'bank_transfer', 'BANK-REF-001', $owner->id);
+    }
+
     private function context(): array
     {
         $this->seed(PlatformSeeder::class);

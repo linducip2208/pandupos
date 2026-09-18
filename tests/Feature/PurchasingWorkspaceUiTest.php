@@ -68,6 +68,36 @@ class PurchasingWorkspaceUiTest extends TestCase
         $this->actingAs($user)->get(route('purchasing.invoices.print', $foreignInvoice))->assertNotFound();
     }
 
+    public function test_supplier_payment_requires_approval_permission_and_rejects_foreign_invoice(): void
+    {
+        [$user, $tenant, $warehouse, $supplier, $variant] = $this->context();
+        $purchase = app(PurchaseService::class)->createDraft($tenant->id, $warehouse->id, $supplier->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 1, 'unit_cost' => 100,
+        ]], $user->id);
+        $invoice = app(SupplierDocumentService::class)->createInvoice($tenant->id, [
+            'purchase_id' => $purchase->id, 'supplier_id' => $supplier->id,
+            'invoice_number' => 'PAY-LOCAL', 'invoice_date' => today()->toDateString(), 'subtotal' => 100,
+        ], $user->id);
+
+        $user->revokePermissionTo('purchase.approve');
+        $this->actingAs($user)->post(route('purchasing.payments.store', $invoice), [
+            'amount' => 100, 'method' => 'cash',
+        ])->assertForbidden();
+        $user->givePermissionTo('purchase.approve');
+
+        $foreignUser = User::factory()->create();
+        $foreign = app(TenantProvisioningService::class)->provision('Foreign Payment', $foreignUser);
+        $foreignSupplier = Contact::withoutGlobalScopes()->create(['tenant_id' => $foreign->id, 'type' => 'supplier', 'name' => 'Foreign Supplier']);
+        $foreignInvoice = app(SupplierDocumentService::class)->createInvoice($foreign->id, [
+            'supplier_id' => $foreignSupplier->id,
+            'invoice_number' => 'PAY-FOREIGN', 'invoice_date' => today()->toDateString(), 'subtotal' => 100,
+        ], $foreignUser->id);
+
+        $this->actingAs($user)->post(route('purchasing.payments.store', $foreignInvoice), [
+            'amount' => 100, 'method' => 'cash',
+        ])->assertNotFound();
+    }
+
     private function context(): array
     {
         $this->seed(PlatformSeeder::class);

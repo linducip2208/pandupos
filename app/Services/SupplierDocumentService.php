@@ -65,8 +65,17 @@ final class SupplierDocumentService
         return DB::transaction(function () use ($invoice, $amount, $method, $reference, $actorId) {
             $locked = SupplierInvoice::withoutGlobalScopes()->where('tenant_id', $invoice->tenant_id)->lockForUpdate()->findOrFail($invoice->id);
             $amount = round($amount, 2);
+            $reference = filled($reference) ? trim($reference) : null;
             if ($amount <= 0 || $amount > (float) $locked->balance) {
                 throw ValidationException::withMessages(['amount' => 'Payment must be positive and cannot exceed invoice balance.']);
+            }
+            if ($reference !== null && SupplierPayment::withoutGlobalScopes()
+                ->where('tenant_id', $locked->tenant_id)
+                ->where('reference', $reference)
+                ->exists()) {
+                throw ValidationException::withMessages([
+                    'reference' => 'Payment reference has already been recorded for this tenant.',
+                ]);
             }
             $payment = SupplierPayment::withoutGlobalScopes()->create([
                 'tenant_id' => $locked->tenant_id, 'supplier_invoice_id' => $locked->id,
