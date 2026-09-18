@@ -32,6 +32,8 @@ jobs:
       - run: ./vendor/bin/pint --test
       - run: npm ci
       - run: npm run build
+      - name: Scan tracked files for committed secrets
+        run: bash scripts/scan-secrets.sh
       - name: Run PHPUnit
         shell: bash
         run: |
