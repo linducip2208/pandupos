@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Contact;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\SalesQuotation;
 use App\Models\User;
 use App\Services\SalesDocumentService;
 use App\Services\TenantProvisioningService;
@@ -89,5 +90,39 @@ class SalesCommercialDocumentTest extends TestCase
         $this->postJson("/api/v1/sales-documents/quotations/{$quotationId}/transition", ['status' => 'sent'])->assertOk();
         $this->postJson("/api/v1/sales-documents/quotations/{$quotationId}/proforma", [])->assertCreated();
         $this->postJson("/api/v1/sales-documents/quotations/{$quotationId}/proforma", [])->assertStatus(422);
+    }
+
+    public function test_tenant_workspace_creates_and_prints_quotation_without_cross_tenant_access(): void
+    {
+        $this->seed(PlatformSeeder::class);
+        $user = User::factory()->create();
+        $user->givePermissionTo(['sales.view', 'sales.create']);
+        $tenant = app(TenantProvisioningService::class)->provision('Quotation Workspace', $user);
+        $user->forceFill(['current_tenant_id' => $tenant->id])->save();
+        $branch = Branch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
+        $customer = Contact::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'type' => 'customer', 'name' => 'Workspace Customer']);
+        $product = Product::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'Workspace Item', 'sku' => 'QW']);
+        $variant = ProductVariant::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'product_id' => $product->id, 'name' => 'Default', 'sku' => 'QW-1']);
+
+        $this->actingAs($user)->get(route('sales-documents.index'))->assertOk()->assertSeeText('Buat quotation');
+        $this->post(route('sales-documents.quotations.store'), [
+            'branch_id' => $branch->id, 'contact_id' => $customer->id, 'quotation_date' => today()->toDateString(),
+            'product_variant_id' => $variant->id, 'quantity' => 2, 'unit_price' => 12500,
+        ])->assertRedirect()->assertSessionHas('status');
+        $quotation = SalesQuotation::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
+        $this->actingAs($user)->get(route('sales-documents.quotations.print', $quotation))->assertOk()->assertSeeText('QUOTATION')->assertSeeText($quotation->quotation_no);
+
+        $foreignUser = User::factory()->create();
+        $foreign = app(TenantProvisioningService::class)->provision('Foreign Quotation', $foreignUser);
+        $foreignBranch = Branch::withoutGlobalScopes()->where('tenant_id', $foreign->id)->firstOrFail();
+        $foreignCustomer = Contact::withoutGlobalScopes()->create(['tenant_id' => $foreign->id, 'type' => 'customer', 'name' => 'Foreign Customer']);
+        $foreignProduct = Product::withoutGlobalScopes()->create(['tenant_id' => $foreign->id, 'name' => 'Foreign Item', 'sku' => 'FQ']);
+        $foreignVariant = ProductVariant::withoutGlobalScopes()->create(['tenant_id' => $foreign->id, 'product_id' => $foreignProduct->id, 'name' => 'Default', 'sku' => 'FQ-1']);
+        $foreignQuotation = app(SalesDocumentService::class)->createQuotation($foreign->id, [
+            'branch_id' => $foreignBranch->id, 'contact_id' => $foreignCustomer->id,
+            'lines' => [['product_variant_id' => $foreignVariant->id, 'quantity' => 1, 'unit_price' => 10]],
+        ], $foreignUser->id);
+
+        $this->actingAs($user)->get(route('sales-documents.quotations.print', $foreignQuotation))->assertNotFound();
     }
 }

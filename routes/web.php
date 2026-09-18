@@ -32,6 +32,7 @@ use App\Http\Controllers\ProductMasterController;
 use App\Http\Controllers\ProgrammaticSeoController;
 use App\Http\Controllers\PurchasingWorkspaceController;
 use App\Http\Controllers\ReportPageController;
+use App\Http\Controllers\SalesDocumentWorkspaceController;
 use App\Http\Controllers\SalesOrderWorkspaceController;
 use App\Http\Controllers\SerialWorkspaceController;
 use App\Http\Controllers\SitemapController;
@@ -132,6 +133,12 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/{order}/confirm', [SalesOrderWorkspaceController::class, 'confirm'])->name('confirm');
         Route::post('/{order}/deliver', [SalesOrderWorkspaceController::class, 'deliver'])->name('deliver');
         Route::post('/{order}/cancel', [SalesOrderWorkspaceController::class, 'cancel'])->name('cancel');
+    });
+    Route::prefix('sales-documents')->name('sales-documents.')->middleware(['entitlement:sales.access', 'module:sales'])->group(function () {
+        Route::get('/', [SalesDocumentWorkspaceController::class, 'index'])->name('index');
+        Route::post('/quotations', [SalesDocumentWorkspaceController::class, 'store'])->name('quotations.store');
+        Route::post('/quotations/{quotation}/transition', [SalesDocumentWorkspaceController::class, 'transition'])->name('quotations.transition');
+        Route::get('/quotations/{quotation}/print', [SalesDocumentWorkspaceController::class, 'print'])->name('quotations.print');
     });
     Route::prefix('price-lists')->name('price-lists.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
         Route::get('/', [PriceListWorkspaceController::class, 'index'])->name('index');
