@@ -40,7 +40,7 @@ final class ReadinessScoreService
                 ['Purchase return', 2, false, 'Received-minus-return workflow UI and supplier credit evidence'],
                 ['Purchasing safety', 2, true, 'PurchasingSafetyTest, PurchaseApprovalTest and SupplierDocumentTest: PO stock timing, 30/40/30 partial receipt, idempotent completed retry, over-receipt, duplicate supplier invoice, overpayment, over-return, approval and cross-tenant proof'],
                 ['Quotation', 2, false, 'Current tenant UI, transition validation, print and audit'],
-                ['Sales order', 3, false, 'Current UI, reservation, status, permission and tenant proof'],
+                ['Sales order', 3, true, 'SalesOrderDeliveryTest: tenant-scoped multi-line workspace draft, customer validation, audited confirm/cancel lifecycle, reservation and server-authorized partial fulfillment inputs'],
                 ['Reservation to delivery', 3, false, 'Partial delivery, stock timing and duplicate-movement proof'],
                 ['Invoice and payment', 4, false, 'Posted lifecycle, payment states, immutability and idempotency proof'],
                 ['POS workflow', 6, false, 'Current checkout UI: search, barcode, variants, unit, price, discount, tax and split payment'],

@@ -35,17 +35,21 @@ class SalesOrderWorkspaceController extends Controller
         abort_unless($request->user()->can('sales.create'), 403);
         $data = $request->validate([
             'branch_id' => ['required', 'integer'], 'warehouse_id' => ['required', 'integer'], 'contact_id' => ['required', 'integer'],
-            'product_variant_id' => ['required', 'integer'], 'unit_id' => ['required', 'integer'],
-            'quantity' => ['required', 'numeric', 'gt:0'], 'unit_price' => ['required', 'numeric', 'min:0'],
+            'product_variant_id' => ['required_without:lines', 'integer'], 'unit_id' => ['required_without:lines', 'integer'],
+            'quantity' => ['required_without:lines', 'numeric', 'gt:0'], 'unit_price' => ['required_without:lines', 'numeric', 'min:0'],
+            'lines' => ['nullable', 'array', 'min:1'],
+            'lines.*.product_variant_id' => ['required', 'integer'], 'lines.*.unit_id' => ['required', 'integer'],
+            'lines.*.quantity' => ['required', 'numeric', 'gt:0'], 'lines.*.unit_price' => ['required', 'numeric', 'min:0'],
             'order_date' => ['required', 'date'], 'notes' => ['nullable', 'string', 'max:2000'],
         ]);
+        $lines = $data['lines'] ?? [[
+            'product_variant_id' => $data['product_variant_id'], 'unit_id' => $data['unit_id'],
+            'quantity' => $data['quantity'], 'unit_price' => $data['unit_price'],
+        ]];
         $order = $service->create(TenantContext::idOrFail(), [
             'branch_id' => $data['branch_id'], 'warehouse_id' => $data['warehouse_id'], 'contact_id' => $data['contact_id'],
             'order_date' => $data['order_date'], 'notes' => $data['notes'] ?? null,
-            'lines' => [[
-                'product_variant_id' => $data['product_variant_id'], 'unit_id' => $data['unit_id'],
-                'quantity' => $data['quantity'], 'unit_price' => $data['unit_price'],
-            ]],
+            'lines' => $lines,
         ], $request->user()->id);
 
         return back()->with('status', "Sales Order {$order->order_no} dibuat sebagai draft.");

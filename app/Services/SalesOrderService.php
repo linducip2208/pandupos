@@ -129,7 +129,7 @@ final class SalesOrderService
     {
         abort_unless(Branch::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($data['branch_id'])->exists(), 422);
         abort_unless(Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($data['warehouse_id'])->exists(), 422);
-        abort_unless(Contact::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($data['contact_id'])->exists(), 422);
+        abort_unless(Contact::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereIn('type', ['customer', 'both'])->whereKey($data['contact_id'])->exists(), 422);
         if (! empty($data['sales_quotation_id'])) {
             abort_unless(SalesQuotation::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('status', 'accepted')->whereKey($data['sales_quotation_id'])->exists(), 422, 'Accepted quotation does not belong to tenant.');
         }

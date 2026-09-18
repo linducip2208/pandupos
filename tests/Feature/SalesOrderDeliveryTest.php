@@ -6,6 +6,8 @@ use App\Models\Branch;
 use App\Models\Contact;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\SalesOrder;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\SalesOrderService;
@@ -114,5 +116,36 @@ class SalesOrderDeliveryTest extends TestCase
         $this->actingAs($other)->post(route('sales-orders.cancel', $order))->assertNotFound();
         $this->assertSame($tenant->id, $order->fresh()->tenant_id);
         $this->assertNotSame($otherTenant->id, $order->fresh()->tenant_id);
+    }
+
+    public function test_workspace_creates_multi_line_order_and_rejects_a_supplier_as_customer(): void
+    {
+        $this->seed(PlatformSeeder::class);
+        $user = User::factory()->create();
+        $tenant = app(TenantProvisioningService::class)->provision('Multi Line Sales', $user);
+        $user->forceFill(['current_tenant_id' => $tenant->id])->save();
+        $user->givePermissionTo('sales.create');
+        $branch = Branch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
+        $warehouse = Warehouse::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'branch_id' => $branch->id, 'name' => 'Main', 'code' => 'MULTI']);
+        $customer = Contact::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'type' => 'customer', 'name' => 'Customer']);
+        $unit = Unit::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'Piece', 'short_name' => 'pcs']);
+        $product = Product::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'Item', 'sku' => 'MULTI', 'unit_id' => $unit->id]);
+        $first = ProductVariant::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'product_id' => $product->id, 'name' => 'One', 'sku' => 'MULTI-1']);
+        $second = ProductVariant::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'product_id' => $product->id, 'name' => 'Two', 'sku' => 'MULTI-2']);
+
+        $this->actingAs($user)->post(route('sales-orders.store'), [
+            'branch_id' => $branch->id, 'warehouse_id' => $warehouse->id, 'contact_id' => $customer->id, 'order_date' => today()->toDateString(),
+            'lines' => [
+                ['product_variant_id' => $first->id, 'unit_id' => $unit->id, 'quantity' => 2, 'unit_price' => 100],
+                ['product_variant_id' => $second->id, 'unit_id' => $unit->id, 'quantity' => 3, 'unit_price' => 200],
+            ],
+        ])->assertRedirect()->assertSessionHas('status');
+        $this->assertSame(2, SalesOrder::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail()->lines()->count());
+
+        $supplier = Contact::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'type' => 'supplier', 'name' => 'Supplier']);
+        $this->actingAs($user)->post(route('sales-orders.store'), [
+            'branch_id' => $branch->id, 'warehouse_id' => $warehouse->id, 'contact_id' => $supplier->id, 'order_date' => today()->toDateString(),
+            'lines' => [['product_variant_id' => $first->id, 'unit_id' => $unit->id, 'quantity' => 1, 'unit_price' => 100]],
+        ])->assertStatus(422);
     }
 }

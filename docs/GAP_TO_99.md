@@ -6,7 +6,7 @@ Updated: 2026-09-17. Scores are calculated by `php artisan readiness:score`, usi
 
 | Dimension | Score | Exact blockers |
 |---|---:|---|
-| Core | 58 | Complete purchasing UI/return lifecycle; commercial sales/POS/register; reports/imports/dashboard |
+| Core | 61 | Complete purchasing UI/return lifecycle, delivery/invoice/payment; commercial POS/register and reporting/dashboard |
 | SaaS | 27 | Subscription/billing automation and verified sandbox; coupon/affiliate/announcements; domains/white-label; API/offline hardening |
 | Future addon parity | FROZEN / OUT OF SCOPE | Deferred post-v1 modules are not release blockers; see `SCOPE_FREEZE.md` |
 | Tests | 60 | Browser E2E, full concurrency and security regression matrices absent |
