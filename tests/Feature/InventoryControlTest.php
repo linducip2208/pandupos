@@ -7,9 +7,12 @@ use App\Models\InventoryBalance;
 use App\Models\InventoryBatch;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StockMovement;
+use App\Models\StockReservation;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
+use App\Services\InventoryReconciliationService;
 use App\Services\SerialNumberService;
 use App\Services\StockAdjustmentService;
 use App\Services\StockCountService;
@@ -191,6 +194,43 @@ class InventoryControlTest extends TestCase
             ->expectsOutputToContain('explicit --fix')
             ->assertExitCode(0);
         $this->assertEquals(10, $balance->fresh()->quantity);
+    }
+
+    public function test_reconciliation_reports_batch_serial_location_and_reservation_anomalies_without_mutation(): void
+    {
+        [$tenant, , $warehouse, $variant] = $this->context();
+        $stock = app(StockService::class);
+        $stock->increase($tenant->id, $warehouse->id, $variant->id, 10, 5, 'opening', 1);
+        $batch = InventoryBatch::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'product_variant_id' => $variant->id,
+            'batch_number' => 'RECON-LOT',
+        ]);
+        $location = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'code' => 'RECON-A-01', 'is_active' => true,
+        ]);
+        $serial = app(SerialNumberService::class)->receive($tenant->id, $warehouse->id, $variant->id, 'RECON-SERIAL', 5);
+        $serial->update(['status' => 'sold']);
+        StockMovement::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'warehouse_location_id' => $location->id,
+            'product_variant_id' => $variant->id, 'inventory_batch_id' => $batch->id,
+            'reference_type' => 'reconciliation_fixture', 'reference_id' => 1, 'movement_type' => 'out',
+            'quantity' => 1, 'unit_cost' => 5, 'occurred_at' => now(),
+        ]);
+        StockReservation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'product_variant_id' => $variant->id,
+            'quantity' => 20, 'source_type' => 'reconciliation_fixture', 'status' => 'active',
+        ]);
+
+        $movementCount = StockMovement::withoutGlobalScopes()->count();
+        $report = app(InventoryReconciliationService::class)->inspect($tenant->id);
+
+        $this->assertSame('FAIL', $report['status']);
+        $this->assertSame($movementCount, StockMovement::withoutGlobalScopes()->count());
+        $this->assertContains('ledger_balance_mismatch', collect($report['anomalies'])->pluck('code')->all());
+        $this->assertContains('negative_batch_balance', collect($report['anomalies'])->pluck('code')->all());
+        $this->assertContains('negative_location_balance', collect($report['anomalies'])->pluck('code')->all());
+        $this->assertContains('serial_ledger_state_mismatch', collect($report['anomalies'])->pluck('code')->all());
+        $this->assertContains('reservation_exceeds_on_hand', collect($report['anomalies'])->pluck('code')->all());
     }
 
     private function context(): array

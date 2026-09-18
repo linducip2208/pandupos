@@ -1,6 +1,6 @@
 # Current State Audit — PanduPOS Enterprise
 
-Audit date: 2026-09-17
+Audit date: 2026-09-18
 
 Branch: `main`
 
@@ -52,7 +52,7 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Transfer | Audited request/approve/ship/transit/partial-receive/receive/cancel state machine; requester separation, cost, batch provenance, and nonserial source/destination rack-bin ledger traces are preserved | Multi-line tenant request UI with batch, serial, and nonserial rack/bin selectors, state actions and receipt inputs | Full workflow endpoints | `inventory.transfer` | Tenant warehouses, variants, batches and active locations checked | Requester separation, partial receipt, no early destination stock, batch and rack/bin trace regressions | Present | PARTIAL |
 | Stock adjustment | Multi-line `draft → reviewed → approved → posted`; submit ownership and requester/approver separation; positive/negative posting; batch/rack-bin/serial trace; immutable ledger | Multi-line workspace selectors and review/approve/post actions | Create/submit/approve/post API | `inventory.adjust` | Warehouse, variant, batch, serial, location and URL scope checked | Multi-line acceptance, self-approval, duplicate post, audit and cross-tenant regressions | Present | DONE |
 | Stock count | Immutable snapshot/count/variance/review/approve/post workflow with warehouse or active rack/bin scope, batch lines and serial presence lines | Count workspace exposes location, batch and serial identifiers | Create/record/approve/post API | `inventory.adjust` | Warehouse/location/batch/serial and URL scope checked | Exact positive/negative variance, self-approval, duplicate-post and cross-tenant regressions | Present | DONE |
-| Reconciliation | Read-only reconcile command | None | CLI only | Platform operation | Tenant target option | Ledger/balance proof only | Present | PARTIAL |
+| Reconciliation | Read-only ledger/cache, batch, serial, rack/bin, reservation and duplicate-serial-reference anomaly audit; explicit `--fix` repairs only the derived balance cache | Platform health signal | CLI only | Platform operation | Tenant target option | Mutation-free anomaly and platform-health regressions | Present | DONE |
 | Purchase/partial receipt | PO, configurable manager/owner approval, separate audited goods receipts and strict cumulative receiving | Purchasing workspace plus approval settings | List/create/receive with receipt history | Role/level checked | Checked | Threshold routing, 30/40/30 receive, over-receive rejection, workspace authorization | Present | PARTIAL |
 | Supplier invoice/payment/return | Separate AP invoice, partial/full payment records, and received-minus-return controlled purchase returns | Purchasing workspace | Create invoice/payment/return | `purchase.create`/`purchase.approve` | Checked | Money balance, overpayment, over-return and workspace isolation | Present | PARTIAL |
 | Purchase request | Approval foundation only | None | None | None | N/A | None | Target only | MISSING |
@@ -91,7 +91,7 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 26% | Product, units, barcode, pricing, bundle and WAC have independently verified gates; advanced inventory, purchasing, sales/POS and reporting remain incomplete |
+| Core parity | 31% | Product, units, barcode, pricing, bundle, WAC, adjustment, stock count and reconciliation have independently verified gates; other advanced inventory, purchasing, sales/POS and reporting remain incomplete |
 | SaaS parity | 27% | Tenant lifecycle and plan/entitlement foundations exist; limits, billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
 | Test readiness | 60% | Existing regression suite is green; browser E2E, full concurrency, security and recovery matrices remain incomplete |

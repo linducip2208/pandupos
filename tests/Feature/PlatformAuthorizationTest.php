@@ -30,6 +30,8 @@ class PlatformAuthorizationTest extends TestCase
         $this->actingAs($admin)->get('/platform/tenants')->assertOk();
         $this->actingAs($admin)->get('/platform/plans')->assertOk();
         $this->actingAs($admin)->get('/platform/modules')->assertOk();
-        $this->actingAs($admin)->get('/platform/health')->assertOk();
+        cache()->forget('health.inventory-reconciliation');
+        $this->actingAs($admin)->get('/platform/health')->assertOk()
+            ->assertSee('Inventory reconciliation')->assertSee('PASS');
     }
 }

@@ -31,7 +31,7 @@ final class ReadinessScoreService
                 ['Transfer', 3, false, 'Multi-line UI and requester segregation exist; batch/location selectors and complete acceptance remain'],
                 ['Adjustment', 2, true, 'InventoryControlTest and InventoryWorkspaceUiTest: multi-line draft/review/segregated approval/post, batch/rack-bin/serial trace, tenant rejection, audit and idempotency'],
                 ['Stock count', 2, true, 'InventoryControlTest and InventoryWorkspaceUiTest: immutable snapshot/count/variance/review/segregated approval/post with batch, serial and rack/bin trace'],
-                ['Reconciliation', 1, false, 'Safe command, health visibility, alert and regression proof'],
+                ['Reconciliation', 1, true, 'InventoryReconciliationService, InventoryControlTest and PlatformAuthorizationTest: read-only ledger/balance, batch, serial, rack/bin and reservation anomaly checks exposed in platform health'],
                 ['WAC/costing', 2, true, 'WeightedAverageCostTest: purchase, sale, return, transfer and purchase-return cost preservation'],
                 ['Purchasing UI', 5, false, 'PO multi-line draft/edit/approval/document UI'],
                 ['Purchase receipt', 4, false, 'Goods receipt and partial-receipt UI with audit and tenant checks'],

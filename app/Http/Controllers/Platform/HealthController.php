@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Platform;
 
 use App\Http\Controllers\Controller;
+use App\Services\InventoryReconciliationService;
 use App\Support\ModuleManifestValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class HealthController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, InventoryReconciliationService $inventoryReconciliation)
     {
         $this->authorizePlatform($request, 'platform.dashboard.view');
 
@@ -37,6 +38,19 @@ class HealthController extends Controller
 
         $manifests = ModuleManifestValidator::loadFromDisk(base_path('Modules'));
         $checks['modules'] = ['label' => 'Modules', 'ok' => empty($manifests['errors']), 'detail' => count($manifests['manifests']).' manifests, '.count($manifests['errors']).' errors'];
+
+        try {
+            $inventory = cache()->remember('health.inventory-reconciliation', 60, fn () => $inventoryReconciliation->inspect());
+            $checks['inventory_reconciliation'] = [
+                'label' => 'Inventory reconciliation',
+                'ok' => $inventory['status'] === 'PASS',
+                'detail' => $inventory['status'] === 'PASS'
+                    ? 'PASS: ledger, batch, serial, location and reservations agree.'
+                    : 'FAIL: '.$inventory['anomaly_count'].' anomaly/anomalies. Run inventory:reconcile for detail.',
+            ];
+        } catch (\Throwable $e) {
+            $checks['inventory_reconciliation'] = ['label' => 'Inventory reconciliation', 'ok' => false, 'detail' => 'Unable to run reconciliation.'];
+        }
 
         return view('platform.health', compact('checks'));
     }
