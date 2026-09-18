@@ -76,7 +76,13 @@ final class PurchaseService
             $purchase = $q->findOrFail($purchaseId);
 
             if ($purchase->status === 'received') {
-                return $purchase; // idempotent
+                if ($partialLines === null) {
+                    return $purchase; // Idempotent retry of the completed whole-PO receipt.
+                }
+
+                throw ValidationException::withMessages([
+                    'lines' => 'Purchase order is fully received and cannot receive additional quantities.',
+                ]);
             }
             abort_if($purchase->status === 'pending_approval', 422, 'Purchase order requires approval before receiving.');
             abort_if($purchase->status === 'cancelled', 422, 'Cannot receive a cancelled purchase.');

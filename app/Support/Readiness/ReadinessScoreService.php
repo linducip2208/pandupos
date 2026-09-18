@@ -38,7 +38,7 @@ final class ReadinessScoreService
                 ['Supplier invoice', 3, false, 'Separate AP invoice UI, validation and document output'],
                 ['Supplier payment', 2, false, 'Partial/full payment UI, validation and audit'],
                 ['Purchase return', 2, false, 'Received-minus-return workflow UI and supplier credit evidence'],
-                ['Purchasing safety', 2, false, 'Duplicate receipt, 30/40/30, over-return, overpayment and cross-tenant proof'],
+                ['Purchasing safety', 2, true, 'PurchasingSafetyTest, PurchaseApprovalTest and SupplierDocumentTest: PO stock timing, 30/40/30 partial receipt, idempotent completed retry, over-receipt, duplicate supplier invoice, overpayment, over-return, approval and cross-tenant proof'],
                 ['Quotation', 2, false, 'Current tenant UI, transition validation, print and audit'],
                 ['Sales order', 3, false, 'Current UI, reservation, status, permission and tenant proof'],
                 ['Reservation to delivery', 3, false, 'Partial delivery, stock timing and duplicate-movement proof'],

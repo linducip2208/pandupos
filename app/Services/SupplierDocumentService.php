@@ -38,6 +38,15 @@ final class SupplierDocumentService
         }
 
         return DB::transaction(function () use ($tenantId, $data, $purchase, $supplierId, $subtotal, $discount, $tax, $shipping, $total, $actorId) {
+            if (SupplierInvoice::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('supplier_id', $supplierId)
+                ->where('invoice_number', $data['invoice_number'])
+                ->exists()) {
+                throw ValidationException::withMessages([
+                    'invoice_number' => 'Supplier invoice number already exists for this supplier.',
+                ]);
+            }
             $invoice = SupplierInvoice::withoutGlobalScopes()->create([
                 'tenant_id' => $tenantId, 'purchase_id' => $purchase?->id, 'supplier_id' => $supplierId,
                 'invoice_number' => $data['invoice_number'], 'invoice_date' => $data['invoice_date'],
