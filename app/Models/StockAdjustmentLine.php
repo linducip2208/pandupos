@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class StockAdjustmentLine extends Model
 {
-    protected $fillable = ['stock_adjustment_id', 'product_variant_id', 'quantity_change', 'unit_cost'];
+    protected $fillable = ['stock_adjustment_id', 'product_variant_id', 'inventory_batch_id', 'serial_number_id', 'warehouse_location_id', 'quantity_change', 'unit_cost'];
 
     protected function casts(): array
     {
@@ -21,5 +21,20 @@ class StockAdjustmentLine extends Model
     public function variant()
     {
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
+    public function inventoryBatch()
+    {
+        return $this->belongsTo(InventoryBatch::class);
+    }
+
+    public function serialNumber()
+    {
+        return $this->belongsTo(SerialNumber::class);
+    }
+
+    public function warehouseLocation()
+    {
+        return $this->belongsTo(WarehouseLocation::class);
     }
 }

@@ -153,7 +153,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/transfers/{transfer}/receive', [InventoryWorkspaceController::class, 'receiveTransfer'])->name('transfers.receive');
         Route::post('/transfers/{transfer}/{action}', [InventoryWorkspaceController::class, 'transferAction'])->where('action', 'approve|ship|transit|cancel')->name('transfers.action');
         Route::post('/adjustments', [InventoryWorkspaceController::class, 'storeAdjustment'])->name('adjustments.store');
-        Route::post('/adjustments/{adjustment}/{action}', [InventoryWorkspaceController::class, 'adjustmentAction'])->where('action', 'approve|post')->name('adjustments.action');
+        Route::post('/adjustments/{adjustment}/{action}', [InventoryWorkspaceController::class, 'adjustmentAction'])->where('action', 'submit|approve|post')->name('adjustments.action');
         Route::post('/counts', [InventoryWorkspaceController::class, 'storeCount'])->name('counts.store');
         Route::post('/counts/{count}/record', [InventoryWorkspaceController::class, 'recordCount'])->name('counts.record');
         Route::post('/counts/{count}/{action}', [InventoryWorkspaceController::class, 'countAction'])->where('action', 'approve|post')->name('counts.action');

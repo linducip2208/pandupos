@@ -49,6 +49,7 @@ class InventoryWorkspaceUiTest extends TestCase
         $approver = User::factory()->create(['current_tenant_id' => $tenant->id]);
         Membership::create(['tenant_id' => $tenant->id, 'user_id' => $approver->id, 'role' => 'manager', 'status' => 'active']);
         $approver->givePermissionTo('inventory.adjust');
+        $this->actingAs($user)->post(route('inventory.adjustments.action', [$adjustment, 'submit']))->assertRedirect();
         $this->actingAs($approver)->post(route('inventory.adjustments.action', [$adjustment, 'approve']))->assertRedirect();
         $this->actingAs($approver)->post(route('inventory.adjustments.action', [$adjustment, 'post']))->assertRedirect();
         $this->assertEquals(8, app(StockService::class)->onHand($tenant->id, $warehouse->id, $variant->id));
@@ -67,6 +68,12 @@ class InventoryWorkspaceUiTest extends TestCase
         $this->actingAs($userA)->get(route('inventory.index'))->assertForbidden();
         $userA->givePermissionTo('inventory.view');
         $this->post(route('inventory.reservations.release', $reservationB))->assertNotFound();
+
+        $adjustmentB = StockAdjustment::withoutGlobalScopes()->create([
+            'tenant_id' => $userB->current_tenant_id, 'warehouse_id' => $warehouseB->id,
+            'status' => 'draft', 'reason' => 'damage', 'notes' => 'Tenant B only', 'requested_by' => $userB->id,
+        ]);
+        $this->actingAs($userA)->post(route('inventory.adjustments.action', [$adjustmentB, 'submit']))->assertNotFound();
     }
 
     public function test_authorized_user_can_submit_multi_line_transfer_request(): void

@@ -123,6 +123,24 @@ final class SerialNumberService
         });
     }
 
+    /** Remove one available serial through an approved stock adjustment. */
+    public function damageForAdjustment(int $tenantId, int $serialNumberId, int $adjustmentId): SerialNumber
+    {
+        return DB::transaction(function () use ($tenantId, $serialNumberId, $adjustmentId) {
+            $number = SerialNumber::withoutGlobalScopes()->where('tenant_id', $tenantId)->lockForUpdate()->findOrFail($serialNumberId);
+            if (! in_array($number->status, ['available', 'returned'], true)) {
+                throw ValidationException::withMessages(['serial_number' => 'Only an available serial can be removed by an adjustment.']);
+            }
+            $this->stock->decrease(
+                $tenantId, $number->warehouse_id, $number->product_variant_id, 1,
+                'adjustment_out', $adjustmentId, $number->inventory_batch_id, $number->id,
+            );
+            $number->update(['status' => 'damaged']);
+
+            return $number;
+        });
+    }
+
     public function receiveFromTransfer(int $tenantId, int $serialNumberId, int $transferId): SerialNumber
     {
         return DB::transaction(function () use ($tenantId, $serialNumberId, $transferId) {

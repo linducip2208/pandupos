@@ -71,6 +71,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     Route::post('inventory/transfers/{transfer}/cancel', [StockTransferController::class, 'cancel']);
     Route::get('inventory/adjustments', [InventoryControlController::class, 'adjustments']);
     Route::post('inventory/adjustments', [InventoryControlController::class, 'storeAdjustment']);
+    Route::post('inventory/adjustments/{adjustment}/submit', [InventoryControlController::class, 'submitAdjustment']);
     Route::post('inventory/adjustments/{adjustment}/approve', [InventoryControlController::class, 'approveAdjustment']);
     Route::post('inventory/adjustments/{adjustment}/post', [InventoryControlController::class, 'postAdjustment']);
     Route::get('inventory/counts', [InventoryControlController::class, 'counts']);

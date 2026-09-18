@@ -4,10 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\InventoryBalance;
+use App\Models\InventoryBatch;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
+use App\Services\SerialNumberService;
 use App\Services\StockAdjustmentService;
 use App\Services\StockCountService;
 use App\Services\StockService;
@@ -33,6 +36,7 @@ class InventoryControlTest extends TestCase
         ]], 'Two damaged during handling', $owner->id);
 
         $this->assertEquals(10, $stock->onHand($tenant->id, $warehouse->id, $variant->id));
+        $service->submit($adjustment, $owner->id);
         $this->expectException(ValidationException::class);
         $service->approve($adjustment, $owner->id);
     }
@@ -48,7 +52,8 @@ class InventoryControlTest extends TestCase
             'product_variant_id' => $variant->id, 'quantity_change' => -2,
         ]], 'Two damaged during handling', $owner->id);
 
-        $approved = $service->approve($adjustment, $approver->id);
+        $reviewed = $service->submit($adjustment, $owner->id);
+        $approved = $service->approve($reviewed, $approver->id);
         $this->assertEquals(10, $stock->onHand($tenant->id, $warehouse->id, $variant->id));
         $posted = $service->post($approved, $approver->id);
         $this->assertSame('posted', $posted->status);
@@ -57,6 +62,37 @@ class InventoryControlTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $service->post($posted, $approver->id);
+    }
+
+    public function test_multi_line_adjustment_preserves_batch_location_and_serial_invariants(): void
+    {
+        [$tenant, $owner, $warehouse, $variant] = $this->context();
+        $approver = User::factory()->create();
+        $stock = app(StockService::class);
+        $location = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'code' => 'A-01', 'is_active' => true,
+        ]);
+        $batch = InventoryBatch::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'product_variant_id' => $variant->id,
+            'batch_number' => 'ADJ-LOT', 'expires_at' => today()->addMonth(),
+        ]);
+        $stock->increase($tenant->id, $warehouse->id, $variant->id, 4, 5, 'opening', 1, $batch->id, null, $location->id);
+        $serial = app(SerialNumberService::class)->receive($tenant->id, $warehouse->id, $variant->id, 'ADJ-SERIAL', 5, $batch->id);
+
+        $service = app(StockAdjustmentService::class);
+        $adjustment = $service->create($tenant->id, $warehouse->id, 'damage', [
+            ['product_variant_id' => $variant->id, 'inventory_batch_id' => $batch->id, 'warehouse_location_id' => $location->id, 'quantity_change' => -2],
+            ['product_variant_id' => $variant->id, 'inventory_batch_id' => $batch->id, 'warehouse_location_id' => $location->id, 'quantity_change' => 5, 'unit_cost' => 5],
+            ['product_variant_id' => $variant->id, 'inventory_batch_id' => $batch->id, 'serial_number_id' => $serial->id, 'quantity_change' => -1],
+        ], 'Multi-line controlled stock correction', $owner->id);
+
+        $approved = $service->approve($service->submit($adjustment, $owner->id), $approver->id);
+        $posted = $service->post($approved, $approver->id);
+
+        $this->assertSame('posted', $posted->status);
+        $this->assertSame('damaged', $serial->refresh()->status);
+        $this->assertSame(7.0, $stock->onHandAtLocation($tenant->id, $warehouse->id, $variant->id, $location->id));
+        $this->assertDatabaseHas('stock_movements', ['reference_type' => 'adjustment_out', 'reference_id' => $adjustment->id, 'serial_number_id' => $serial->id]);
     }
 
     public function test_cycle_count_snapshots_reviews_approves_and_posts_variance(): void

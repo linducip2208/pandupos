@@ -32,6 +32,9 @@ class InventoryControlController extends Controller
             'lines.*.product_variant_id' => ['required', Rule::exists('product_variants', 'id')->where('tenant_id', $tenantId)],
             'lines.*.quantity_change' => 'required|numeric|not_in:0',
             'lines.*.unit_cost' => 'nullable|numeric|min:0',
+            'lines.*.inventory_batch_id' => ['nullable', Rule::exists('inventory_batches', 'id')->where('tenant_id', $tenantId)],
+            'lines.*.serial_number_id' => ['nullable', Rule::exists('serial_numbers', 'id')->where('tenant_id', $tenantId)],
+            'lines.*.warehouse_location_id' => ['nullable', Rule::exists('warehouse_locations', 'id')->where('tenant_id', $tenantId)],
         ]);
         $adjustment = $service->create($tenantId, (int) $data['warehouse_id'], $data['reason'], $data['lines'], $data['notes'], $request->user()->id);
 
@@ -43,6 +46,13 @@ class InventoryControlController extends Controller
         $this->authorizeAdjustment($request);
 
         return response()->json(['data' => $service->approve($adjustment, $request->user()->id)]);
+    }
+
+    public function submitAdjustment(Request $request, StockAdjustment $adjustment, StockAdjustmentService $service)
+    {
+        $this->authorizeAdjustment($request);
+
+        return response()->json(['data' => $service->submit($adjustment, $request->user()->id)]);
     }
 
     public function postAdjustment(Request $request, StockAdjustment $adjustment, StockAdjustmentService $service)

@@ -159,6 +159,8 @@ class InventoryWorkspaceController extends Controller
             'lines.*.product_variant_id' => ['required', 'integer'],
             'lines.*.quantity_change' => ['required', 'numeric', 'not_in:0'],
             'lines.*.unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.inventory_batch_id' => ['nullable', 'integer'], 'lines.*.serial_number_id' => ['nullable', 'integer'],
+            'lines.*.warehouse_location_id' => ['nullable', 'integer'],
         ]);
         $service->create(TenantContext::idOrFail(), (int) $data['warehouse_id'], $data['reason'], $data['lines'], $data['notes'], $request->user()->id);
 
@@ -170,6 +172,7 @@ class InventoryWorkspaceController extends Controller
         $this->requirePermission($request, 'inventory.adjust');
         $this->assertTenant($adjustment->tenant_id);
         match ($action) {
+            'submit' => $service->submit($adjustment, $request->user()->id),
             'approve' => $service->approve($adjustment, $request->user()->id),
             'post' => $service->post($adjustment, $request->user()->id),
             default => abort(404),
