@@ -9,6 +9,7 @@ use App\Models\SalesInvoice;
 use App\Models\SerialNumber;
 use App\Models\TransferOrder;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -24,6 +25,7 @@ final class SerialNumberService
         float $unitCost,
         ?int $batchId = null,
         ?int $purchaseId = null,
+        ?int $locationId = null,
     ): SerialNumber {
         $valid = Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($warehouseId)->exists()
             && ProductVariant::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($variantId)->exists()
@@ -34,14 +36,17 @@ final class SerialNumberService
                 ->where('product_variant_id', $variantId)
                 ->whereKey($batchId)
                 ->exists());
+        $valid = $valid && ($locationId === null || WarehouseLocation::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)->where('is_active', true)->whereKey($locationId)->exists());
         if (! $valid) {
             throw ValidationException::withMessages(['reference' => 'Serial references must belong to the active tenant.']);
         }
 
-        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $serial, $unitCost, $batchId, $purchaseId) {
+        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $serial, $unitCost, $batchId, $purchaseId, $locationId) {
             $number = SerialNumber::withoutGlobalScopes()->create([
                 'tenant_id' => $tenantId,
                 'warehouse_id' => $warehouseId,
+                'warehouse_location_id' => $locationId,
                 'product_variant_id' => $variantId,
                 'inventory_batch_id' => $batchId,
                 'serial_number' => $serial,
@@ -50,7 +55,7 @@ final class SerialNumberService
             ]);
             $this->stock->increase(
                 $tenantId, $warehouseId, $variantId, 1, $unitCost,
-                'purchase_receipt', $purchaseId, $batchId, $number->id
+                'purchase_receipt', $purchaseId, $batchId, $number->id, $locationId
             );
 
             return $number;
@@ -70,7 +75,7 @@ final class SerialNumberService
             }
             $this->stock->decrease(
                 $tenantId, $number->warehouse_id, $number->product_variant_id, 1,
-                'sale', $invoiceId, $number->inventory_batch_id, $number->id
+                'sale', $invoiceId, $number->inventory_batch_id, $number->id, $number->warehouse_location_id
             );
             $number->update(['status' => 'sold', 'sales_invoice_id' => $invoiceId]);
 
@@ -94,7 +99,7 @@ final class SerialNumberService
             }
             $this->stock->increase(
                 $tenantId, $number->warehouse_id, $number->product_variant_id, 1, $unitCost,
-                $referenceType, $invoiceId, $number->inventory_batch_id, $number->id,
+                $referenceType, $invoiceId, $number->inventory_batch_id, $number->id, $number->warehouse_location_id,
             );
             $number->update([
                 'status' => $referenceType === 'sale_void' ? 'available' : 'returned',
@@ -105,17 +110,20 @@ final class SerialNumberService
         });
     }
 
-    public function shipForTransfer(int $tenantId, int $serialNumberId, int $transferId): SerialNumber
+    public function shipForTransfer(int $tenantId, int $serialNumberId, int $transferId, ?int $sourceLocationId = null): SerialNumber
     {
-        return DB::transaction(function () use ($tenantId, $serialNumberId, $transferId) {
+        return DB::transaction(function () use ($tenantId, $serialNumberId, $transferId, $sourceLocationId) {
             $transfer = TransferOrder::withoutGlobalScopes()->where('tenant_id', $tenantId)->findOrFail($transferId);
             $number = SerialNumber::withoutGlobalScopes()->where('tenant_id', $tenantId)->lockForUpdate()->findOrFail($serialNumberId);
             if ($number->status !== 'available' || $number->warehouse_id !== $transfer->from_warehouse_id) {
                 throw ValidationException::withMessages(['serial_number' => 'Serial is not available in the transfer source warehouse.']);
             }
+            if ($sourceLocationId !== null && (int) $number->warehouse_location_id !== $sourceLocationId) {
+                throw ValidationException::withMessages(['serial_number' => 'Serial number is not stored in the selected source rack/bin.']);
+            }
             $this->stock->decrease(
                 $tenantId, $number->warehouse_id, $number->product_variant_id, 1,
-                'transfer_out', $transferId, $number->inventory_batch_id, $number->id,
+                'transfer_out', $transferId, $number->inventory_batch_id, $number->id, $number->warehouse_location_id,
             );
             $number->update(['status' => 'transferred']);
 
@@ -141,23 +149,27 @@ final class SerialNumberService
         });
     }
 
-    public function receiveFromTransfer(int $tenantId, int $serialNumberId, int $transferId): SerialNumber
+    public function receiveFromTransfer(int $tenantId, int $serialNumberId, int $transferId, ?int $destinationLocationId = null): SerialNumber
     {
-        return DB::transaction(function () use ($tenantId, $serialNumberId, $transferId) {
+        return DB::transaction(function () use ($tenantId, $serialNumberId, $transferId, $destinationLocationId) {
             $transfer = TransferOrder::withoutGlobalScopes()->where('tenant_id', $tenantId)->findOrFail($transferId);
             $number = SerialNumber::withoutGlobalScopes()->where('tenant_id', $tenantId)->lockForUpdate()->findOrFail($serialNumberId);
             if ($number->status !== 'transferred' || $number->warehouse_id !== $transfer->from_warehouse_id) {
                 throw ValidationException::withMessages(['serial_number' => 'Serial is not in transit for this transfer.']);
             }
+            if ($destinationLocationId !== null && ! WarehouseLocation::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)->where('warehouse_id', $transfer->to_warehouse_id)->where('is_active', true)->whereKey($destinationLocationId)->exists()) {
+                throw ValidationException::withMessages(['warehouse_location_id' => 'Destination rack/bin must belong to the destination warehouse.']);
+            }
             $destinationBatchId = $this->destinationBatchId($number, $transfer->to_warehouse_id);
             $this->stock->increase(
                 $tenantId, $transfer->to_warehouse_id, $number->product_variant_id, 1,
                 $this->stock->weightedAverageCost($tenantId, $transfer->from_warehouse_id, $number->product_variant_id),
-                'transfer_in', $transferId, $destinationBatchId, $number->id,
+                'transfer_in', $transferId, $destinationBatchId, $number->id, $destinationLocationId,
             );
             $number->update([
                 'status' => 'available', 'warehouse_id' => $transfer->to_warehouse_id,
-                'inventory_batch_id' => $destinationBatchId,
+                'inventory_batch_id' => $destinationBatchId, 'warehouse_location_id' => $destinationLocationId,
             ]);
 
             return $number;

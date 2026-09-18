@@ -55,9 +55,6 @@ final class StockTransferService
                     if ($serialIds->count() !== (int) $line['quantity'] || $serialIds->unique()->count() !== $serialIds->count()) {
                         throw ValidationException::withMessages(['lines' => 'Each serialized transfer line requires one unique serial per unit.']);
                     }
-                    if ($sourceLocationId !== null || $destinationLocationId !== null) {
-                        throw ValidationException::withMessages(['lines' => 'Serialized transfers cannot select a rack/bin until serial location tracking is configured.']);
-                    }
                     $serialCount = SerialNumber::withoutGlobalScopes()
                         ->where('tenant_id', $tenantId)->where('warehouse_id', $fromWarehouseId)
                         ->where('product_variant_id', $variant->id)->where('status', 'available')
@@ -108,7 +105,7 @@ final class StockTransferService
                 $cost = $this->stock->weightedAverageCost($locked->tenant_id, $locked->from_warehouse_id, $line->product_variant_id);
                 if ($line->serials->isNotEmpty()) {
                     foreach ($line->serials as $serial) {
-                        $this->serials->shipForTransfer($locked->tenant_id, $serial->serial_number_id, $locked->id);
+                        $this->serials->shipForTransfer($locked->tenant_id, $serial->serial_number_id, $locked->id, $line->source_warehouse_location_id);
                     }
                     $line->update(['unit_cost' => $cost]);
 
@@ -157,7 +154,7 @@ final class StockTransferService
                         throw ValidationException::withMessages(['quantities' => 'Serialized receipt exceeds serials currently in transit.']);
                     }
                     foreach ($inTransit as $serial) {
-                        $this->serials->receiveFromTransfer($locked->tenant_id, $serial->serial_number_id, $locked->id);
+                        $this->serials->receiveFromTransfer($locked->tenant_id, $serial->serial_number_id, $locked->id, $line->destination_warehouse_location_id);
                     }
                 } else {
                     $destinationBatchId = $this->destinationBatchId($locked, $line);

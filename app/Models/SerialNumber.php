@@ -10,7 +10,7 @@ class SerialNumber extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id', 'product_variant_id', 'warehouse_id', 'inventory_batch_id',
+        'tenant_id', 'product_variant_id', 'warehouse_id', 'warehouse_location_id', 'inventory_batch_id',
         'serial_number', 'status', 'purchase_id', 'sales_invoice_id',
     ];
 
@@ -22,6 +22,11 @@ class SerialNumber extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function warehouseLocation()
+    {
+        return $this->belongsTo(WarehouseLocation::class);
     }
 
     public function inventoryBatch()

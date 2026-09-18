@@ -181,6 +181,53 @@ class AdvancedStockTransferTest extends TestCase
         ]);
     }
 
+    public function test_serialized_transfer_preserves_rack_bin_trace_and_rejects_wrong_source_location(): void
+    {
+        [$tenant, $owner, $source, $destination, $variant] = $this->context();
+        $sourceLocation = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $source->id, 'code' => 'SER-SRC', 'is_active' => true,
+        ]);
+        $wrongLocation = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $source->id, 'code' => 'SER-WRONG', 'is_active' => true,
+        ]);
+        $destinationLocation = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $destination->id, 'code' => 'SER-DST', 'is_active' => true,
+        ]);
+        $serial = app(SerialNumberService::class)->receive($tenant->id, $source->id, $variant->id, 'TRANSFER-LOC-SERIAL', 8, null, null, $sourceLocation->id);
+        $service = app(StockTransferService::class);
+        $invalid = $service->createDraft($tenant->id, $source->id, $destination->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 1, 'serial_number_ids' => [$serial->id],
+            'source_warehouse_location_id' => $wrongLocation->id, 'destination_warehouse_location_id' => $destinationLocation->id,
+        ]], null, $owner->id);
+        $service->approve($invalid, User::factory()->create()->id);
+        $this->expectException(ValidationException::class);
+        $service->ship($invalid, $owner->id);
+    }
+
+    public function test_serialized_transfer_receives_into_selected_destination_rack_bin(): void
+    {
+        [$tenant, $owner, $source, $destination, $variant] = $this->context();
+        $sourceLocation = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $source->id, 'code' => 'SER-OK-SRC', 'is_active' => true,
+        ]);
+        $destinationLocation = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $destination->id, 'code' => 'SER-OK-DST', 'is_active' => true,
+        ]);
+        $serial = app(SerialNumberService::class)->receive($tenant->id, $source->id, $variant->id, 'TRANSFER-OK-SERIAL', 8, null, null, $sourceLocation->id);
+        $service = app(StockTransferService::class);
+        $transfer = $service->createDraft($tenant->id, $source->id, $destination->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 1, 'serial_number_ids' => [$serial->id],
+            'source_warehouse_location_id' => $sourceLocation->id, 'destination_warehouse_location_id' => $destinationLocation->id,
+        ]], null, $owner->id);
+        $service->approve($transfer, User::factory()->create()->id);
+        $service->ship($transfer, $owner->id);
+        $line = $transfer->fresh('lines')->lines->first();
+        $service->receive($transfer->fresh('lines'), [$line->id => 1], $owner->id);
+
+        $this->assertSame($destinationLocation->id, $serial->refresh()->warehouse_location_id);
+        $this->assertSame(1.0, app(StockService::class)->onHandAtLocation($tenant->id, $destination->id, $variant->id, $destinationLocation->id));
+    }
+
     private function context(): array
     {
         $this->seed(PlatformSeeder::class);

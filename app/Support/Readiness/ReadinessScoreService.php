@@ -28,7 +28,7 @@ final class ReadinessScoreService
                 ['Serial lifecycle', 4, false, 'Receive, reserve, sell, return, transfer, damage, history and tests'],
                 ['Rack/bin', 2, false, 'Location lifecycle, stock visibility and all current transaction selectors'],
                 ['Reservation', 3, false, 'Sales-order reserve/release/consume/partial/expiry, scheduler and end-to-end evidence'],
-                ['Transfer', 3, false, 'Multi-line UI and requester segregation exist; batch/location selectors and complete acceptance remain'],
+                ['Transfer', 3, true, 'AdvancedStockTransferTest and InventoryWorkspaceUiTest: multi-line request/segregated approval/ship/transit/partial receive/cancel with batch, serial and rack/bin provenance'],
                 ['Adjustment', 2, true, 'InventoryControlTest and InventoryWorkspaceUiTest: multi-line draft/review/segregated approval/post, batch/rack-bin/serial trace, tenant rejection, audit and idempotency'],
                 ['Stock count', 2, true, 'InventoryControlTest and InventoryWorkspaceUiTest: immutable snapshot/count/variance/review/segregated approval/post with batch, serial and rack/bin trace'],
                 ['Reconciliation', 1, true, 'InventoryReconciliationService, InventoryControlTest and PlatformAuthorizationTest: read-only ledger/balance, batch, serial, rack/bin and reservation anomaly checks exposed in platform health'],

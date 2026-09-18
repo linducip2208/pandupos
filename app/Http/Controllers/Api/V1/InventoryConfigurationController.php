@@ -179,6 +179,7 @@ class InventoryConfigurationController extends Controller
             'unit_cost' => 'required|numeric|min:0',
             'inventory_batch_id' => ['nullable', Rule::exists('inventory_batches', 'id')->where('tenant_id', $tenantId)],
             'purchase_id' => ['nullable', Rule::exists('purchases', 'id')->where('tenant_id', $tenantId)],
+            'warehouse_location_id' => ['nullable', Rule::exists('warehouse_locations', 'id')->where('tenant_id', $tenantId)],
         ]);
         $serial = $serials->receive(
             $tenantId,
@@ -188,6 +189,7 @@ class InventoryConfigurationController extends Controller
             (float) $data['unit_cost'],
             $data['inventory_batch_id'] ?? null,
             $data['purchase_id'] ?? null,
+            $data['warehouse_location_id'] ?? null,
         );
 
         return response()->json(['data' => $serial], 201);
