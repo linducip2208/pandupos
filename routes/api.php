@@ -90,8 +90,9 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     Route::post('purchases/{purchase}/returns', [PurchaseController::class, 'storeReturn']);
 
     // Sales / POS: atomic checkout + idempotency
-    Route::apiResource('sales', SaleController::class)->only(['index', 'store']);
-    Route::post('sales/{invoice}/void', [SaleController::class, 'void']);
+    Route::get('sales', [SaleController::class, 'index'])->middleware('can:sales.view');
+    Route::post('sales', [SaleController::class, 'store'])->middleware('can:pos.sale.create');
+    Route::post('sales/{invoice}/void', [SaleController::class, 'void'])->middleware('can:pos.sale.void');
     Route::middleware(['entitlement:sales.access', 'module:sales'])->prefix('sales-documents')->group(function () {
         Route::get('quotations', [SalesDocumentController::class, 'index']);
         Route::post('quotations', [SalesDocumentController::class, 'store']);
