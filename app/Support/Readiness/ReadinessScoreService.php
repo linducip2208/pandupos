@@ -27,7 +27,7 @@ final class ReadinessScoreService
                 ['Batch, expiry and FEFO', 4, false, 'Receive, provenance, purchase/POS selectors, FEFO, expired prevention, audit and tests'],
                 ['Serial lifecycle', 4, false, 'Receive, reserve, sell, return, transfer, damage, history and tests'],
                 ['Rack/bin', 2, true, 'BatchExpirySerialTest, AdvancedStockTransferTest and InventoryWorkspaceUiTest: audited location lifecycle, stock visibility and tenant/warehouse-scoped receiving, reservation, transfer, adjustment and count selectors'],
-                ['Reservation', 3, false, 'Sales-order reserve/release/consume/partial/expiry, scheduler and end-to-end evidence'],
+                ['Reservation', 3, true, 'StockLocationReservationTest, SalesOrderDeliveryTest and InventoryWorkspaceUiTest: tenant-scoped idempotent reserve/release/partial/full consume, ATP, scheduled expiry cleanup, audit and Sales Order confirm/deliver/cancel workflow'],
                 ['Transfer', 3, true, 'AdvancedStockTransferTest and InventoryWorkspaceUiTest: multi-line request/segregated approval/ship/transit/partial receive/cancel with batch, serial and rack/bin provenance'],
                 ['Adjustment', 2, true, 'InventoryControlTest and InventoryWorkspaceUiTest: multi-line draft/review/segregated approval/post, batch/rack-bin/serial trace, tenant rejection, audit and idempotency'],
                 ['Stock count', 2, true, 'InventoryControlTest and InventoryWorkspaceUiTest: immutable snapshot/count/variance/review/segregated approval/post with batch, serial and rack/bin trace'],

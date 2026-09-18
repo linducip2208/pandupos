@@ -12,6 +12,7 @@ class StockReservation extends Model
     protected $fillable = [
         'tenant_id', 'warehouse_id', 'warehouse_location_id', 'product_variant_id', 'inventory_batch_id',
         'quantity', 'source_type', 'source_id', 'idempotency_key', 'status', 'expires_at', 'released_at', 'consumed_at',
+        'consumed_reference_type', 'consumed_reference_id',
     ];
 
     protected function casts(): array

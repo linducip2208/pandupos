@@ -52,6 +52,16 @@ final class StockReservationService
     {
         return DB::transaction(function () use ($reservation, $referenceType, $referenceId, $actorId) {
             $locked = StockReservation::withoutGlobalScopes()->lockForUpdate()->findOrFail($reservation->id);
+            if ($locked->status === 'consumed') {
+                abort_unless(
+                    $locked->consumed_reference_type === $referenceType
+                    && (int) $locked->consumed_reference_id === $referenceId,
+                    422,
+                    'Reservation was already consumed by another transaction.'
+                );
+
+                return $locked;
+            }
             $this->assertActive($locked);
             $before = $locked->toArray();
             $locked->update(['status' => 'consuming']);
@@ -60,7 +70,12 @@ final class StockReservationService
                 (float) $locked->quantity, $referenceType, $referenceId,
                 $locked->inventory_batch_id, null, $locked->warehouse_location_id
             );
-            $locked->update(['status' => 'consumed', 'consumed_at' => now()]);
+            $locked->update([
+                'status' => 'consumed',
+                'consumed_at' => now(),
+                'consumed_reference_type' => $referenceType,
+                'consumed_reference_id' => $referenceId,
+            ]);
             $this->audit->log($locked->tenant_id, $actorId, 'inventory.reservation.consumed', StockReservation::class, $locked->id, $before, $locked->fresh()->toArray());
 
             return $locked->fresh();
@@ -79,7 +94,13 @@ final class StockReservationService
             $this->stock->decrease($locked->tenant_id, $locked->warehouse_id, $locked->product_variant_id, $quantity, $referenceType, $referenceId, $locked->inventory_batch_id, null, $locked->warehouse_location_id);
             $locked->update($remaining > 0
                 ? ['status' => 'active', 'quantity' => $remaining]
-                : ['status' => 'consumed', 'quantity' => 0, 'consumed_at' => now()]);
+                : [
+                    'status' => 'consumed',
+                    'quantity' => 0,
+                    'consumed_at' => now(),
+                    'consumed_reference_type' => $referenceType,
+                    'consumed_reference_id' => $referenceId,
+                ]);
             $this->audit->log($locked->tenant_id, $actorId, 'inventory.reservation.partially_consumed', StockReservation::class, $locked->id, $before, $locked->fresh()->toArray());
 
             return $locked->fresh();

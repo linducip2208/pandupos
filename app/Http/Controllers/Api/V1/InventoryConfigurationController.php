@@ -265,6 +265,7 @@ class InventoryConfigurationController extends Controller
     public function releaseReservation(Request $request, StockReservation $reservation, StockReservationService $reservations)
     {
         $this->authorize('create', Product::class);
+        abort_unless($reservation->tenant_id === TenantContext::idOrFail(), 404);
 
         return response()->json(['data' => $reservations->release($reservation, $request->user()?->id)]);
     }
@@ -272,6 +273,7 @@ class InventoryConfigurationController extends Controller
     public function consumeReservation(Request $request, StockReservation $reservation, StockReservationService $reservations)
     {
         $this->authorize('create', Product::class);
+        abort_unless($reservation->tenant_id === TenantContext::idOrFail(), 404);
         $data = $request->validate([
             'reference_type' => 'required|in:sale,delivery,ecommerce_order',
             'reference_id' => 'required|integer|min:1',

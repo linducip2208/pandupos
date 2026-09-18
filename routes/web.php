@@ -127,6 +127,9 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::prefix('sales-orders')->name('sales-orders.')->middleware(['entitlement:sales.access', 'module:sales'])->group(function () {
         Route::get('/', [SalesOrderWorkspaceController::class, 'index'])->name('index');
         Route::post('/', [SalesOrderWorkspaceController::class, 'store'])->name('store');
+        Route::post('/{order}/confirm', [SalesOrderWorkspaceController::class, 'confirm'])->name('confirm');
+        Route::post('/{order}/deliver', [SalesOrderWorkspaceController::class, 'deliver'])->name('deliver');
+        Route::post('/{order}/cancel', [SalesOrderWorkspaceController::class, 'cancel'])->name('cancel');
     });
     Route::prefix('price-lists')->name('price-lists.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
         Route::get('/', [PriceListWorkspaceController::class, 'index'])->name('index');

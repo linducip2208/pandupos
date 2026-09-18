@@ -50,4 +50,42 @@ class SalesOrderWorkspaceController extends Controller
 
         return back()->with('status', "Sales Order {$order->order_no} dibuat sebagai draft.");
     }
+
+    public function confirm(Request $request, SalesOrder $order, SalesOrderService $service): RedirectResponse
+    {
+        abort_unless($request->user()->can('sales.create'), 403);
+        $this->assertTenant($order);
+        $service->confirm($order, $request->user()->id);
+
+        return back()->with('status', "Sales Order {$order->order_no} dikonfirmasi dan stok direservasi.");
+    }
+
+    public function deliver(Request $request, SalesOrder $order, SalesOrderService $service): RedirectResponse
+    {
+        abort_unless($request->user()->can('sales.create'), 403);
+        $this->assertTenant($order);
+        $data = $request->validate([
+            'lines' => ['required', 'array', 'min:1'],
+            'lines.*.sales_order_line_id' => ['required', 'integer'],
+            'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'tracking_reference' => ['nullable', 'string', 'max:120'],
+        ]);
+        $delivery = $service->deliver($order, $data['lines'], $request->user()->id, $data['tracking_reference'] ?? null);
+
+        return back()->with('status', "Pengiriman {$delivery->delivery_no} berhasil diposting.");
+    }
+
+    public function cancel(Request $request, SalesOrder $order, SalesOrderService $service): RedirectResponse
+    {
+        abort_unless($request->user()->can('sales.create'), 403);
+        $this->assertTenant($order);
+        $service->cancel($order, $request->user()->id);
+
+        return back()->with('status', "Sales Order {$order->order_no} dibatalkan dan reservasi aktif dilepas.");
+    }
+
+    private function assertTenant(SalesOrder $order): void
+    {
+        abort_unless($order->tenant_id === TenantContext::idOrFail(), 404);
+    }
 }

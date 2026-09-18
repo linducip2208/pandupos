@@ -92,6 +92,34 @@ class StockLocationReservationTest extends TestCase
         $this->assertSame(2, AuditLog::withoutGlobalScopes()->where('tenant_id', $tenant->id)->count());
     }
 
+    public function test_consuming_same_reservation_reference_is_idempotent_and_other_reference_is_rejected(): void
+    {
+        [$tenant, $warehouse, $variant] = $this->context();
+        $stock = app(StockService::class);
+        $stock->increase($tenant->id, $warehouse->id, $variant->id, 2, 12, 'opening', 1);
+        $service = app(StockReservationService::class);
+        $reservation = $service->reserve([
+            'tenant_id' => $tenant->id,
+            'warehouse_id' => $warehouse->id,
+            'product_variant_id' => $variant->id,
+            'quantity' => 2,
+            'source_type' => 'sales_order',
+            'source_id' => 102,
+        ]);
+
+        $first = $service->consume($reservation, 'sale', 401);
+        $retry = $service->consume($reservation, 'sale', 401);
+
+        $this->assertSame($first->id, $retry->id);
+        $this->assertSame('consumed', $retry->status);
+        $this->assertSame('sale', $retry->consumed_reference_type);
+        $this->assertSame(401, $retry->consumed_reference_id);
+        $this->assertEquals(0, $stock->onHand($tenant->id, $warehouse->id, $variant->id));
+
+        $this->expectException(HttpException::class);
+        $service->consume($reservation, 'sale', 402);
+    }
+
     public function test_expiry_cleanup_is_tenant_scoped_and_audited(): void
     {
         [$tenant, $warehouse, $variant] = $this->context();
