@@ -119,8 +119,7 @@
                 <form method="POST" action="{{ route('inventory.adjustments.store') }}" class="row g-3 mb-4">@csrf
                     <div class="col-12 col-md-6"><label class="form-label">Gudang</label><select name="warehouse_id" class="form-select" required>@foreach ($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>@endforeach</select></div>
                     <div class="col-12 col-md-6"><label class="form-label">Alasan</label><select name="reason" class="form-select" required>@foreach (['damage' => 'Rusak', 'expired' => 'Kedaluwarsa', 'loss' => 'Hilang', 'count_correction' => 'Koreksi hitung', 'opening_correction' => 'Koreksi awal', 'other' => 'Lainnya'] as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></div>
-                    <div class="col-12 col-md-6"><label class="form-label">Varian</label><select name="product_variant_id" class="form-select" required>@foreach ($variants as $variant)<option value="{{ $variant->id }}">{{ $variant->sku }}</option>@endforeach</select></div>
-                    <div class="col-12 col-md-6"><label class="form-label">Perubahan (+/-)</label><input name="quantity_change" type="number" step="0.001" class="form-control" required></div>
+                    <div class="col-12"><label class="form-label">Baris penyesuaian</label><div id="adjustment-lines" class="vstack gap-2"><div class="row g-2 adjustment-line"><div class="col-7"><select name="lines[0][product_variant_id]" class="form-select" required>@foreach ($variants as $variant)<option value="{{ $variant->id }}">{{ $variant->sku }}</option>@endforeach</select></div><div class="col-5"><input name="lines[0][quantity_change]" type="number" step="0.001" class="form-control" placeholder="Perubahan (+/-)" required></div></div></div><button type="button" id="add-adjustment-line" class="btn btn-sm btn-outline-secondary mt-2">+ Tambah baris</button></div>
                     <div class="col-12"><label class="form-label">Catatan wajib</label><textarea name="notes" class="form-control" rows="2" required></textarea></div>
                     <div class="col-12"><button class="btn btn-primary w-100 w-md-auto">Buat draft</button></div>
                 </form>
@@ -162,6 +161,21 @@
             Array.from(selects[2].options).forEach(option => option.selected = false);
             const quantity = row.querySelector('input');
             quantity.name = `lines[${index}][quantity]`;
+            quantity.value = '';
+            container.appendChild(row);
+            index += 1;
+        });
+    })();
+    (() => {
+        const container = document.getElementById('adjustment-lines');
+        const add = document.getElementById('add-adjustment-line');
+        if (!container || !add) return;
+        let index = 1;
+        add.addEventListener('click', () => {
+            const row = container.firstElementChild.cloneNode(true);
+            row.querySelector('select').name = `lines[${index}][product_variant_id]`;
+            const quantity = row.querySelector('input');
+            quantity.name = `lines[${index}][quantity_change]`;
             quantity.value = '';
             container.appendChild(row);
             index += 1;

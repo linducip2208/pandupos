@@ -153,13 +153,13 @@ class InventoryWorkspaceController extends Controller
         $this->requirePermission($request, 'inventory.adjust');
         $data = $request->validate([
             'warehouse_id' => ['required', 'integer'], 'reason' => ['required', 'in:damage,expired,loss,count_correction,opening_correction,other'],
-            'notes' => ['required', 'string', 'max:1000'], 'product_variant_id' => ['required', 'integer'],
-            'quantity_change' => ['required', 'numeric', 'not_in:0'], 'unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['required', 'string', 'max:1000'],
+            'lines' => ['required', 'array', 'min:1'],
+            'lines.*.product_variant_id' => ['required', 'integer'],
+            'lines.*.quantity_change' => ['required', 'numeric', 'not_in:0'],
+            'lines.*.unit_cost' => ['nullable', 'numeric', 'min:0'],
         ]);
-        $service->create(TenantContext::idOrFail(), (int) $data['warehouse_id'], $data['reason'], [[
-            'product_variant_id' => $data['product_variant_id'], 'quantity_change' => $data['quantity_change'],
-            'unit_cost' => $data['unit_cost'] ?? null,
-        ]], $data['notes'], $request->user()->id);
+        $service->create(TenantContext::idOrFail(), (int) $data['warehouse_id'], $data['reason'], $data['lines'], $data['notes'], $request->user()->id);
 
         return back()->with('status', 'Draft penyesuaian berhasil dibuat.');
     }

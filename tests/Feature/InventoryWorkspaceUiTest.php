@@ -41,7 +41,7 @@ class InventoryWorkspaceUiTest extends TestCase
 
         $this->post(route('inventory.adjustments.store'), [
             'warehouse_id' => $warehouse->id, 'reason' => 'damage', 'notes' => 'Kemasan rusak saat penanganan',
-            'product_variant_id' => $variant->id, 'quantity_change' => -2,
+            'lines' => [['product_variant_id' => $variant->id, 'quantity_change' => -2]],
         ])->assertRedirect()->assertSessionHas('status');
 
         $adjustment = StockAdjustment::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
