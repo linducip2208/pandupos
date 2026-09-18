@@ -10,6 +10,7 @@ use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\SystemSetting;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -119,17 +120,24 @@ final class PurchaseService
             $receipt->update(['receipt_no' => 'GR-'.str_pad((string) $receipt->id, 8, '0', STR_PAD_LEFT)]);
 
             foreach ($receivable as [$line, $qtyToReceive, $row]) {
+                $locationId = filled($row['warehouse_location_id'] ?? null) ? (int) $row['warehouse_location_id'] : null;
+                if ($locationId !== null && ! WarehouseLocation::withoutGlobalScopes()
+                    ->where('tenant_id', $purchase->tenant_id)->where('warehouse_id', $purchase->warehouse_id)
+                    ->where('is_active', true)->whereKey($locationId)->exists()) {
+                    throw ValidationException::withMessages(['warehouse_location_id' => 'Selected rack/bin must be active and belong to the receipt warehouse.']);
+                }
                 $batchId = $this->receiveIntoBatchIfRequested($purchase, $receipt, $line, $qtyToReceive, $row);
                 if ($batchId === null) {
                     $this->stock->increase(
                         $purchase->tenant_id, $purchase->warehouse_id,
                         $line->product_variant_id, $qtyToReceive,
-                        (float) $line->unit_cost, 'purchase_receipt', $receipt->id
+                        (float) $line->unit_cost, 'purchase_receipt', $receipt->id, null, null, $locationId
                     );
                 }
                 $receipt->lines()->create([
                     'purchase_line_id' => $line->id, 'product_variant_id' => $line->product_variant_id,
                     'inventory_batch_id' => $batchId,
+                    'warehouse_location_id' => $locationId,
                     'quantity' => $qtyToReceive, 'unit_cost' => $line->unit_cost,
                 ]);
                 $line->update(['received_quantity' => (float) ($line->received_quantity ?? 0) + $qtyToReceive]);
@@ -179,7 +187,8 @@ final class PurchaseService
             ])->save();
             $this->stock->increase(
                 $purchase->tenant_id, $purchase->warehouse_id, $line->product_variant_id,
-                $quantity, (float) $line->unit_cost, 'purchase_receipt', $receipt->id, $batch->id,
+                $quantity, (float) $line->unit_cost, 'purchase_receipt', $receipt->id, $batch->id, null,
+                filled($row['warehouse_location_id'] ?? null) ? (int) $row['warehouse_location_id'] : null,
             );
 
             return $batch->id;
@@ -190,6 +199,7 @@ final class PurchaseService
             $batchNumber, $quantity, (float) $line->unit_cost,
             $row['manufactured_at'] ?? null, $row['expires_at'] ?? null,
             $purchase->contact_id, $purchase->id, $receipt->id,
+            filled($row['warehouse_location_id'] ?? null) ? (int) $row['warehouse_location_id'] : null,
         );
 
         return $batch->id;

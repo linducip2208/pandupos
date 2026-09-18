@@ -10,6 +10,7 @@ use App\Models\PurchaseReturn;
 use App\Models\SupplierInvoice;
 use App\Models\Unit;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use App\Services\PurchaseService;
 use App\Services\SupplierDocumentService;
 use App\Services\UnitConversionService;
@@ -26,6 +27,7 @@ class PurchasingWorkspaceController extends Controller
 
         return view('purchasing.index', [
             'warehouses' => Warehouse::query()->orderBy('name')->get(),
+            'locations' => WarehouseLocation::query()->where('is_active', true)->orderBy('code')->get(),
             'suppliers' => Contact::query()->whereIn('type', ['supplier', 'both'])->orderBy('name')->get(),
             'variants' => ProductVariant::query()->with('product.unit')->orderBy('sku')->get(),
             'batches' => InventoryBatch::query()->orderBy('batch_number')->get(),
@@ -71,6 +73,7 @@ class PurchasingWorkspaceController extends Controller
             'manufactured_at.*' => ['nullable', 'date'],
             'expires_at' => ['nullable', 'array'],
             'expires_at.*' => ['nullable', 'date'],
+            'warehouse_location_id' => ['nullable', 'integer'],
         ]);
         $lines = collect($data['lines'])->filter(fn ($quantity) => $quantity !== null && $quantity !== '')
             ->map(fn ($quantity, $variantId) => [
@@ -80,6 +83,7 @@ class PurchasingWorkspaceController extends Controller
                 'batch_number' => $data['batch_numbers'][$variantId] ?? null,
                 'manufactured_at' => $data['manufactured_at'][$variantId] ?? null,
                 'expires_at' => $data['expires_at'][$variantId] ?? null,
+                'warehouse_location_id' => $data['warehouse_location_id'] ?? null,
             ])->values()->all();
         $service->receive($purchase->id, $lines, TenantContext::idOrFail(), $request->user()->id);
 

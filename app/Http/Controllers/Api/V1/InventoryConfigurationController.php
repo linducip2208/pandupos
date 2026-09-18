@@ -140,6 +140,7 @@ class InventoryConfigurationController extends Controller
             'expires_at' => 'nullable|date|after_or_equal:manufactured_at',
             'supplier_id' => ['nullable', Rule::exists('contacts', 'id')->where('tenant_id', $tenantId)],
             'purchase_id' => ['nullable', Rule::exists('purchases', 'id')->where('tenant_id', $tenantId)],
+            'warehouse_location_id' => ['nullable', Rule::exists('warehouse_locations', 'id')->where('tenant_id', $tenantId)->where('is_active', true)],
         ]);
 
         $batch = $batches->receive(
@@ -153,6 +154,8 @@ class InventoryConfigurationController extends Controller
             $data['expires_at'] ?? null,
             $data['supplier_id'] ?? null,
             $data['purchase_id'] ?? null,
+            null,
+            $data['warehouse_location_id'] ?? null,
         );
 
         return response()->json(['data' => $batch], 201);

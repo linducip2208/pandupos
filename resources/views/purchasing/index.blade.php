@@ -68,3 +68,32 @@
 </div>
 @push('scripts')<script>document.addEventListener('DOMContentLoaded',()=>{const select=document.getElementById('return-purchase');const form=document.getElementById('purchase-return-form');select?.addEventListener('change',()=>{form.action=select.value?`{{ url('/purchasing/orders') }}/${select.value}/returns`:'';});});</script>@endpush
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const locations = @json($locations->map(fn ($location) => [
+        'id' => $location->id,
+        'warehouse_id' => $location->warehouse_id,
+        'code' => $location->code,
+    ])->values());
+    const purchaseWarehouses = @json($purchases->mapWithKeys(fn ($purchase) => [$purchase->id => $purchase->warehouse_id]));
+
+    document.querySelectorAll('form[action*="/receive"]').forEach((form) => {
+        const match = form.action.match(/\/purchasing\/orders\/(\d+)\/receive$/);
+        const warehouseId = match ? purchaseWarehouses[match[1]] : null;
+        const select = document.createElement('select');
+        select.name = 'warehouse_location_id';
+        select.className = 'form-select form-select-sm';
+        select.setAttribute('aria-label', 'Rack atau bin penerimaan');
+        select.innerHTML = '<option value="">Tanpa rack/bin spesifik</option>';
+        locations.filter((location) => String(location.warehouse_id) === String(warehouseId)).forEach((location) => {
+            const option = new Option(location.code, location.id);
+            select.add(option);
+        });
+        form.insertBefore(select, form.firstChild.nextSibling);
+        // The server is authoritative: it rejects a location outside the PO warehouse.
+    });
+});
+</script>
+@endpush

@@ -62,6 +62,7 @@ class PurchaseController extends Controller
             'lines' => 'sometimes|array',
             'lines.*.product_variant_id' => 'required_with:lines|integer',
             'lines.*.quantity' => 'required_with:lines|numeric|min:0.001',
+            'lines.*.warehouse_location_id' => ['nullable', 'integer'],
         ]);
 
         return response()->json($service->receive(

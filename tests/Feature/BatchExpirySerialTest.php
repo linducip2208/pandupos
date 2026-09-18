@@ -10,6 +10,7 @@ use App\Models\ProductVariant;
 use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use App\Services\BatchInventoryService;
 use App\Services\PurchaseService;
 use App\Services\SaleService;
@@ -175,6 +176,42 @@ class BatchExpirySerialTest extends TestCase
         app(PurchaseService::class)->receive($purchase->id, [[
             'product_variant_id' => $variant->id, 'quantity' => 1, 'inventory_batch_id' => $foreignBatch->id,
         ]], $tenant->id);
+    }
+
+    public function test_goods_receipt_and_direct_batch_receipt_trace_active_rack_bin_and_reject_foreign_location(): void
+    {
+        ['tenant' => $tenant, 'warehouse' => $warehouse, 'variant' => $variant] = $this->context();
+        $supplier = Contact::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'type' => 'supplier', 'name' => 'Supplier Location',
+        ]);
+        $location = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'code' => 'A-01-01', 'is_active' => true,
+        ]);
+        $purchase = app(PurchaseService::class)->createDraft($tenant->id, $warehouse->id, $supplier->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 5, 'unit_cost' => 10,
+        ]]);
+
+        app(PurchaseService::class)->receive($purchase->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 5, 'warehouse_location_id' => $location->id,
+        ]], $tenant->id);
+
+        $this->assertDatabaseHas('goods_receipt_lines', ['warehouse_location_id' => $location->id, 'quantity' => 5]);
+        $this->assertEquals(5, app(StockService::class)->onHandAtLocation($tenant->id, $warehouse->id, $variant->id, $location->id));
+
+        $batch = app(BatchInventoryService::class)->receive(
+            $tenant->id, $warehouse->id, $variant->id, 'LOC-LOT', 2, 10, null, null, null, null, null, $location->id,
+        );
+        $this->assertEquals(7, app(StockService::class)->onHandAtLocation($tenant->id, $warehouse->id, $variant->id, $location->id));
+        $this->assertDatabaseHas('stock_movements', ['inventory_batch_id' => $batch->id, 'warehouse_location_id' => $location->id]);
+
+        ['tenant' => $otherTenant, 'warehouse' => $otherWarehouse] = $this->context();
+        $foreignLocation = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $otherTenant->id, 'warehouse_id' => $otherWarehouse->id, 'code' => 'FOREIGN-01', 'is_active' => true,
+        ]);
+        $this->expectException(ValidationException::class);
+        app(BatchInventoryService::class)->receive(
+            $tenant->id, $warehouse->id, $variant->id, 'BAD-LOC', 1, 10, null, null, null, null, null, $foreignLocation->id,
+        );
     }
 
     public function test_serial_checkout_return_and_void_keep_serial_status_and_ledger_in_lockstep(): void

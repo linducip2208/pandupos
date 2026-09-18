@@ -7,6 +7,7 @@ use App\Models\InventoryBatch;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -26,10 +27,11 @@ final class BatchInventoryService
         ?int $supplierId = null,
         ?int $purchaseId = null,
         ?int $receiptId = null,
+        ?int $locationId = null,
     ): InventoryBatch {
-        $this->validateReferences($tenantId, $warehouseId, $variantId, $supplierId, $purchaseId);
+        $this->validateReferences($tenantId, $warehouseId, $variantId, $supplierId, $purchaseId, $locationId);
 
-        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $batchNumber, $quantity, $unitCost, $manufacturedAt, $expiresAt, $supplierId, $purchaseId, $receiptId) {
+        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $batchNumber, $quantity, $unitCost, $manufacturedAt, $expiresAt, $supplierId, $purchaseId, $receiptId, $locationId) {
             $batch = InventoryBatch::withoutGlobalScopes()->firstOrCreate(
                 [
                     'tenant_id' => $tenantId,
@@ -58,7 +60,7 @@ final class BatchInventoryService
             ])->save();
             $this->stock->increase(
                 $tenantId, $warehouseId, $variantId, $quantity, $unitCost,
-                'purchase_receipt', $receiptId ?? $purchaseId, $batch->id
+                'purchase_receipt', $receiptId ?? $purchaseId, $batch->id, null, $locationId
             );
 
             return $batch;
@@ -176,12 +178,13 @@ final class BatchInventoryService
             ])->filter(fn (array $row) => $row['quantity'] > 0)->values()->all();
     }
 
-    private function validateReferences(int $tenantId, int $warehouseId, int $variantId, ?int $supplierId, ?int $purchaseId): void
+    private function validateReferences(int $tenantId, int $warehouseId, int $variantId, ?int $supplierId, ?int $purchaseId, ?int $locationId): void
     {
         $valid = Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($warehouseId)->exists()
             && ProductVariant::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($variantId)->exists()
             && ($supplierId === null || Contact::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($supplierId)->exists())
-            && ($purchaseId === null || Purchase::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($purchaseId)->exists());
+            && ($purchaseId === null || Purchase::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($purchaseId)->exists())
+            && ($locationId === null || WarehouseLocation::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)->where('is_active', true)->whereKey($locationId)->exists());
         if (! $valid) {
             throw ValidationException::withMessages(['reference' => 'Batch references must belong to the active tenant.']);
         }

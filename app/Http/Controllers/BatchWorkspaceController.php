@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use App\Services\AuditService;
 use App\Services\BatchInventoryService;
 use App\Services\StockService;
@@ -45,6 +46,7 @@ class BatchWorkspaceController extends Controller
             'batches' => $batches,
             'days' => $days,
             'warehouses' => Warehouse::query()->where('is_active', true)->orderBy('name')->get(),
+            'locations' => WarehouseLocation::query()->where('is_active', true)->orderBy('code')->get(),
             'variants' => ProductVariant::query()->with('product')->where('is_active', true)->orderBy('sku')->get(),
             'suppliers' => Contact::query()->whereIn('type', ['supplier', 'both'])->orderBy('name')->get(),
             'purchases' => Purchase::query()->latest()->limit(100)->get(),
@@ -65,12 +67,14 @@ class BatchWorkspaceController extends Controller
             'expires_at' => ['nullable', 'date', 'after_or_equal:manufactured_at'],
             'supplier_id' => ['nullable', Rule::exists('contacts', 'id')->where('tenant_id', $tenantId)],
             'purchase_id' => ['nullable', Rule::exists('purchases', 'id')->where('tenant_id', $tenantId)],
+            'warehouse_location_id' => ['nullable', Rule::exists('warehouse_locations', 'id')->where('tenant_id', $tenantId)->where('is_active', true)],
         ]);
 
         $batch = $batches->receive(
             $tenantId, (int) $data['warehouse_id'], (int) $data['product_variant_id'], $data['batch_number'],
             (float) $data['quantity'], (float) $data['unit_cost'], $data['manufactured_at'] ?? null,
-            $data['expires_at'] ?? null, $data['supplier_id'] ?? null, $data['purchase_id'] ?? null,
+            $data['expires_at'] ?? null, $data['supplier_id'] ?? null, $data['purchase_id'] ?? null, null,
+            $data['warehouse_location_id'] ?? null,
         );
         $audit->log($tenantId, $request->user()->id, 'inventory.batch.received', InventoryBatch::class, $batch->id, null, [
             'batch' => $batch->fresh()->toArray(), 'quantity' => $data['quantity'], 'unit_cost' => $data['unit_cost'],
