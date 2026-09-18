@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use App\Services\SerialNumberService;
 use App\Services\StockService;
 use App\Services\StockTransferService;
@@ -145,6 +146,38 @@ class AdvancedStockTransferTest extends TestCase
         $this->assertSame(1.0, app(StockService::class)->onHand($tenant->id, $destination->id, $variant->id));
         $this->assertDatabaseHas('stock_movements', [
             'reference_type' => 'transfer_in', 'reference_id' => $transfer->id, 'serial_number_id' => $serial->id,
+        ]);
+    }
+
+    public function test_non_serial_transfer_preserves_source_and_destination_rack_bin_ledger_trace(): void
+    {
+        [$tenant, $owner, $source, $destination, $variant] = $this->context();
+        $sourceLocation = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $source->id, 'code' => 'SRC-A-01', 'is_active' => true,
+        ]);
+        $destinationLocation = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $destination->id, 'code' => 'DST-B-02', 'is_active' => true,
+        ]);
+        $stock = app(StockService::class);
+        $stock->increase($tenant->id, $source->id, $variant->id, 4, 8, 'opening', 1, null, null, $sourceLocation->id);
+
+        $service = app(StockTransferService::class);
+        $transfer = $service->createDraft($tenant->id, $source->id, $destination->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 4,
+            'source_warehouse_location_id' => $sourceLocation->id,
+            'destination_warehouse_location_id' => $destinationLocation->id,
+        ]], null, $owner->id);
+
+        $service->approve($transfer, User::factory()->create()->id);
+        $service->ship($transfer, $owner->id);
+        $line = $transfer->fresh('lines')->lines->first();
+        $service->receive($transfer->fresh('lines'), [$line->id => 4], $owner->id);
+
+        $this->assertSame(0.0, $stock->onHandAtLocation($tenant->id, $source->id, $variant->id, $sourceLocation->id));
+        $this->assertSame(4.0, $stock->onHandAtLocation($tenant->id, $destination->id, $variant->id, $destinationLocation->id));
+        $this->assertDatabaseHas('stock_movements', [
+            'reference_type' => 'transfer_in', 'reference_id' => $transfer->id,
+            'warehouse_location_id' => $destinationLocation->id,
         ]);
     }
 

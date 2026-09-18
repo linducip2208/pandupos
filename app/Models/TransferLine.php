@@ -8,6 +8,7 @@ class TransferLine extends Model
 {
     protected $fillable = [
         'transfer_order_id', 'product_variant_id', 'source_inventory_batch_id', 'destination_inventory_batch_id',
+        'source_warehouse_location_id', 'destination_warehouse_location_id',
         'quantity', 'received_quantity', 'unit_cost',
     ];
 
@@ -34,6 +35,16 @@ class TransferLine extends Model
     public function destinationBatch()
     {
         return $this->belongsTo(InventoryBatch::class, 'destination_inventory_batch_id');
+    }
+
+    public function sourceLocation()
+    {
+        return $this->belongsTo(WarehouseLocation::class, 'source_warehouse_location_id');
+    }
+
+    public function destinationLocation()
+    {
+        return $this->belongsTo(WarehouseLocation::class, 'destination_warehouse_location_id');
     }
 
     public function serials()

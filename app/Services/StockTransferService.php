@@ -8,6 +8,7 @@ use App\Models\SerialNumber;
 use App\Models\TransferLine;
 use App\Models\TransferOrder;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -38,15 +39,24 @@ final class StockTransferService
                     throw ValidationException::withMessages(['lines' => 'Every variant must belong to the tenant and quantity must be positive.']);
                 }
                 $batchId = isset($line['inventory_batch_id']) ? (int) $line['inventory_batch_id'] : null;
+                $sourceLocationId = isset($line['source_warehouse_location_id']) ? (int) $line['source_warehouse_location_id'] : null;
+                $destinationLocationId = isset($line['destination_warehouse_location_id']) ? (int) $line['destination_warehouse_location_id'] : null;
                 if ($batchId !== null && ! InventoryBatch::withoutGlobalScopes()
                     ->where('tenant_id', $tenantId)->where('warehouse_id', $fromWarehouseId)
                     ->where('product_variant_id', $variant->id)->whereKey($batchId)->exists()) {
                     throw ValidationException::withMessages(['lines' => 'Selected batch must belong to the source warehouse and variant.']);
                 }
+                if (! $this->locationBelongsTo($tenantId, $fromWarehouseId, $sourceLocationId)
+                    || ! $this->locationBelongsTo($tenantId, $toWarehouseId, $destinationLocationId)) {
+                    throw ValidationException::withMessages(['lines' => 'Selected locations must be active locations in the respective transfer warehouses.']);
+                }
                 $serialIds = collect($line['serial_number_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->values();
                 if ($serialIds->isNotEmpty()) {
                     if ($serialIds->count() !== (int) $line['quantity'] || $serialIds->unique()->count() !== $serialIds->count()) {
                         throw ValidationException::withMessages(['lines' => 'Each serialized transfer line requires one unique serial per unit.']);
+                    }
+                    if ($sourceLocationId !== null || $destinationLocationId !== null) {
+                        throw ValidationException::withMessages(['lines' => 'Serialized transfers cannot select a rack/bin until serial location tracking is configured.']);
                     }
                     $serialCount = SerialNumber::withoutGlobalScopes()
                         ->where('tenant_id', $tenantId)->where('warehouse_id', $fromWarehouseId)
@@ -58,6 +68,7 @@ final class StockTransferService
                 }
                 $transferLine = $transfer->lines()->create([
                     'product_variant_id' => $variant->id, 'source_inventory_batch_id' => $batchId,
+                    'source_warehouse_location_id' => $sourceLocationId, 'destination_warehouse_location_id' => $destinationLocationId,
                     'quantity' => $line['quantity'],
                 ]);
                 foreach ($serialIds as $serialId) {
@@ -110,6 +121,7 @@ final class StockTransferService
                 $this->stock->decrease(
                     $locked->tenant_id, $locked->from_warehouse_id, $line->product_variant_id,
                     (float) $line->quantity, 'transfer_out', $locked->id, $line->source_inventory_batch_id,
+                    null, $line->source_warehouse_location_id,
                 );
                 $line->update(['unit_cost' => $cost]);
             }
@@ -152,6 +164,7 @@ final class StockTransferService
                     $this->stock->increase(
                         $locked->tenant_id, $locked->to_warehouse_id, $line->product_variant_id,
                         $quantity, (float) $line->unit_cost, 'transfer_in', $locked->id, $destinationBatchId,
+                        null, $line->destination_warehouse_location_id,
                     );
                 }
                 $line->increment('received_quantity', $quantity);
@@ -204,6 +217,13 @@ final class StockTransferService
         if ($fromWarehouseId === $toWarehouseId || $count !== 2) {
             throw ValidationException::withMessages(['warehouse' => 'Source and destination must be different tenant warehouses.']);
         }
+    }
+
+    private function locationBelongsTo(int $tenantId, int $warehouseId, ?int $locationId): bool
+    {
+        return $locationId === null || WarehouseLocation::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)->where('warehouse_id', $warehouseId)->where('is_active', true)
+            ->whereKey($locationId)->exists();
     }
 
     /** Copy the immutable lot identity and provenance into the destination warehouse once. */

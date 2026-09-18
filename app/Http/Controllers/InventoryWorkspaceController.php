@@ -114,6 +114,7 @@ class InventoryWorkspaceController extends Controller
             'from_warehouse_id' => ['required', 'integer', 'different:to_warehouse_id'],
             'to_warehouse_id' => ['required', 'integer'], 'lines' => ['required', 'array', 'min:1'],
             'lines.*.product_variant_id' => ['required', 'integer'], 'lines.*.inventory_batch_id' => ['nullable', 'integer'],
+            'lines.*.source_warehouse_location_id' => ['nullable', 'integer'], 'lines.*.destination_warehouse_location_id' => ['nullable', 'integer'],
             'lines.*.serial_number_ids' => ['nullable', 'array'], 'lines.*.serial_number_ids.*' => ['integer', 'distinct'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
