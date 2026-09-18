@@ -12,7 +12,13 @@ class SerialNumber extends Model
     protected $fillable = [
         'tenant_id', 'product_variant_id', 'warehouse_id', 'warehouse_location_id', 'inventory_batch_id',
         'serial_number', 'status', 'purchase_id', 'sales_invoice_id',
+        'reserved_reference_type', 'reserved_reference_id', 'reserved_at',
     ];
+
+    protected function casts(): array
+    {
+        return ['reserved_at' => 'datetime'];
+    }
 
     public function variant()
     {

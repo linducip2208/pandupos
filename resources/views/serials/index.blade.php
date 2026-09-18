@@ -7,6 +7,12 @@
 @section('content')
     @if ($errors->any())<div class="alert alert-danger"><strong>Serial belum dapat diterima.</strong><ul class="mb-0 mt-2">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     <div class="row row-cards">
+        <div class="col-12"><div class="card"><div class="card-body"><form method="POST" action="{{ route('serials.reserve') }}" class="row g-2 align-items-end">@csrf
+            <div class="col-12 col-md-5"><label class="form-label">Reservasi serial</label><select name="serial_number_id" class="form-select" required><option value="">Pilih serial tersedia</option>@foreach($serials->whereIn('status', ['available', 'returned']) as $serial)<option value="{{ $serial->id }}">{{ $serial->serial_number }} · {{ $serial->variant?->sku }}</option>@endforeach</select></div>
+            <div class="col-6 col-md-3"><label class="form-label">Sumber</label><select name="reference_type" class="form-select"><option value="sales_order">Sales Order</option><option value="manual_hold">Hold manual</option></select></div>
+            <div class="col-6 col-md-2"><label class="form-label">ID referensi</label><input name="reference_id" type="number" min="1" class="form-control" required></div>
+            <div class="col-12 col-md-2"><button class="btn btn-outline-primary w-100">Reservasi</button></div>
+        </form></div></div></div>
         <div class="col-12 col-xl-4"><div class="card h-100"><div class="card-header"><h2 class="card-title">Terima serial</h2></div><div class="card-body">
             <form method="POST" action="{{ route('serials.receive') }}" class="row g-3">@csrf
                 <div class="col-12"><label class="form-label">Gudang</label><select name="warehouse_id" class="form-select" required><option value="">Pilih gudang</option>@foreach ($warehouses as $warehouse)<option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>@endforeach</select></div>
@@ -20,7 +26,7 @@
         </div></div></div>
         <div class="col-12 col-xl-8"><div class="card h-100"><div class="card-header d-flex flex-wrap align-items-center gap-2"><h2 class="card-title me-auto">Register serial</h2><form method="GET"><select name="status" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Semua status</option>@foreach ($statuses as $status)<option value="{{ $status }}" @selected($selectedStatus === $status)>{{ ucfirst($status) }}</option>@endforeach</select></form></div>
             <div class="card-body p-0"><div class="table-responsive"><table class="table table-vcenter card-table"><thead><tr><th>Serial</th><th>Produk</th><th>Status & Gudang</th><th>Riwayat</th></tr></thead><tbody>@forelse ($serials as $serial)<tr><td class="fw-semibold">{{ $serial->serial_number }}<div class="text-secondary small">Batch: {{ $serial->inventoryBatch?->batch_number ?: '—' }}</div></td><td>{{ $serial->variant?->product?->name }}<div class="text-secondary small">{{ $serial->variant?->sku }}</div></td><td><span class="badge {{ $serial->status === 'sold' ? 'bg-secondary' : ($serial->status === 'available' ? 'bg-success' : 'bg-warning text-dark') }}">{{ $serial->status }}</span><div class="text-secondary small mt-1">{{ $serial->warehouse?->name }}</div></td><td><div class="small">Beli: {{ $serial->purchase?->ref_no ?: '—' }}</div><div class="small">Jual: {{ $serial->salesInvoice?->invoice_no ?: ($serial->sales_invoice_id ? '#'.$serial->sales_invoice_id : '—') }}</div><div class="text-secondary small">{{ $serial->movements->count() }} movement ledger</div></td></tr>@empty<tr><td colspan="4" class="text-center text-secondary py-5">Belum ada serial pada tenant ini.</td></tr>@endforelse</tbody></table></div></div>
-            <div class="card-footer text-secondary small">Return, transfer, dan sale harus berasal dari dokumen transaksi agar status serial dan ledger tidak menyimpang; tombol manual tidak disediakan.</div>
+            <div class="card-footer text-secondary small">Return, transfer, dan sale harus berasal dari dokumen transaksi agar status serial dan ledger tidak menyimpang. Reservasi serial dapat dibuat dari panel di atas dan dilepas melalui endpoint yang tenant-scoped.</div>
         </div></div>
     </div>
 @endsection

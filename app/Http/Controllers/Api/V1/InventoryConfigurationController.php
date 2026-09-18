@@ -205,6 +205,28 @@ class InventoryConfigurationController extends Controller
         return response()->json(['data' => SerialNumber::with(['variant', 'warehouse'])->latest()->paginate(20)]);
     }
 
+    public function reserveSerial(Request $request, SerialNumber $serial, SerialNumberService $serials)
+    {
+        $this->authorize('create', Product::class);
+        $tenantId = TenantContext::idOrFail();
+        abort_unless($serial->tenant_id === $tenantId, 404);
+        $data = $request->validate([
+            'reference_type' => ['required', Rule::in(['sales_order', 'manual_hold'])],
+            'reference_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        return response()->json(['data' => $serials->reserve($tenantId, $serial->id, $data['reference_type'], (int) $data['reference_id'], $request->user()?->id)]);
+    }
+
+    public function releaseSerial(Request $request, SerialNumber $serial, SerialNumberService $serials)
+    {
+        $this->authorize('create', Product::class);
+        $tenantId = TenantContext::idOrFail();
+        abort_unless($serial->tenant_id === $tenantId, 404);
+
+        return response()->json(['data' => $serials->releaseReservation($tenantId, $serial->id, $request->user()?->id)]);
+    }
+
     public function locations(Request $request)
     {
         $this->authorize('viewAny', Product::class);

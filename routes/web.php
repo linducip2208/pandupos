@@ -110,6 +110,8 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::prefix('serials')->name('serials.')->middleware(['entitlement:inventory.access', 'module:inventory'])->group(function () {
         Route::get('/', [SerialWorkspaceController::class, 'index'])->name('index');
         Route::post('/receive', [SerialWorkspaceController::class, 'receive'])->name('receive');
+        Route::post('/reserve', [SerialWorkspaceController::class, 'reserve'])->name('reserve');
+        Route::post('/{serial}/release', [SerialWorkspaceController::class, 'release'])->name('release');
     });
     Route::get('/pos', fn () => view('pos.index'))->name('pos.index')
         ->middleware(['entitlement:pos.access', 'module:pos']);

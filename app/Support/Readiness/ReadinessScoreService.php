@@ -25,7 +25,7 @@ final class ReadinessScoreService
                 ['Price groups', 4, true, 'PriceListWorkspaceTest: scope, precedence, audit and POS source'],
                 ['Bundle/combo', 2, true, 'BundleWorkspaceTest and atomic component sale/return/void regression'],
                 ['Batch, expiry and FEFO', 4, false, 'Receive, provenance, purchase/POS selectors, FEFO, expired prevention, audit and tests'],
-                ['Serial lifecycle', 4, false, 'Receive, reserve, sell, return, transfer, damage, history and tests'],
+                ['Serial lifecycle', 4, true, 'SerialWorkspaceTest, BatchExpirySerialTest and AdvancedStockTransferTest: audited tenant-scoped receive/reserve/release/sell/return/transfer/damage/history with idempotent reservation and POS selector'],
                 ['Rack/bin', 2, true, 'BatchExpirySerialTest, AdvancedStockTransferTest and InventoryWorkspaceUiTest: audited location lifecycle, stock visibility and tenant/warehouse-scoped receiving, reservation, transfer, adjustment and count selectors'],
                 ['Reservation', 3, true, 'StockLocationReservationTest, SalesOrderDeliveryTest and InventoryWorkspaceUiTest: tenant-scoped idempotent reserve/release/partial/full consume, ATP, scheduled expiry cleanup, audit and Sales Order confirm/deliver/cancel workflow'],
                 ['Transfer', 3, true, 'AdvancedStockTransferTest and InventoryWorkspaceUiTest: multi-line request/segregated approval/ship/transit/partial receive/cancel with batch, serial and rack/bin provenance'],

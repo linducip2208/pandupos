@@ -8,7 +8,6 @@ use App\Models\Purchase;
 use App\Models\SerialNumber;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
-use App\Services\AuditService;
 use App\Services\SerialNumberService;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
@@ -36,7 +35,7 @@ class SerialWorkspaceController extends Controller
         ]);
     }
 
-    public function receive(Request $request, SerialNumberService $serials, AuditService $audit): RedirectResponse
+    public function receive(Request $request, SerialNumberService $serials): RedirectResponse
     {
         $this->authorize('create', Product::class);
         $tenantId = TenantContext::idOrFail();
@@ -49,10 +48,33 @@ class SerialWorkspaceController extends Controller
             'purchase_id' => ['nullable', Rule::exists('purchases', 'id')->where('tenant_id', $tenantId)],
             'warehouse_location_id' => ['nullable', Rule::exists('warehouse_locations', 'id')->where('tenant_id', $tenantId)],
         ]);
-        $serial = $serials->receive($tenantId, (int) $data['warehouse_id'], (int) $data['product_variant_id'], $data['serial_number'], (float) $data['unit_cost'], $data['inventory_batch_id'] ?? null, $data['purchase_id'] ?? null, $data['warehouse_location_id'] ?? null);
-        $audit->log($tenantId, $request->user()->id, 'inventory.serial.received', SerialNumber::class, $serial->id, null, $serial->fresh()->toArray());
+        $serials->receive($tenantId, (int) $data['warehouse_id'], (int) $data['product_variant_id'], $data['serial_number'], (float) $data['unit_cost'], $data['inventory_batch_id'] ?? null, $data['purchase_id'] ?? null, $data['warehouse_location_id'] ?? null, $request->user()->id);
 
         return back()->with('status', 'Serial diterima, tersedia untuk penjualan, dan ditambahkan ke ledger stok.');
+    }
+
+    public function reserve(Request $request, SerialNumberService $serials): RedirectResponse
+    {
+        $this->authorize('create', Product::class);
+        $tenantId = TenantContext::idOrFail();
+        $data = $request->validate([
+            'serial_number_id' => ['required', Rule::exists('serial_numbers', 'id')->where('tenant_id', $tenantId)],
+            'reference_type' => ['required', Rule::in(['sales_order', 'manual_hold'])],
+            'reference_id' => ['required', 'integer', 'min:1'],
+        ]);
+        $serials->reserve($tenantId, (int) $data['serial_number_id'], $data['reference_type'], (int) $data['reference_id'], $request->user()->id);
+
+        return back()->with('status', 'Serial berhasil direservasi dan tidak dapat dipilih transaksi lain.');
+    }
+
+    public function release(Request $request, SerialNumber $serial, SerialNumberService $serials): RedirectResponse
+    {
+        $this->authorize('create', Product::class);
+        $tenantId = TenantContext::idOrFail();
+        abort_unless($serial->tenant_id === $tenantId, 404);
+        $serials->releaseReservation($tenantId, $serial->id, $request->user()->id);
+
+        return back()->with('status', 'Reservasi serial dilepas.');
     }
 
     private function statuses(): array

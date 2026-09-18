@@ -57,6 +57,8 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     Route::get('inventory/expiry', [InventoryConfigurationController::class, 'expiry']);
     Route::get('inventory/serials', [InventoryConfigurationController::class, 'serials']);
     Route::post('inventory/serials', [InventoryConfigurationController::class, 'storeSerial']);
+    Route::post('inventory/serials/{serial}/reserve', [InventoryConfigurationController::class, 'reserveSerial']);
+    Route::post('inventory/serials/{serial}/release', [InventoryConfigurationController::class, 'releaseSerial']);
     Route::get('inventory/locations', [InventoryConfigurationController::class, 'locations']);
     Route::post('inventory/locations', [InventoryConfigurationController::class, 'storeLocation']);
     Route::get('inventory/reservations', [InventoryConfigurationController::class, 'reservations']);

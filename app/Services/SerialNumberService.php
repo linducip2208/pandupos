@@ -15,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 
 final class SerialNumberService
 {
-    public function __construct(private StockService $stock) {}
+    public function __construct(private StockService $stock, private AuditService $audit) {}
 
     public function receive(
         int $tenantId,
@@ -26,6 +26,7 @@ final class SerialNumberService
         ?int $batchId = null,
         ?int $purchaseId = null,
         ?int $locationId = null,
+        ?int $actorId = null,
     ): SerialNumber {
         $valid = Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($warehouseId)->exists()
             && ProductVariant::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($variantId)->exists()
@@ -42,7 +43,7 @@ final class SerialNumberService
             throw ValidationException::withMessages(['reference' => 'Serial references must belong to the active tenant.']);
         }
 
-        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $serial, $unitCost, $batchId, $purchaseId, $locationId) {
+        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $serial, $unitCost, $batchId, $purchaseId, $locationId, $actorId) {
             $number = SerialNumber::withoutGlobalScopes()->create([
                 'tenant_id' => $tenantId,
                 'warehouse_id' => $warehouseId,
@@ -57,27 +58,65 @@ final class SerialNumberService
                 $tenantId, $warehouseId, $variantId, 1, $unitCost,
                 'purchase_receipt', $purchaseId, $batchId, $number->id, $locationId
             );
+            $this->audit->log($tenantId, $actorId, 'inventory.serial.received', SerialNumber::class, $number->id, null, $number->toArray());
 
             return $number;
         });
     }
 
-    public function sell(int $tenantId, int $serialNumberId, int $invoiceId): SerialNumber
+    public function reserve(int $tenantId, int $serialNumberId, string $referenceType, int $referenceId, ?int $actorId = null): SerialNumber
     {
-        return DB::transaction(function () use ($tenantId, $serialNumberId, $invoiceId) {
+        return DB::transaction(function () use ($tenantId, $serialNumberId, $referenceType, $referenceId, $actorId) {
+            $number = SerialNumber::withoutGlobalScopes()->where('tenant_id', $tenantId)->lockForUpdate()->findOrFail($serialNumberId);
+            if ($number->status === 'reserved') {
+                abort_unless($number->reserved_reference_type === $referenceType && (int) $number->reserved_reference_id === $referenceId, 422, 'Serial is reserved by another transaction.');
+
+                return $number;
+            }
+            if (! in_array($number->status, ['available', 'returned'], true)) {
+                throw ValidationException::withMessages(['serial_number' => 'Serial number is not available for reservation.']);
+            }
+            $before = $number->toArray();
+            $number->update(['status' => 'reserved', 'reserved_reference_type' => $referenceType, 'reserved_reference_id' => $referenceId, 'reserved_at' => now()]);
+            $this->audit->log($tenantId, $actorId, 'inventory.serial.reserved', SerialNumber::class, $number->id, $before, $number->fresh()->toArray());
+
+            return $number->fresh();
+        });
+    }
+
+    public function releaseReservation(int $tenantId, int $serialNumberId, ?int $actorId = null): SerialNumber
+    {
+        return DB::transaction(function () use ($tenantId, $serialNumberId, $actorId) {
+            $number = SerialNumber::withoutGlobalScopes()->where('tenant_id', $tenantId)->lockForUpdate()->findOrFail($serialNumberId);
+            if ($number->status !== 'reserved') {
+                throw ValidationException::withMessages(['serial_number' => 'Only a reserved serial can be released.']);
+            }
+            $before = $number->toArray();
+            $number->update(['status' => 'available', 'reserved_reference_type' => null, 'reserved_reference_id' => null, 'reserved_at' => null]);
+            $this->audit->log($tenantId, $actorId, 'inventory.serial.released', SerialNumber::class, $number->id, $before, $number->fresh()->toArray());
+
+            return $number->fresh();
+        });
+    }
+
+    public function sell(int $tenantId, int $serialNumberId, int $invoiceId, ?int $actorId = null): SerialNumber
+    {
+        return DB::transaction(function () use ($tenantId, $serialNumberId, $invoiceId, $actorId) {
             if (! SalesInvoice::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($invoiceId)->exists()) {
                 throw ValidationException::withMessages(['sales_invoice_id' => 'Invoice must belong to the active tenant.']);
             }
             $number = SerialNumber::withoutGlobalScopes()
                 ->where('tenant_id', $tenantId)->lockForUpdate()->findOrFail($serialNumberId);
-            if ($number->status !== 'available' && $number->status !== 'returned') {
+            if (! in_array($number->status, ['available', 'returned', 'reserved'], true)) {
                 throw ValidationException::withMessages(['serial_number' => 'Serial number is not available for sale.']);
             }
+            $before = $number->toArray();
             $this->stock->decrease(
                 $tenantId, $number->warehouse_id, $number->product_variant_id, 1,
                 'sale', $invoiceId, $number->inventory_batch_id, $number->id, $number->warehouse_location_id
             );
-            $number->update(['status' => 'sold', 'sales_invoice_id' => $invoiceId]);
+            $number->update(['status' => 'sold', 'sales_invoice_id' => $invoiceId, 'reserved_reference_type' => null, 'reserved_reference_id' => null, 'reserved_at' => null]);
+            $this->audit->log($tenantId, $actorId, 'inventory.serial.sold', SerialNumber::class, $number->id, $before, $number->fresh()->toArray());
 
             return $number;
         });
@@ -97,6 +136,7 @@ final class SerialNumberService
             if ($number->status !== 'sold' || (int) $number->sales_invoice_id !== $invoiceId) {
                 throw ValidationException::withMessages(['serial_number' => 'Serial is not sold on this invoice.']);
             }
+            $before = $number->toArray();
             $this->stock->increase(
                 $tenantId, $number->warehouse_id, $number->product_variant_id, 1, $unitCost,
                 $referenceType, $invoiceId, $number->inventory_batch_id, $number->id, $number->warehouse_location_id,
@@ -105,6 +145,7 @@ final class SerialNumberService
                 'status' => $referenceType === 'sale_void' ? 'available' : 'returned',
                 'sales_invoice_id' => null,
             ]);
+            $this->audit->log($tenantId, null, "inventory.serial.{$referenceType}", SerialNumber::class, $number->id, $before, $number->fresh()->toArray());
 
             return $number;
         });
@@ -121,11 +162,13 @@ final class SerialNumberService
             if ($sourceLocationId !== null && (int) $number->warehouse_location_id !== $sourceLocationId) {
                 throw ValidationException::withMessages(['serial_number' => 'Serial number is not stored in the selected source rack/bin.']);
             }
+            $before = $number->toArray();
             $this->stock->decrease(
                 $tenantId, $number->warehouse_id, $number->product_variant_id, 1,
                 'transfer_out', $transferId, $number->inventory_batch_id, $number->id, $number->warehouse_location_id,
             );
             $number->update(['status' => 'transferred']);
+            $this->audit->log($tenantId, null, 'inventory.serial.transferred', SerialNumber::class, $number->id, $before, $number->fresh()->toArray());
 
             return $number;
         });
@@ -139,11 +182,13 @@ final class SerialNumberService
             if (! in_array($number->status, ['available', 'returned'], true)) {
                 throw ValidationException::withMessages(['serial_number' => 'Only an available serial can be removed by an adjustment.']);
             }
+            $before = $number->toArray();
             $this->stock->decrease(
                 $tenantId, $number->warehouse_id, $number->product_variant_id, 1,
                 'adjustment_out', $adjustmentId, $number->inventory_batch_id, $number->id,
             );
             $number->update(['status' => 'damaged']);
+            $this->audit->log($tenantId, null, 'inventory.serial.damaged', SerialNumber::class, $number->id, $before, $number->fresh()->toArray());
 
             return $number;
         });
@@ -161,6 +206,7 @@ final class SerialNumberService
                 ->where('tenant_id', $tenantId)->where('warehouse_id', $transfer->to_warehouse_id)->where('is_active', true)->whereKey($destinationLocationId)->exists()) {
                 throw ValidationException::withMessages(['warehouse_location_id' => 'Destination rack/bin must belong to the destination warehouse.']);
             }
+            $before = $number->toArray();
             $destinationBatchId = $this->destinationBatchId($number, $transfer->to_warehouse_id);
             $this->stock->increase(
                 $tenantId, $transfer->to_warehouse_id, $number->product_variant_id, 1,
@@ -171,6 +217,7 @@ final class SerialNumberService
                 'status' => 'available', 'warehouse_id' => $transfer->to_warehouse_id,
                 'inventory_batch_id' => $destinationBatchId, 'warehouse_location_id' => $destinationLocationId,
             ]);
+            $this->audit->log($tenantId, null, 'inventory.serial.transfer_received', SerialNumber::class, $number->id, $before, $number->fresh()->toArray());
 
             return $number;
         });
@@ -196,11 +243,13 @@ final class SerialNumberService
             if ($warehouseId !== null && ! Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($warehouseId)->exists()) {
                 throw ValidationException::withMessages(['warehouse_id' => 'Warehouse must belong to the active tenant.']);
             }
+            $before = $number->toArray();
             $number->update(array_filter([
                 'status' => $status,
                 'warehouse_id' => $warehouseId,
                 'sales_invoice_id' => $status === 'available' ? null : $number->sales_invoice_id,
             ], fn ($value) => $value !== null));
+            $this->audit->log($tenantId, null, "inventory.serial.transitioned.{$status}", SerialNumber::class, $number->id, $before, $number->fresh()->toArray());
 
             return $number;
         });

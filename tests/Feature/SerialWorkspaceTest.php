@@ -67,4 +67,58 @@ class SerialWorkspaceTest extends TestCase
         $this->expectException(ModelNotFoundException::class);
         app(SerialNumberService::class)->sell($tenant->id, $foreignSerial->id, $invoice->id);
     }
+
+    public function test_serial_reservation_is_idempotent_audited_and_can_be_sold_or_released(): void
+    {
+        $this->seed(PlatformSeeder::class);
+        $owner = User::factory()->create();
+        $tenant = app(TenantProvisioningService::class)->provision('Serial Reservation Tenant', $owner);
+        $branch = Branch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
+        $warehouse = Warehouse::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'branch_id' => $branch->id, 'name' => 'Utama', 'code' => 'SER-RSV']);
+        $product = Product::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'Reserved Phone', 'product_type' => 'stock']);
+        $variant = ProductVariant::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'product_id' => $product->id, 'name' => 'Default', 'sku' => 'SER-RSV']);
+        $invoice = SalesInvoice::withoutGlobalScopes()->create(['uuid' => (string) Str::uuid(), 'tenant_id' => $tenant->id, 'branch_id' => $branch->id, 'warehouse_id' => $warehouse->id, 'status' => 'final', 'payment_status' => 'paid', 'fulfillment_status' => 'fulfilled', 'subtotal' => 1, 'total' => 1]);
+        $service = app(SerialNumberService::class);
+        $serial = $service->receive($tenant->id, $warehouse->id, $variant->id, 'RESERVE-SELL', 1, actorId: $owner->id);
+
+        $first = $service->reserve($tenant->id, $serial->id, 'sales_order', 900, $owner->id);
+        $retry = $service->reserve($tenant->id, $serial->id, 'sales_order', 900, $owner->id);
+        $this->assertSame($first->id, $retry->id);
+        $this->assertSame('reserved', $retry->status);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'action' => 'inventory.serial.reserved', 'subject_id' => $serial->id]);
+
+        $service->sell($tenant->id, $serial->id, $invoice->id, $owner->id);
+        $this->assertSame('sold', $serial->refresh()->status);
+        $this->assertNull($serial->reserved_reference_id);
+
+        $release = $service->receive($tenant->id, $warehouse->id, $variant->id, 'RESERVE-RELEASE', 1, actorId: $owner->id);
+        $service->reserve($tenant->id, $release->id, 'sales_order', 901, $owner->id);
+        $service->releaseReservation($tenant->id, $release->id, $owner->id);
+        $this->assertSame('available', $release->refresh()->status);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'action' => 'inventory.serial.released', 'subject_id' => $release->id]);
+    }
+
+    public function test_serial_workspace_reservation_routes_are_tenant_scoped(): void
+    {
+        $this->seed(PlatformSeeder::class);
+        $owner = User::factory()->create();
+        $tenant = app(TenantProvisioningService::class)->provision('Serial Route Tenant', $owner);
+        $owner->givePermissionTo('products.manage');
+        $branch = Branch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
+        $warehouse = Warehouse::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'branch_id' => $branch->id, 'name' => 'Utama', 'code' => 'SER-ROUTE']);
+        $product = Product::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'Route Phone', 'product_type' => 'stock']);
+        $variant = ProductVariant::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'product_id' => $product->id, 'name' => 'Default', 'sku' => 'SER-ROUTE']);
+        $serial = app(SerialNumberService::class)->receive($tenant->id, $warehouse->id, $variant->id, 'ROUTE-1', 1);
+
+        $this->actingAs($owner)->post(route('serials.reserve'), ['serial_number_id' => $serial->id, 'reference_type' => 'sales_order', 'reference_id' => 500])->assertRedirect();
+        $this->assertSame('reserved', $serial->refresh()->status);
+        $this->actingAs($owner)->post(route('serials.release', $serial))->assertRedirect();
+        $this->assertSame('available', $serial->refresh()->status);
+
+        $other = User::factory()->create();
+        $otherTenant = app(TenantProvisioningService::class)->provision('Serial Route Other', $other);
+        $other->givePermissionTo('products.manage');
+        $this->actingAs($other)->post(route('serials.release', $serial))->assertNotFound();
+        $this->assertNotSame($otherTenant->id, $serial->fresh()->tenant_id);
+    }
 }
