@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use App\Services\PurchaseService;
 use App\Services\SupplierDocumentService;
 use App\Services\TenantProvisioningService;
@@ -96,6 +97,31 @@ class PurchasingWorkspaceUiTest extends TestCase
         $this->actingAs($user)->post(route('purchasing.payments.store', $foreignInvoice), [
             'amount' => 100, 'method' => 'cash',
         ])->assertNotFound();
+    }
+
+    public function test_authorized_tenant_can_post_partial_receipt_with_batch_location_and_serials(): void
+    {
+        [$user, $tenant, $warehouse, $supplier, $variant] = $this->context();
+        $location = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'code' => 'RCV-A-01', 'is_active' => true,
+        ]);
+        $purchase = app(PurchaseService::class)->createDraft($tenant->id, $warehouse->id, $supplier->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 3, 'unit_cost' => 100,
+        ]], $user->id);
+
+        $this->actingAs($user)->post(route('purchasing.orders.receive', $purchase), [
+            'lines' => [$variant->id => 2],
+            'batch_numbers' => [$variant->id => 'UI-GRN-BATCH'],
+            'manufactured_at' => [$variant->id => today()->subDay()->toDateString()],
+            'expires_at' => [$variant->id => today()->addYear()->toDateString()],
+            'serial_numbers' => [$variant->id => 'UI-GRN-001, UI-GRN-002'],
+            'warehouse_location_id' => $location->id,
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $this->assertDatabaseHas('goods_receipt_lines', ['purchase_line_id' => $purchase->lines()->firstOrFail()->id, 'quantity' => 2, 'warehouse_location_id' => $location->id]);
+        $this->assertDatabaseHas('inventory_batches', ['tenant_id' => $tenant->id, 'batch_number' => 'UI-GRN-BATCH', 'purchase_id' => $purchase->id]);
+        $this->assertDatabaseHas('serial_numbers', ['tenant_id' => $tenant->id, 'serial_number' => 'UI-GRN-001', 'purchase_id' => $purchase->id]);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'action' => 'purchase.goods_receipt.posted']);
     }
 
     private function context(): array

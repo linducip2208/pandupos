@@ -27,6 +27,8 @@ final class SerialNumberService
         ?int $purchaseId = null,
         ?int $locationId = null,
         ?int $actorId = null,
+        bool $recordStock = true,
+        ?int $stockReferenceId = null,
     ): SerialNumber {
         $valid = Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($warehouseId)->exists()
             && ProductVariant::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($variantId)->exists()
@@ -43,7 +45,7 @@ final class SerialNumberService
             throw ValidationException::withMessages(['reference' => 'Serial references must belong to the active tenant.']);
         }
 
-        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $serial, $unitCost, $batchId, $purchaseId, $locationId, $actorId) {
+        return DB::transaction(function () use ($tenantId, $warehouseId, $variantId, $serial, $unitCost, $batchId, $purchaseId, $locationId, $actorId, $recordStock, $stockReferenceId) {
             $number = SerialNumber::withoutGlobalScopes()->create([
                 'tenant_id' => $tenantId,
                 'warehouse_id' => $warehouseId,
@@ -54,10 +56,12 @@ final class SerialNumberService
                 'status' => 'available',
                 'purchase_id' => $purchaseId,
             ]);
-            $this->stock->increase(
-                $tenantId, $warehouseId, $variantId, 1, $unitCost,
-                'purchase_receipt', $purchaseId, $batchId, $number->id, $locationId
-            );
+            if ($recordStock) {
+                $this->stock->increase(
+                    $tenantId, $warehouseId, $variantId, 1, $unitCost,
+                    'purchase_receipt', $stockReferenceId ?? $purchaseId, $batchId, $number->id, $locationId
+                );
+            }
             $this->audit->log($tenantId, $actorId, 'inventory.serial.received', SerialNumber::class, $number->id, null, $number->toArray());
 
             return $number;

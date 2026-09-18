@@ -23,6 +23,7 @@ final class PurchaseService
         private StockService $stock,
         private AuditService $audit,
         private BatchInventoryService $batches,
+        private SerialNumberService $serials,
     ) {}
 
     public function createDraft(int $tenantId, int $warehouseId, int $contactId, array $lines, ?int $actorId = null): Purchase
@@ -146,6 +147,7 @@ final class PurchaseService
                     'warehouse_location_id' => $locationId,
                     'quantity' => $qtyToReceive, 'unit_cost' => $line->unit_cost,
                 ]);
+                $this->receiveSerials($purchase, $receipt, $line, $qtyToReceive, $batchId, $locationId, $row, $actorId);
                 $line->update(['received_quantity' => (float) ($line->received_quantity ?? 0) + $qtyToReceive]);
             }
 
@@ -209,5 +211,38 @@ final class PurchaseService
         );
 
         return $batch->id;
+    }
+
+    /**
+     * Register optional serialized units against the same GRN transaction.
+     * Stock is already posted above; serial registration must never post it a
+     * second time.
+     */
+    private function receiveSerials(Purchase $purchase, GoodsReceipt $receipt, $line, float $quantity, ?int $batchId, ?int $locationId, array $row, ?int $actorId): void
+    {
+        $serials = array_values(array_filter($row['serial_numbers'] ?? [], fn ($serial) => filled($serial)));
+        if ($serials === []) {
+            return;
+        }
+        if ($quantity !== (float) count($serials) || count($serials) !== count(array_unique($serials))) {
+            throw ValidationException::withMessages([
+                'serial_numbers' => 'Each serialized receipt quantity requires one unique serial number.',
+            ]);
+        }
+        foreach ($serials as $serial) {
+            $this->serials->receive(
+                $purchase->tenant_id,
+                $purchase->warehouse_id,
+                $line->product_variant_id,
+                trim((string) $serial),
+                (float) $line->unit_cost,
+                $batchId,
+                $purchase->id,
+                $locationId,
+                $actorId,
+                false,
+                $receipt->id,
+            );
+        }
     }
 }

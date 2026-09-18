@@ -34,7 +34,7 @@ final class ReadinessScoreService
                 ['Reconciliation', 1, true, 'InventoryReconciliationService, InventoryControlTest and PlatformAuthorizationTest: read-only ledger/balance, batch, serial, rack/bin and reservation anomaly checks exposed in platform health'],
                 ['WAC/costing', 2, true, 'WeightedAverageCostTest: purchase, sale, return, transfer and purchase-return cost preservation'],
                 ['Purchasing UI', 5, false, 'PO multi-line draft/edit/approval/document UI'],
-                ['Purchase receipt', 4, false, 'Goods receipt and partial-receipt UI with audit and tenant checks'],
+                ['Purchase receipt', 4, true, 'PurchasingSafetyTest, BatchExpirySerialTest and PurchasingWorkspaceUiTest: tenant-scoped partial GRN UI/API with 30/40/30 limits, idempotency, audit, batch/PO/supplier provenance, rack/bin and no-double-stock serial registration'],
                 ['Supplier invoice', 3, true, 'PurchasingWorkspaceUiTest, SupplierDocumentTest and PurchasingSafetyTest: tenant-scoped AP UI/API, supplier/PO validation, duplicate protection, immutable money totals, audit and printable document output'],
                 ['Supplier payment', 2, true, 'SupplierDocumentTest, PurchasingSafetyTest and PurchasingWorkspaceUiTest: tenant-scoped partial/full AP payment, row lock, balance/overpayment and duplicate-reference protection, permission enforcement and audit'],
                 ['Purchase return', 2, false, 'Received-minus-return workflow UI and supplier credit evidence'],

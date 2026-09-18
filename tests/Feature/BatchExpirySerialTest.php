@@ -8,6 +8,7 @@ use App\Models\InventoryBatch;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\SalesInvoice;
+use App\Models\SerialNumber;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
@@ -171,6 +172,30 @@ class BatchExpirySerialTest extends TestCase
             'movement_type' => 'in',
             'quantity' => 5,
         ]);
+    }
+
+    public function test_goods_receipt_registers_each_supplied_serial_without_double_posting_stock(): void
+    {
+        ['tenant' => $tenant, 'warehouse' => $warehouse, 'variant' => $variant] = $this->context();
+        $supplier = Contact::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'type' => 'supplier', 'name' => 'Supplier Serial GRN',
+        ]);
+        $purchase = app(PurchaseService::class)->createDraft($tenant->id, $warehouse->id, $supplier->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 2, 'unit_cost' => 10,
+        ]]);
+
+        app(PurchaseService::class)->receive($purchase->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 2, 'serial_numbers' => ['GRN-SERIAL-1', 'GRN-SERIAL-2'],
+        ]], $tenant->id);
+
+        $this->assertSame(2.0, app(StockService::class)->onHand($tenant->id, $warehouse->id, $variant->id));
+        $this->assertDatabaseHas('serial_numbers', ['tenant_id' => $tenant->id, 'purchase_id' => $purchase->id, 'serial_number' => 'GRN-SERIAL-1', 'status' => 'available']);
+        $this->assertSame(2, SerialNumber::withoutGlobalScopes()->where('purchase_id', $purchase->id)->count());
+
+        $this->expectException(ValidationException::class);
+        app(PurchaseService::class)->receive($purchase->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 1, 'serial_numbers' => ['MISMATCH-1', 'MISMATCH-2'],
+        ]], $tenant->id);
     }
 
     public function test_goods_receipt_rejects_a_batch_from_another_tenant(): void

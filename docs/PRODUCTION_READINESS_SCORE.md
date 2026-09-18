@@ -6,7 +6,7 @@ This file renders the canonical score ledger from `app/Support/Readiness/Readine
 
 | Dimension | Score | Evidence |
 |---|---:|---|
-| Core parity | 54% | Product, units, barcode, pricing, bundle, batch/expiry/FEFO, rack/bin, reservation, serial lifecycle, WAC, stock adjustment, stock count, reconciliation, transfer, purchasing safety, supplier invoice and supplier payment have independently verified evidence; remaining purchasing lifecycle, sales/POS and reporting remain incomplete |
+| Core parity | 58% | Product, units, barcode, pricing, bundle, batch/expiry/FEFO, rack/bin, reservation, serial lifecycle, WAC, stock adjustment, stock count, reconciliation, transfer, purchase receipt, purchasing safety, supplier invoice and supplier payment have independently verified evidence; remaining purchasing lifecycle, sales/POS and reporting remain incomplete |
 | SaaS parity | 27% | Tenant lifecycle and plan/entitlement foundations are evidenced; limits, billing and automation remain incomplete |
 | Future addon parity | FROZEN / OUT OF SCOPE | Deferred post-v1 work; excluded from v1 release scoring by [SCOPE_FREEZE.md](SCOPE_FREEZE.md) |
 | Test readiness | 60% | The regression suite is green; E2E, concurrency, security and recovery matrices remain absent |

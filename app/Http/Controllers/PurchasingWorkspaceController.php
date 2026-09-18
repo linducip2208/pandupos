@@ -79,6 +79,8 @@ class PurchasingWorkspaceController extends Controller
             'manufactured_at.*' => ['nullable', 'date'],
             'expires_at' => ['nullable', 'array'],
             'expires_at.*' => ['nullable', 'date'],
+            'serial_numbers' => ['nullable', 'array'],
+            'serial_numbers.*' => ['nullable', 'string', 'max:4000'],
             'warehouse_location_id' => ['nullable', 'integer'],
         ]);
         $lines = collect($data['lines'])->filter(fn ($quantity) => $quantity !== null && $quantity !== '')
@@ -89,6 +91,7 @@ class PurchasingWorkspaceController extends Controller
                 'batch_number' => $data['batch_numbers'][$variantId] ?? null,
                 'manufactured_at' => $data['manufactured_at'][$variantId] ?? null,
                 'expires_at' => $data['expires_at'][$variantId] ?? null,
+                'serial_numbers' => preg_split('/[\\s,]+/', trim((string) ($data['serial_numbers'][$variantId] ?? '')), -1, PREG_SPLIT_NO_EMPTY),
                 'warehouse_location_id' => $data['warehouse_location_id'] ?? null,
             ])->values()->all();
         $service->receive($purchase->id, $lines, TenantContext::idOrFail(), $request->user()->id);

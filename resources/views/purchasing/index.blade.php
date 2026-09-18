@@ -88,6 +88,17 @@ document.addEventListener('DOMContentLoaded', () => {
             select.add(option);
         });
         form.insertBefore(select, form.firstChild.nextSibling);
+        form.querySelectorAll('input[name^="lines["]').forEach((quantityInput) => {
+            const variantId = quantityInput.name.match(/lines\\[(\\d+)\\]/)?.[1];
+            if (!variantId) return;
+            const serialInput = document.createElement('input');
+            serialInput.name = `serial_numbers[${variantId}]`;
+            serialInput.className = 'form-control form-control-sm mt-1';
+            serialInput.maxLength = 4000;
+            serialInput.placeholder = 'Serial (pisahkan dengan koma, opsional)';
+            serialInput.setAttribute('aria-label', 'Nomor serial penerimaan');
+            quantityInput.closest('.border')?.appendChild(serialInput);
+        });
         // The server is authoritative: it rejects a location outside the PO warehouse.
     });
 });

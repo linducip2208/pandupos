@@ -91,7 +91,7 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 54% | Product, units, barcode, pricing, bundle, batch/expiry/FEFO, rack/bin, reservation, serial lifecycle, WAC, adjustment, stock count, reconciliation, transfer, supplier invoice/payment and purchasing safety have independently verified gates; purchasing UI/receipt/return, sales/POS and reporting remain incomplete |
+| Core parity | 58% | Product, units, barcode, pricing, bundle, batch/expiry/FEFO, rack/bin, reservation, serial lifecycle, WAC, adjustment, stock count, reconciliation, transfer, receipt, supplier invoice/payment and purchasing safety have independently verified gates; purchasing UI/return, sales/POS and reporting remain incomplete |
 | SaaS parity | 27% | Tenant lifecycle and plan/entitlement foundations exist; limits, billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
 | Test readiness | 60% | Existing regression suite is green; browser E2E, full concurrency, security and recovery matrices remain incomplete |
