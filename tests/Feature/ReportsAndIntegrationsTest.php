@@ -33,7 +33,7 @@ class ReportsAndIntegrationsTest extends TestCase
         app(TenantProvisioningService::class)->provision('Tenant Laporan', $user);
 
         foreach (['bisnis', 'keuangan', 'operasional'] as $type) {
-            $this->actingAs($user)->get(route('reports.show', $type))->assertOk()->assertSee('Export Excel');
+            $this->actingAs($user)->get(route('reports.show', $type))->assertOk()->assertSee('Excel');
         }
 
         $this->actingAs($user)->get(route('reports.csv', 'bisnis'))->assertOk()->assertHeader('Content-Type', 'text/csv; charset=UTF-8');

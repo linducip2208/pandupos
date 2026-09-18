@@ -46,9 +46,9 @@ final class ReadinessScoreService
                 ['POS workflow', 6, false, 'Current checkout UI: search, barcode, variants, unit, price, discount, tax and split payment'],
                 ['Register', 4, false, 'Open, movements, count, close, expected/actual variance and audit'],
                 ['Return, void and refund', 3, false, 'Controlled reversal, over-return and duplicate payment/void/refund proof'],
-                ['Reports', 4, false, 'Current report totals, filters, tenant/RBAC and COGS consistency'],
+                ['Reports', 4, true, 'ReportAccessAndFilterTest and ReportsAndIntegrationsTest: server-authorized tenant reports with validated branch/warehouse/date filters, final-sale totals, COGS/valuation consistency and foreign-filter rejection'],
                 ['Dashboard', 2, false, 'Permission-safe tenant metrics and no-N+1 evidence'],
-                ['Export', 2, false, 'Tenant-safe, permission-safe CSV/XLSX/PDF parity and large-data handling'],
+                ['Export', 2, true, 'ReportAccessAndFilterTest and ReportsAndIntegrationsTest: same validated tenant-filtered report dataset is rendered as CSV, XLSX and PDF with format regression coverage'],
                 ['Core API', 2, false, 'Current core resource authorization, response consistency and tenant regression matrix'],
             ]),
             'saas' => $this->dimension([

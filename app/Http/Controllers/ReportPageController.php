@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
+use App\Models\Warehouse;
 use App\Services\ReportService;
 use App\Support\TenantContext;
 use Carbon\Carbon;
@@ -24,7 +26,10 @@ class ReportPageController extends Controller
     {
         $data = $this->data($request, $type, $reports);
 
-        return view('reports.show', $data);
+        return view('reports.show', $data + [
+            'branches' => Branch::query()->where('is_active', true)->orderBy('name')->get(),
+            'warehouses' => Warehouse::query()->where('is_active', true)->orderBy('name')->get(),
+        ]);
     }
 
     public function csv(Request $request, string $type, ReportService $reports)
@@ -152,6 +157,8 @@ class ReportPageController extends Controller
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
             'group' => ['nullable', Rule::in(['daily', 'weekly', 'monthly'])],
+            'branch_id' => ['nullable', 'integer'],
+            'warehouse_id' => ['nullable', 'integer'],
         ]);
         $tenant = TenantContext::get() ?? $request->user()->currentTenant;
         abort_unless($tenant, 404);
@@ -159,18 +166,33 @@ class ReportPageController extends Controller
         $to = Carbon::parse($filters['to'] ?? now())->endOfDay();
         abort_if($from->diffInDays($to) > 731, 422, 'Rentang laporan maksimal dua tahun.');
         $group = $filters['group'] ?? 'daily';
+        $branchId = isset($filters['branch_id'])
+            ? (int) $filters['branch_id']
+            : null;
+        $warehouseId = isset($filters['warehouse_id'])
+            ? (int) $filters['warehouse_id']
+            : null;
+        abort_unless($branchId === null || Branch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereKey($branchId)->exists(), 422, 'Cabang tidak berada pada tenant aktif.');
+        abort_unless($warehouseId === null || Warehouse::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereKey($warehouseId)->exists(), 422, 'Gudang tidak berada pada tenant aktif.');
 
         return match ($type) {
-            'bisnis' => $this->business($tenant->id, $from, $to, $group, $reports),
-            'keuangan' => $this->finance($tenant->id, $from, $to, $group, $reports),
-            'operasional' => $this->operations($tenant->id, $from, $to, $group, $reports),
-        } + compact('type', 'tenant', 'group') + ['from' => $from->toDateString(), 'to' => $to->toDateString()];
+            'bisnis' => $this->business($tenant->id, $from, $to, $group, $reports, $branchId, $warehouseId),
+            'keuangan' => $this->finance($tenant->id, $from, $to, $group, $reports, $warehouseId),
+            'operasional' => $this->operations($tenant->id, $from, $to, $group, $reports, $warehouseId),
+        } + compact('type', 'tenant', 'group', 'branchId', 'warehouseId') + ['from' => $from->toDateString(), 'to' => $to->toDateString()];
     }
 
-    private function business(int $tenantId, Carbon $from, Carbon $to, string $group, ReportService $reports): array
+    private function business(int $tenantId, Carbon $from, Carbon $to, string $group, ReportService $reports, ?int $branchId, ?int $warehouseId): array
     {
-        $invoices = DB::table('sales_invoices')->where('tenant_id', $tenantId)->whereBetween('created_at', [$from, $to])->orderByDesc('created_at')->get();
-        $summary = $reports->salesSummary($tenantId, $from->toDateTimeString(), $to->toDateTimeString());
+        $invoiceQuery = DB::table('sales_invoices')->where('tenant_id', $tenantId)->where('status', 'final')->whereBetween('created_at', [$from, $to]);
+        if ($branchId !== null) {
+            $invoiceQuery->where('branch_id', $branchId);
+        }
+        if ($warehouseId !== null) {
+            $invoiceQuery->where('warehouse_id', $warehouseId);
+        }
+        $invoices = (clone $invoiceQuery)->orderByDesc('created_at')->get();
+        $summary = $reports->salesSummary($tenantId, $from->toDateTimeString(), $to->toDateTimeString(), $branchId, $warehouseId);
         $paid = (float) $invoices->where('payment_status', 'paid')->sum('total');
         $average = $summary['invoices'] ? $summary['revenue'] / $summary['invoices'] : 0;
 
@@ -183,10 +205,11 @@ class ReportPageController extends Controller
         ];
     }
 
-    private function finance(int $tenantId, Carbon $from, Carbon $to, string $group, ReportService $reports): array
+    private function finance(int $tenantId, Carbon $from, Carbon $to, string $group, ReportService $reports, ?int $warehouseId): array
     {
-        $profit = $reports->profit($tenantId, $from->toDateTimeString(), $to->toDateTimeString());
-        $purchases = DB::table('purchases')->where('tenant_id', $tenantId)->whereBetween('created_at', [$from, $to])->orderByDesc('created_at')->get();
+        $profit = $reports->profit($tenantId, $from->toDateTimeString(), $to->toDateTimeString(), $warehouseId);
+        $purchases = DB::table('purchases')->where('tenant_id', $tenantId)->whereBetween('created_at', [$from, $to])
+            ->when($warehouseId !== null, fn ($query) => $query->where('warehouse_id', $warehouseId))->orderByDesc('created_at')->get();
         $purchaseTotal = (float) $purchases->sum('total');
         $margin = $profit['revenue'] > 0 ? ($profit['gross_profit'] / $profit['revenue']) * 100 : 0;
 
@@ -199,15 +222,16 @@ class ReportPageController extends Controller
         ];
     }
 
-    private function operations(int $tenantId, Carbon $from, Carbon $to, string $group, ReportService $reports): array
+    private function operations(int $tenantId, Carbon $from, Carbon $to, string $group, ReportService $reports, ?int $warehouseId): array
     {
-        $movements = DB::table('stock_movements')->where('tenant_id', $tenantId)->whereBetween('occurred_at', [$from, $to])->orderByDesc('occurred_at')->limit(500)->get();
+        $movements = DB::table('stock_movements')->where('tenant_id', $tenantId)->whereBetween('occurred_at', [$from, $to])
+            ->when($warehouseId !== null, fn ($query) => $query->where('warehouse_id', $warehouseId))->orderByDesc('occurred_at')->limit(500)->get();
         $incoming = (float) $movements->where('movement_type', 'in')->sum('quantity');
         $outgoing = (float) $movements->where('movement_type', 'out')->sum('quantity');
 
         return [
             'title' => 'Laporan Operasional',
-            'summary' => ['Stok masuk' => $incoming, 'Stok keluar' => $outgoing, 'Mutasi' => $movements->count(), 'Valuasi stok' => $reports->stockValuation($tenantId)],
+            'summary' => ['Stok masuk' => $incoming, 'Stok keluar' => $outgoing, 'Mutasi' => $movements->count(), 'Valuasi stok' => $reports->stockValuation($tenantId, $warehouseId)],
             'chart' => $this->timeline($movements, $group, 'quantity', 'occurred_at'),
             'columns' => ['Tanggal', 'Gudang', 'Varian', 'Tipe', 'Jumlah', 'Biaya unit'],
             'rows' => $movements->map(fn ($row) => [$row->occurred_at, $row->warehouse_id, $row->product_variant_id, $row->movement_type, (float) $row->quantity, (float) $row->unit_cost]),

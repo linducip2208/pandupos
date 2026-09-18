@@ -41,6 +41,9 @@ final class TenantProvisioningService
                 'tenant_id' => $tenant->getKey(),
                 'branch_ids' => [$branch->getKey()],
             ]);
+            // A tenant owner receives the tenant-scoped role at provisioning.
+            // Platform permissions remain isolated on the platform-admin role.
+            $owner->assignRole('tenant-owner');
             $owner->forceFill(['current_tenant_id' => $tenant->getKey()])->save();
 
             $plan ??= Plan::where('slug', 'starter')->first();

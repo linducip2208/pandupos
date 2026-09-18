@@ -146,10 +146,12 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::put('/{priceList}', [PriceListWorkspaceController::class, 'update'])->name('update');
         Route::post('/{priceList}/archive', [PriceListWorkspaceController::class, 'archive'])->name('archive');
     });
-    Route::get('/reports/{type}', [ReportPageController::class, 'show'])->name('reports.show');
-    Route::get('/reports/{type}/csv', [ReportPageController::class, 'csv'])->name('reports.csv');
-    Route::get('/reports/{type}/xlsx', [ReportPageController::class, 'xlsx'])->name('reports.xlsx');
-    Route::get('/reports/{type}/pdf', [ReportPageController::class, 'pdf'])->name('reports.pdf');
+    Route::middleware('can:reports.view')->group(function () {
+        Route::get('/reports/{type}', [ReportPageController::class, 'show'])->name('reports.show');
+        Route::get('/reports/{type}/csv', [ReportPageController::class, 'csv'])->name('reports.csv');
+        Route::get('/reports/{type}/xlsx', [ReportPageController::class, 'xlsx'])->name('reports.xlsx');
+        Route::get('/reports/{type}/pdf', [ReportPageController::class, 'pdf'])->name('reports.pdf');
+    });
     Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
     Route::post('/approvals/settings', [ApprovalController::class, 'setting'])->name('approvals.setting');
     Route::post('/approvals/{approval}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');

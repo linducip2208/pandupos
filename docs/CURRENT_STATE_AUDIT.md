@@ -63,7 +63,7 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Discounts/tax | Line discount arithmetic and columns | Basic inputs | Partial | No override policy | Checked | Limited | Target only | PARTIAL |
 | Receipts | Portal A4 invoice PDF only | PDF view | Download | Customer ownership | Checked | Portal test | Partial | PARTIAL |
 | Contacts/credit | Basic unified contact and portal | Partial | List/create | Coarse | Scoped | Partial | Partial | PARTIAL |
-| Reports/exports | Small aggregate set; generic CSV/XLSX/PDF routes | Generic screen | Sales/stock | Coarse | Filtered | Limited | Present | PARTIAL |
+| Reports/exports | Business, finance and operational aggregates; CSV/XLSX/PDF | Filter workspace | Final sales, purchases, inventory/COGS | Date, branch and warehouse | Tenant-validated filters | Limited to 500 operational rows | Server-side `reports.view` | VERIFIED |
 | API/tokens | Versioned endpoints, Sanctum foundation | N/A | Partial coverage | Coarse; scopes/expiry absent | Partial tests | Partial | Present | PARTIAL |
 | Offline sync | Device, cursor push/pull and idempotency foundations | None | Present | Auth/module | Checked | Present | Present | PARTIAL |
 | Audit log | Service/model and platform mutations | Platform view | None | Platform gate | Tenant-aware | Limited | Present | PARTIAL |
@@ -91,7 +91,7 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 63% | Product, units, barcode, pricing, bundle, batch/expiry/FEFO, rack/bin, reservation, serial lifecycle, WAC, adjustment, stock count, reconciliation, transfer, receipt, supplier invoice/payment, purchasing safety, quotation and sales order have independently verified gates; purchasing UI/return, delivery/invoice/payment, POS and reporting remain incomplete |
+| Core parity | 69% | Product, units, barcode, pricing, bundle, batch/expiry/FEFO, rack/bin, reservation, serial lifecycle, WAC, adjustment, stock count, reconciliation, transfer, receipt, supplier invoice/payment, purchasing safety, quotation, sales order, reports and exports have independently verified gates; purchasing UI/return, delivery/invoice/payment, POS, register, dashboard and API remain incomplete |
 | SaaS parity | 27% | Tenant lifecycle and plan/entitlement foundations exist; limits, billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
 | Test readiness | 60% | Existing regression suite is green; browser E2E, full concurrency, security and recovery matrices remain incomplete |

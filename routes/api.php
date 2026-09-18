@@ -105,8 +105,10 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     });
 
     // Reports
-    Route::get('reports/sales', [ReportController::class, 'sales']);
-    Route::get('reports/stock', [ReportController::class, 'stock']);
+    Route::middleware('can:reports.view')->group(function () {
+        Route::get('reports/sales', [ReportController::class, 'sales']);
+        Route::get('reports/stock', [ReportController::class, 'stock']);
+    });
 
     // Offline sync (real implementation, cursor-based)
     Route::get('sync/pull', [SyncController::class, 'pull']);

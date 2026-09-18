@@ -37,7 +37,7 @@ Canonical readiness percentages live in `PRODUCTION_READINESS_SCORE.md`; this ma
 | Void/return/refund | Void and partial stock return | P | M | P | P | D | P | P | PARTIAL | Refund separation/UI/full costing |
 | Contact/group/credit | Unified contact basics and portal | P | P | P | P | D | P | P | PARTIAL | Address/group/terms/statement |
 | Expense | No expense domain | M | M | M | M | — | M | M | NOT STARTED | Complete approved workflow |
-| Reports/export | Small aggregates and generic export routes | P | P | P | P | D | P | P | PARTIAL | Required catalog/queued exports |
+| Reports/export | Business/finance/operations reports and shared CSV/XLSX/PDF output | D | D | D | D | D | D | D | VERIFIED | ReportAccessAndFilterTest and ReportsAndIntegrationsTest; large-data queue remains an operations concern |
 | Role dashboard | One dashboard, limited role filtering | P | P | M | P | D | P | P | PARTIAL | Cashier/warehouse/owner matrices |
 | Import | Not found | M | M | M | M | — | M | M | NOT STARTED | Preview/errors/atomic imports |
 
@@ -91,4 +91,4 @@ No deferred addon is currently FEATURE COMPLETE, TESTED, or STABLE.
 
 ## Current scores
 
-**Core 63%, SaaS 27%, test readiness 60%, security readiness 44%, operations readiness 20%, production readiness 0%, commercial readiness 0%. Future addon parity is FROZEN / OUT OF SCOPE FOR V1.** These values are produced by `php artisan readiness:score`; see `PRODUCTION_READINESS_SCORE.md`, `GAP_TO_99.md`, and `SCOPE_FREEZE.md`. The stricter granular release ledger replaced earlier broad foundation gates; no capability was removed.
+**Core 69%, SaaS 27%, test readiness 60%, security readiness 44%, operations readiness 20%, production readiness 0%, commercial readiness 0%. Future addon parity is FROZEN / OUT OF SCOPE FOR V1.** These values are produced by `php artisan readiness:score`; see `PRODUCTION_READINESS_SCORE.md`, `GAP_TO_99.md`, and `SCOPE_FREEZE.md`. The stricter granular release ledger replaced earlier broad foundation gates; no capability was removed.

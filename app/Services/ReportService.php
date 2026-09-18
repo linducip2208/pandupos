@@ -7,11 +7,13 @@ use Illuminate\Support\Facades\DB;
 /** Read-optimized aggregates. Heavy exports should be queued by callers. */
 final class ReportService
 {
-    public function salesSummary(int $tenantId, string $from, string $to): array
+    public function salesSummary(int $tenantId, string $from, string $to, ?int $branchId = null, ?int $warehouseId = null): array
     {
         $row = DB::table('sales_invoices')
             ->where('tenant_id', $tenantId)->where('status', 'final')
             ->whereBetween('created_at', [$from, $to])
+            ->when($branchId !== null, fn ($query) => $query->where('branch_id', $branchId))
+            ->when($warehouseId !== null, fn ($query) => $query->where('warehouse_id', $warehouseId))
             ->selectRaw('COUNT(*) as invoices, COALESCE(SUM(total),0) as revenue')
             ->first();
 
@@ -60,11 +62,12 @@ final class ReportService
      * Trustworthy profit: revenue from final invoices, COGS from stock out movements
      * (weighted-average unit_cost), never selling-price-only. Gross = revenue - COGS.
      */
-    public function profit(int $tenantId, string $from, string $to): array
+    public function profit(int $tenantId, string $from, string $to, ?int $warehouseId = null): array
     {
         $revenue = (float) DB::table('sales_invoices')
             ->where('tenant_id', $tenantId)->where('status', 'final')
-            ->whereBetween('created_at', [$from, $to])->sum('total');
+            ->whereBetween('created_at', [$from, $to])
+            ->when($warehouseId !== null, fn ($query) => $query->where('warehouse_id', $warehouseId))->sum('total');
 
         $cogs = (float) DB::table('stock_movements as sm')
             ->join('sales_invoices as si', function ($j) {
@@ -73,6 +76,7 @@ final class ReportService
             ->where('sm.tenant_id', $tenantId)->where('sm.movement_type', 'out')
             ->where('si.status', 'final')
             ->whereBetween('si.created_at', [$from, $to])
+            ->when($warehouseId !== null, fn ($query) => $query->where('sm.warehouse_id', $warehouseId))
             ->selectRaw('COALESCE(SUM(sm.quantity * sm.unit_cost),0) as c')->value('c');
 
         return ['revenue' => $revenue, 'cogs' => $cogs, 'gross_profit' => round($revenue - $cogs, 2)];
