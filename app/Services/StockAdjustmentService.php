@@ -46,6 +46,9 @@ final class StockAdjustmentService
         return DB::transaction(function () use ($adjustment, $actorId) {
             $locked = $this->lock($adjustment);
             $this->expect($locked, 'draft');
+            if ($locked->requested_by !== null && $locked->requested_by === $actorId) {
+                throw ValidationException::withMessages(['approval' => 'The requester cannot approve their own stock adjustment.']);
+            }
             $before = $locked->toArray();
             $locked->update(['status' => 'approved', 'approved_by' => $actorId, 'approved_at' => now()]);
             $this->audit->log($locked->tenant_id, $actorId, 'inventory.adjustment.approved', StockAdjustment::class, $locked->id, $before, $locked->fresh()->toArray());

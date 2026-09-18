@@ -64,6 +64,10 @@ final class StockCountService
 
     public function approve(StockCount $count, int $actorId): StockCount
     {
+        if ($count->created_by !== null && $count->created_by === $actorId) {
+            throw ValidationException::withMessages(['approval' => 'The count creator cannot approve their own stock count.']);
+        }
+
         return $this->transition($count, ['reviewed'], 'approved', ['approved_by' => $actorId, 'approved_at' => now()], 'approved', $actorId);
     }
 

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\Membership;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockAdjustment;
@@ -45,8 +46,11 @@ class InventoryWorkspaceUiTest extends TestCase
         ])->assertRedirect()->assertSessionHas('status');
 
         $adjustment = StockAdjustment::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
-        $this->post(route('inventory.adjustments.action', [$adjustment, 'approve']))->assertRedirect();
-        $this->post(route('inventory.adjustments.action', [$adjustment, 'post']))->assertRedirect();
+        $approver = User::factory()->create(['current_tenant_id' => $tenant->id]);
+        Membership::create(['tenant_id' => $tenant->id, 'user_id' => $approver->id, 'role' => 'manager', 'status' => 'active']);
+        $approver->givePermissionTo('inventory.adjust');
+        $this->actingAs($approver)->post(route('inventory.adjustments.action', [$adjustment, 'approve']))->assertRedirect();
+        $this->actingAs($approver)->post(route('inventory.adjustments.action', [$adjustment, 'post']))->assertRedirect();
         $this->assertEquals(8, app(StockService::class)->onHand($tenant->id, $warehouse->id, $variant->id));
     }
 

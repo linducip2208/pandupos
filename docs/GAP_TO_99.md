@@ -20,7 +20,7 @@ Updated: 2026-09-17. Scores are calculated by `php artisan readiness:score`, usi
 1. ~~Bundle UI and atomic component inventory regression.~~ DONE: audited tenant component manager and lifecycle tests.
 2. Batch/expiry/FEFO: tenant receive/list/provenance UI, GRN batch create/select, POS FEFO/selected-batch allocation, and batch-preserving transfer are done. Granular controlled override and complete selector acceptance remain. Serial receive/register/history plus checkout/return/void/transfer ledger lifecycle are done; POS selector integration remains.
 3. Rack/bin transaction selectors; reservation held-cart integration and cleanup scheduler.
-4. Transfer, adjustment and count multi-line UX with requester/approver segregation.
+4. Transfer, adjustment and count multi-line UX. Transfer and adjustment/count requester/approver segregation are now enforced; rack/bin selectors and complete acceptance remain.
 5. Purchase request, multi-line PO/GRN/AP/return/statement/PDF/export.
 6. Quotation → order → reservation → delivery → invoice → payment → credit note/return/refund lifecycle.
 7. Register, cash movement, hold/resume, discount/tax/credit, receipt layouts and printer contract.

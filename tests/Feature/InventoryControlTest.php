@@ -27,20 +27,36 @@ class InventoryControlTest extends TestCase
         $stock = app(StockService::class);
         $stock->increase($tenant->id, $warehouse->id, $variant->id, 10, 5, 'opening', 1);
         $service = app(StockAdjustmentService::class);
+        $approver = User::factory()->create();
         $adjustment = $service->create($tenant->id, $warehouse->id, 'damage', [[
             'product_variant_id' => $variant->id, 'quantity_change' => -2,
         ]], 'Two damaged during handling', $owner->id);
 
         $this->assertEquals(10, $stock->onHand($tenant->id, $warehouse->id, $variant->id));
-        $approved = $service->approve($adjustment, $owner->id);
+        $this->expectException(ValidationException::class);
+        $service->approve($adjustment, $owner->id);
+    }
+
+    public function test_adjustment_requires_a_different_approver_and_posts_once_with_reason_and_audit(): void
+    {
+        [$tenant, $owner, $warehouse, $variant] = $this->context();
+        $stock = app(StockService::class);
+        $stock->increase($tenant->id, $warehouse->id, $variant->id, 10, 5, 'opening', 1);
+        $service = app(StockAdjustmentService::class);
+        $approver = User::factory()->create();
+        $adjustment = $service->create($tenant->id, $warehouse->id, 'damage', [[
+            'product_variant_id' => $variant->id, 'quantity_change' => -2,
+        ]], 'Two damaged during handling', $owner->id);
+
+        $approved = $service->approve($adjustment, $approver->id);
         $this->assertEquals(10, $stock->onHand($tenant->id, $warehouse->id, $variant->id));
-        $posted = $service->post($approved, $owner->id);
+        $posted = $service->post($approved, $approver->id);
         $this->assertSame('posted', $posted->status);
         $this->assertEquals(8, $stock->onHand($tenant->id, $warehouse->id, $variant->id));
         $this->assertDatabaseHas('audit_logs', ['action' => 'inventory.adjustment.posted', 'subject_id' => $adjustment->id]);
 
         $this->expectException(ValidationException::class);
-        $service->post($posted, $owner->id);
+        $service->post($posted, $approver->id);
     }
 
     public function test_cycle_count_snapshots_reviews_approves_and_posts_variance(): void
@@ -56,8 +72,23 @@ class InventoryControlTest extends TestCase
         $reviewed = $service->recordCounts($count, [$line->id => 8], $owner->id);
         $this->assertEquals(-2, $reviewed->lines->first()->variance_quantity);
         $this->assertEquals(10, $stock->onHand($tenant->id, $warehouse->id, $variant->id));
-        $approved = $service->approve($reviewed, $owner->id);
-        $posted = $service->post($approved, $owner->id);
+        $this->expectException(ValidationException::class);
+        $service->approve($reviewed, $owner->id);
+    }
+
+    public function test_cycle_count_requires_a_different_approver_before_posting_variance(): void
+    {
+        [$tenant, $owner, $warehouse, $variant] = $this->context();
+        $stock = app(StockService::class);
+        $stock->increase($tenant->id, $warehouse->id, $variant->id, 10, 5, 'opening', 1);
+        $service = app(StockCountService::class);
+        $approver = User::factory()->create();
+        $count = $service->createAndSnapshot($tenant->id, $warehouse->id, 'COUNT-002', null, $owner->id);
+        $line = $count->lines->first();
+        $reviewed = $service->recordCounts($count, [$line->id => 8], $owner->id);
+
+        $approved = $service->approve($reviewed, $approver->id);
+        $posted = $service->post($approved, $approver->id);
 
         $this->assertSame('posted', $posted->status);
         $this->assertEquals(8, $stock->onHand($tenant->id, $warehouse->id, $variant->id));
