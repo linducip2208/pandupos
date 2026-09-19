@@ -104,6 +104,48 @@ final class SubscriptionService
         });
     }
 
+    /** active -> past_due when the current period lapses. Logged, cache-safe. */
+    public function markPeriodOverdue(int $subscriptionId): Subscription
+    {
+        return DB::transaction(function () use ($subscriptionId) {
+            $sub = Subscription::withoutGlobalScopes()->findOrFail($subscriptionId);
+            abort_unless($sub->status === 'active', 422, 'Only active subscriptions become past_due.');
+            $sub->update(['status' => 'past_due']);
+            $this->log($sub->tenant_id, $sub->id, 'past_due', ['period_end' => $sub->fresh()->current_period_end]);
+            $this->entitlements->forget($sub->tenant_id);
+
+            return $sub;
+        });
+    }
+
+    /** past_due -> grace_period after the grace window lapses. Logged, cache-safe. */
+    public function markPastDueGrace(int $subscriptionId): Subscription
+    {
+        return DB::transaction(function () use ($subscriptionId) {
+            $sub = Subscription::withoutGlobalScopes()->findOrFail($subscriptionId);
+            abort_unless($sub->status === 'past_due', 422, 'Only past_due subscriptions enter grace_period.');
+            $sub->update(['status' => 'grace_period']);
+            $this->log($sub->tenant_id, $sub->id, 'grace_period', ['period_end' => $sub->fresh()->current_period_end]);
+            $this->entitlements->forget($sub->tenant_id);
+
+            return $sub;
+        });
+    }
+
+    /** trialing -> expired when the trial lapses. Logged, cache-safe. */
+    public function expireTrial(int $subscriptionId): Subscription
+    {
+        return DB::transaction(function () use ($subscriptionId) {
+            $sub = Subscription::withoutGlobalScopes()->findOrFail($subscriptionId);
+            abort_unless($sub->status === 'trialing', 422, 'Only trialing subscriptions expire as trial.');
+            $sub->update(['status' => 'expired', 'ends_at' => now()]);
+            $this->log($sub->tenant_id, $sub->id, 'trial_expired', ['trial_ends_at' => $sub->fresh()->trial_ends_at]);
+            $this->entitlements->forget($sub->tenant_id);
+
+            return $sub;
+        });
+    }
+
     public function expire(int $subscriptionId): Subscription
     {
         return DB::transaction(function () use ($subscriptionId) {

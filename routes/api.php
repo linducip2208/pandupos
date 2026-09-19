@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\ContactController;
+use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\InventoryConfigurationController;
 use App\Http\Controllers\Api\V1\InventoryControlController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MetaController;
+use App\Http\Controllers\Api\V1\PaymentWebhookController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PurchaseController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -120,10 +122,16 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     // Offline sync (real implementation, cursor-based)
     Route::get('sync/pull', [SyncController::class, 'pull']);
     Route::post('sync/push', [SyncController::class, 'push']);
+    Route::get('devices', [DeviceController::class, 'index']);
+    Route::post('devices/revoke', [DeviceController::class, 'revoke']);
 
     // Webhooks (tenant outgoing management)
     Route::get('webhooks', [WebhookController::class, 'index']);
 });
+
+// Inbound payment webhooks: signature-authenticated, not session-auth (no auth middleware).
+// Same gateway_ref is idempotent; replays are safe. Secret per gateway from env.
+Route::post('v1/payments/webhooks/{gateway}', [PaymentWebhookController::class, 'handle']);
 
 // Platform admin (no tenant scope, gate platform-admin)
 Route::prefix('v1/platform')->middleware(['auth:sanctum', 'can:platform-admin'])->group(function () {

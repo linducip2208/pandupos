@@ -16,6 +16,7 @@ use App\Http\Controllers\Platform\AuditController;
 use App\Http\Controllers\Platform\BillingController;
 use App\Http\Controllers\Platform\BlogAdminController;
 use App\Http\Controllers\Platform\CouponController;
+use App\Http\Controllers\Platform\DomainController;
 use App\Http\Controllers\Platform\HealthController;
 use App\Http\Controllers\Platform\ImpersonationController;
 use App\Http\Controllers\Platform\IntegrationProviderController;
@@ -52,6 +53,7 @@ Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/sitemap/content.xml', [SitemapController::class, 'content'])->name('sitemap.content');
 Route::get('/sitemap/pseo-{chunk}.xml', [SitemapController::class, 'pseo'])->whereNumber('chunk')->name('sitemap.pseo');
+Route::get('/verify-tenant-domain/{token}', [DomainController::class, 'verify'])->name('domains.verify');
 
 Route::get('/best-{category}-{year}', [ProgrammaticSeoController::class, 'best'])
     ->where(['category' => '[a-z0-9-]+', 'year' => '[0-9]{4}'])->name('pseo.best.year');
@@ -227,6 +229,8 @@ Route::prefix('platform')->name('platform.')->middleware(['auth', 'can:platform-
     Route::post('/tenants/{tenant}/archive', [TenantController::class, 'archive'])->name('tenants.archive');
     Route::post('/tenants/{tenant}/plan', [TenantController::class, 'changePlan'])->name('tenants.plan');
     Route::post('/tenants/{tenant}/extend', [TenantController::class, 'extend'])->name('tenants.extend');
+    Route::post('/domains', [DomainController::class, 'store'])->name('domains.store');
+    Route::post('/domains/{domainId}/regenerate', [DomainController::class, 'regenerate'])->name('domains.regenerate');
     Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');
     Route::post('/plans', [PlanController::class, 'store'])->name('plans.store');
     Route::post('/plans/{plan}/entitlements', [PlanController::class, 'updateEntitlements'])->name('plans.entitlements');
@@ -236,6 +240,7 @@ Route::prefix('platform')->name('platform.')->middleware(['auth', 'can:platform-
     Route::post('/tenants/{tenant}/impersonate', [ImpersonationController::class, 'start'])->name('tenants.impersonate');
     Route::post('/impersonation/stop', [ImpersonationController::class, 'stop'])->withoutMiddleware('can:platform-admin')->name('impersonation.stop');
     Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+    Route::get('/billing/invoices/{invoice}/pdf', [BillingController::class, 'pdf'])->name('billing.invoice.pdf');
     Route::get('/subscriptions', [SubscriptionAdminController::class, 'index'])->name('subscriptions.index');
     Route::get('/coupons', [CouponController::class, 'index'])->name('coupons.index');
     Route::post('/coupons', [CouponController::class, 'store'])->name('coupons.store');

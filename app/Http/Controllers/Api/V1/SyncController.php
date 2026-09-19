@@ -18,6 +18,7 @@ class SyncController extends Controller
     {
         $data = $request->validate([
             'device_uuid' => 'required|string|max:64',
+            'platform' => 'nullable|string|max:32',
             'mutations' => 'required|array|min:1|max:100',
             'mutations.*.uuid' => 'required|string|max:64',
             'mutations.*.entity' => 'required|string|max:64',
@@ -29,6 +30,17 @@ class SyncController extends Controller
         $tenantId = TenantContext::id();
         $results = [];
 
+        // A revoked device (stolen/lost) is locked out of the write path outright.
+        $knownDevice = DB::table('devices')
+            ->where('tenant_id', $tenantId)
+            ->where(function ($q) use ($data) {
+                $q->where('uuid', $data['device_uuid'])->orWhere('device_id', $data['device_uuid']);
+            })
+            ->first(['id', 'revoked_at']);
+        if ($knownDevice && $knownDevice->revoked_at !== null) {
+            return response()->json(['error' => 'device_revoked'], 423);
+        }
+
         DB::transaction(function () use ($data, $tenantId, &$results) {
             $device = DB::table('devices')->where('tenant_id', $tenantId)
                 ->where(function ($q) use ($data) {
@@ -37,12 +49,16 @@ class SyncController extends Controller
             if (! $device) {
                 $deviceId = DB::table('devices')->insertGetId([
                     'tenant_id' => $tenantId, 'uuid' => $data['device_uuid'], 'device_id' => $data['device_uuid'],
-                    'name' => $data['device_uuid'], 'last_sync_at' => now(),
+                    'name' => $data['device_uuid'], 'platform' => $data['platform'] ?? null, 'last_sync_at' => now(),
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             } else {
                 $deviceId = $device->id;
-                DB::table('devices')->where('id', $deviceId)->update(['last_sync_at' => now(), 'updated_at' => now()]);
+                $updates = ['last_sync_at' => now(), 'updated_at' => now()];
+                if ($data['platform'] ?? null) {
+                    $updates['platform'] = $data['platform'];
+                }
+                DB::table('devices')->where('id', $deviceId)->update($updates);
             }
 
             foreach ($data['mutations'] as $m) {

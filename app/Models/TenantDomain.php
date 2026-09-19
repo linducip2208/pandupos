@@ -9,7 +9,7 @@ class TenantDomain extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'domain', 'status', 'verified_at', 'is_primary'];
+    protected $fillable = ['tenant_id', 'domain', 'status', 'verification_token', 'verified_at', 'is_primary'];
 
     protected function casts(): array
     {

@@ -40,4 +40,12 @@ return [
         'endpoints' => array_values(array_filter(array_map('trim', explode(',', (string) env('INDEXNOW_ENDPOINTS', ''))))),
     ],
 
+    // Inbound payment gateway webhook secrets. Each gateway key maps to the
+    // HMAC-SHA256 secret used to authenticate /api/v1/payments/webhooks/{gateway}.
+    'payment_sdk' => [
+        'sandbox' => ['secret' => env('PAYMENT_SANDBOX_SECRET')],
+        'midtrans' => ['secret' => env('PAYMENT_MIDTRANS_SECRET')],
+        'xendit' => ['secret' => env('PAYMENT_XENDIT_SECRET')],
+    ],
+
 ];

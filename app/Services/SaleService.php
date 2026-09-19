@@ -29,6 +29,7 @@ final class SaleService
         private BatchInventoryService $batches,
         private SerialNumberService $serials,
         private AuditService $audit,
+        private UsageLimitService $usage,
     ) {}
 
     /**
@@ -50,6 +51,9 @@ final class SaleService
                 if ($existing) {
                     return $existing;
                 }
+
+                // Plan usage meter: do not let a tenant exceed its monthly invoice quota.
+                $this->usage->assertCanCreate($tenantId, 'invoices.monthly');
 
                 // Validate tenant ownership of all references (prevent IDOR).
                 abort_unless(Branch::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $branchId)->exists(), 422, 'Branch does not belong to tenant.');

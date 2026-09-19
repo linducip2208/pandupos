@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\Subscription;
-use App\Services\SubscriptionService;
 use App\Support\Readiness\ReadinessScoreService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -22,16 +20,6 @@ Artisan::command('readiness:score {--json : Emit structured JSON}', function (Re
 
     return self::SUCCESS;
 })->purpose('Show the canonical, evidence-weighted product readiness scores');
-
-Schedule::call(function () {
-    // Expire past-due subscriptions; suspend trials ended. History preserved, entitlement cache invalidated.
-    $expired = Subscription::withoutGlobalScopes()
-        ->whereIn('status', ['trialing', 'active', 'past_due', 'grace_period'])
-        ->where('current_period_end', '<', now())->get();
-    foreach ($expired as $sub) {
-        app(SubscriptionService::class)->expire($sub->id);
-    }
-})->daily()->name('subscriptions-expire');
 
 Schedule::command('business:escalate-overdue')->hourly()->withoutOverlapping()->name('business-escalate-overdue');
 Schedule::command('notifications:send-pending')->everyFiveMinutes()->withoutOverlapping()->name('notifications-send-pending');
