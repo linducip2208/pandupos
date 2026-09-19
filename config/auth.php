@@ -123,4 +123,6 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    'sensitive_reauth_timeout' => env('SENSITIVE_REAUTH_TIMEOUT', 600),
+
 ];

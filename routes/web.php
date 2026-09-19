@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\ApprovalController;
+use App\Http\Controllers\Auth\ReauthenticationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BarcodeWorkspaceController;
 use App\Http\Controllers\BatchWorkspaceController;
@@ -220,45 +221,55 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     });
 });
 
+Route::middleware('auth')->group(function () {
+    Route::get('/confirm-sensitive', [ReauthenticationController::class, 'show'])->name('reauth.confirm');
+    Route::post('/confirm-sensitive', [ReauthenticationController::class, 'store'])->name('reauth.confirm.store');
+});
+
 Route::prefix('platform')->name('platform.')->middleware(['auth', 'can:platform-admin'])->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\Platform\DashboardController::class, 'index'])->name('dashboard');
     Route::get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
     Route::get('/tenants/{tenant}', [TenantController::class, 'show'])->name('tenants.show');
-    Route::post('/tenants/{tenant}/activate', [TenantController::class, 'activate'])->name('tenants.activate');
-    Route::post('/tenants/{tenant}/suspend', [TenantController::class, 'suspend'])->name('tenants.suspend');
-    Route::post('/tenants/{tenant}/archive', [TenantController::class, 'archive'])->name('tenants.archive');
-    Route::post('/tenants/{tenant}/plan', [TenantController::class, 'changePlan'])->name('tenants.plan');
-    Route::post('/tenants/{tenant}/extend', [TenantController::class, 'extend'])->name('tenants.extend');
-    Route::post('/domains', [DomainController::class, 'store'])->name('domains.store');
-    Route::post('/domains/{domainId}/regenerate', [DomainController::class, 'regenerate'])->name('domains.regenerate');
+    Route::post('/impersonation/stop', [ImpersonationController::class, 'stop'])->withoutMiddleware('can:platform-admin')->name('impersonation.stop');
     Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');
-    Route::post('/plans', [PlanController::class, 'store'])->name('plans.store');
-    Route::post('/plans/{plan}/entitlements', [PlanController::class, 'updateEntitlements'])->name('plans.entitlements');
     Route::get('/modules', [ModuleController::class, 'index'])->name('modules.index');
     Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
     Route::get('/health', [HealthController::class, 'index'])->name('health');
-    Route::post('/tenants/{tenant}/impersonate', [ImpersonationController::class, 'start'])->name('tenants.impersonate');
-    Route::post('/impersonation/stop', [ImpersonationController::class, 'stop'])->withoutMiddleware('can:platform-admin')->name('impersonation.stop');
     Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
     Route::get('/billing/invoices/{invoice}/pdf', [BillingController::class, 'pdf'])->name('billing.invoice.pdf');
     Route::get('/subscriptions', [SubscriptionAdminController::class, 'index'])->name('subscriptions.index');
     Route::get('/coupons', [CouponController::class, 'index'])->name('coupons.index');
-    Route::post('/coupons', [CouponController::class, 'store'])->name('coupons.store');
     Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliates.index');
-    Route::post('/affiliates/payout', [AffiliateController::class, 'payout'])->name('affiliates.payout');
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
     Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
-    Route::post('/announcements/{announcement}/send', [AnnouncementController::class, 'send'])->name('announcements.send');
     Route::get('/blog', [BlogAdminController::class, 'index'])->name('blog.index');
     Route::post('/blog', [BlogAdminController::class, 'store'])->name('blog.store');
     Route::put('/blog/{post}', [BlogAdminController::class, 'update'])->name('blog.update');
-    Route::delete('/blog/{post}', [BlogAdminController::class, 'destroy'])->name('blog.destroy');
     Route::get('/integrations', [IntegrationProviderController::class, 'index'])->name('integrations.index');
-    Route::post('/integrations', [IntegrationProviderController::class, 'store'])->name('integrations.store');
-    Route::put('/integrations/{provider}', [IntegrationProviderController::class, 'update'])->name('integrations.update');
-    Route::delete('/integrations/{provider}', [IntegrationProviderController::class, 'destroy'])->name('integrations.destroy');
-    Route::post('/integrations/{provider}/discover', [IntegrationProviderController::class, 'discover'])->name('integrations.discover');
-    Route::post('/integration-assignments', [IntegrationProviderController::class, 'assign'])->name('integrations.assign');
+    Route::post('/domains', [DomainController::class, 'store'])->name('domains.store');
     Route::get('/settings', fn () => view('platform.simple', ['title' => 'Settings']))->name('settings.index');
     Route::get('/entitlements', fn () => view('platform.simple', ['title' => 'Entitlements']))->name('entitlements.index');
+
+    // Sensitive mutations: fresh password confirmation required (sensitive.reauth);
+    // impersonated sessions are always blocked from these writes.
+    Route::middleware('sensitive.reauth')->group(function () {
+        Route::post('/tenants/{tenant}/activate', [TenantController::class, 'activate'])->name('tenants.activate');
+        Route::post('/tenants/{tenant}/suspend', [TenantController::class, 'suspend'])->name('tenants.suspend');
+        Route::post('/tenants/{tenant}/archive', [TenantController::class, 'archive'])->name('tenants.archive');
+        Route::post('/tenants/{tenant}/plan', [TenantController::class, 'changePlan'])->name('tenants.plan');
+        Route::post('/tenants/{tenant}/extend', [TenantController::class, 'extend'])->name('tenants.extend');
+        Route::post('/tenants/{tenant}/impersonate', [ImpersonationController::class, 'start'])->name('tenants.impersonate');
+        Route::post('/plans', [PlanController::class, 'store'])->name('plans.store');
+        Route::post('/plans/{plan}/entitlements', [PlanController::class, 'updateEntitlements'])->name('plans.entitlements');
+        Route::post('/coupons', [CouponController::class, 'store'])->name('coupons.store');
+        Route::post('/affiliates/payout', [AffiliateController::class, 'payout'])->name('affiliates.payout');
+        Route::post('/announcements/{announcement}/send', [AnnouncementController::class, 'send'])->name('announcements.send');
+        Route::delete('/blog/{post}', [BlogAdminController::class, 'destroy'])->name('blog.destroy');
+        Route::post('/integrations', [IntegrationProviderController::class, 'store'])->name('integrations.store');
+        Route::put('/integrations/{provider}', [IntegrationProviderController::class, 'update'])->name('integrations.update');
+        Route::delete('/integrations/{provider}', [IntegrationProviderController::class, 'destroy'])->name('integrations.destroy');
+        Route::post('/integrations/{provider}/discover', [IntegrationProviderController::class, 'discover'])->name('integrations.discover');
+        Route::post('/integration-assignments', [IntegrationProviderController::class, 'assign'])->name('integrations.assign');
+        Route::post('/domains/{domainId}/regenerate', [DomainController::class, 'regenerate'])->name('domains.regenerate');
+    });
 });

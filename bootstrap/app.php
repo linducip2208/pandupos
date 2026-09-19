@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureTokenAbility;
 use App\Http\Middleware\EntitlementMiddleware;
 use App\Http\Middleware\ModuleEnabledMiddleware;
 use App\Http\Middleware\PortalTenantMiddleware;
+use App\Http\Middleware\RequireSensitiveReauth;
 use App\Http\Middleware\TenantMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -23,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'module' => ModuleEnabledMiddleware::class,
             'portal.tenant' => PortalTenantMiddleware::class,
             'token-ability' => EnsureTokenAbility::class,
+            'sensitive.reauth' => RequireSensitiveReauth::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

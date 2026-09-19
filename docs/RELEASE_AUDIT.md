@@ -15,8 +15,12 @@ Completed: 2026-09-19.
 - **Sensitive platform actions**: platform-admin gating with url-session
   authorization across tenant activate/suspend/archive/plan/extend/impersonate,
   billing, coupons, affiliates, announcements, domains, integrations; audit trail
-  preserved. Known residual: re-authentication for the highest-sensitivity actions
-  is tracked (Security dimension carries it as a non-blocking gap at 92→95).
+  preserved. Sensitive-admin re-authentication COMPLETED: `RequireSensitiveReauth`
+  enforces fresh password confirmation (600s window, `SENSITIVE_REAUTH_TIMEOUT`)
+  on 18 sensitive mutations, impersonated sessions are blocked from confirming
+  and writing (403), JSON callers receive 423 with `confirm_url`, and every
+  reconfirmation is audited as `auth.sensitive_reconfirmed` without secrets —
+  proven by `SensitiveAdminReauthTest` (9 tests / 37 assertions).
 - **No critical/high findings**: security gates all green on the ledger
   (IDOR, RBAC critical actions, web/API/file security) with 0 open critical/high
   items; residual items are low-severity process gaps, not product defects.
@@ -35,5 +39,5 @@ Completed: 2026-09-19.
 ## Result
 
 No critical blocker for v1. Residual non-blocking items tracked separately:
-browser-E2E (HTTP-kernel level covers critical paths), sensitive-admin
-re-authentication, and MySQL-staging re-benchmark before the SLO is committed.
+browser-E2E (HTTP-kernel level covers critical paths) and MySQL-staging
+re-benchmark before the SLO is committed.

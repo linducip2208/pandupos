@@ -50,7 +50,8 @@ class SensitiveAdminTest extends TestCase
 
         $admin = User::factory()->create(['is_platform_admin' => true]);
         $admin->assignRole('platform-admin');
-        $this->actingAs($admin)->post("/platform/tenants/{$tenant->id}/impersonate", ['target_user_id' => $owner->id])->assertRedirect('/dashboard');
+        // Impersonation is a sensitive mutation: it additionally requires fresh password confirmation.
+        $this->withSession(['sensitive_auth_at' => time()])->actingAs($admin)->post("/platform/tenants/{$tenant->id}/impersonate", ['target_user_id' => $owner->id])->assertRedirect('/dashboard');
         $this->assertDatabaseHas('audit_logs', ['action' => 'impersonation.started', 'tenant_id' => $tenant->id]);
         $this->assertDatabaseHas('impersonation_sessions', ['tenant_id' => $tenant->id, 'platform_user_id' => $admin->id]);
     }

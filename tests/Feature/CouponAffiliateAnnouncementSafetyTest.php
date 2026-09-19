@@ -84,7 +84,8 @@ class CouponAffiliateAnnouncementSafetyTest extends TestCase
             'subject' => 'Maintenance', 'body' => 'Downtime', 'audience' => 'trial', 'channel' => 'in-app',
         ]);
 
-        $this->actingAs($admin)->post("/platform/announcements/{$announcement->id}/send")
+        // Announcement broadcast is a sensitive mutation: fresh password confirmation required.
+        $this->withSession(['sensitive_auth_at' => time()])->actingAs($admin)->post("/platform/announcements/{$announcement->id}/send")
             ->assertRedirect()
             ->assertSessionHas('status');
         $this->assertSame(1, DB::table('announcement_deliveries')->where('announcement_id', $announcement->id)->count());
@@ -99,7 +100,7 @@ class CouponAffiliateAnnouncementSafetyTest extends TestCase
         $this->assertSame('sent', DB::table('announcement_deliveries')->value('status'));
 
         // Resending never duplicates deliveries (updateOrInsert), it only re-queues the same row.
-        $this->actingAs($admin)->post("/platform/announcements/{$announcement->id}/send")->assertRedirect();
+        $this->withSession(['sensitive_auth_at' => time()])->actingAs($admin)->post("/platform/announcements/{$announcement->id}/send")->assertRedirect();
         $this->assertSame(1, DB::table('announcement_deliveries')->where('announcement_id', $announcement->id)->count());
         $this->artisan('notifications:send-pending')->expectsOutputToContain('1 notifikasi diproses.')->assertExitCode(0);
         // Idle drain is a no-op: nothing queued remains.
