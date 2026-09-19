@@ -208,21 +208,89 @@ class PurchasingWorkspaceController extends Controller
         $data = $request->validate([
             'purchase_line_id' => ['required_without:lines', 'integer'], 'quantity' => ['required_without:lines', 'numeric', 'gt:0'],
             'inventory_batch_id' => ['nullable', 'integer'], 'warehouse_location_id' => ['nullable', 'integer'],
+            'serial_number_id' => ['nullable', 'integer'],
             'lines' => ['nullable', 'array', 'min:1'],
             'lines.*.purchase_line_id' => ['required_with:lines', 'integer'],
             'lines.*.quantity' => ['required_with:lines', 'numeric', 'gt:0'],
             'lines.*.inventory_batch_id' => ['nullable', 'integer'],
             'lines.*.warehouse_location_id' => ['nullable', 'integer'],
+            'lines.*.serial_number_id' => ['nullable', 'integer'],
             'reason' => ['required', 'string', 'max:1000'], 'settlement_type' => ['required', 'in:supplier_credit,cash_refund,replacement'],
+            'idempotency_key' => ['nullable', 'string', 'max:128'],
+            'tax' => ['nullable', 'numeric', 'min:0'], 'discount' => ['nullable', 'numeric', 'min:0'],
         ]);
         $lines = $data['lines'] ?? [[
             'purchase_line_id' => $data['purchase_line_id'], 'quantity' => $data['quantity'],
             'inventory_batch_id' => $data['inventory_batch_id'] ?? null,
             'warehouse_location_id' => $data['warehouse_location_id'] ?? null,
+            'serial_number_id' => $data['serial_number_id'] ?? null,
         ]];
-        $service->createReturn($purchase, $lines, $data['reason'], $data['settlement_type'], $request->user()->id);
+        $service->createReturn(
+            $purchase, $lines, $data['reason'], $data['settlement_type'], $request->user()->id,
+            $data['idempotency_key'] ?? null, (float) ($data['tax'] ?? 0), (float) ($data['discount'] ?? 0)
+        );
 
         return back()->with('status', 'Purchase return berhasil diposting.');
+    }
+
+    public function storeDraftReturn(Request $request, Purchase $purchase, SupplierDocumentService $service): RedirectResponse
+    {
+        abort_unless($request->user()->can('purchase.create'), 403);
+        $this->assertTenant($purchase->tenant_id);
+        $data = $request->validate([
+            'lines' => ['required', 'array', 'min:1'],
+            'lines.*.purchase_line_id' => ['required', 'integer'],
+            'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'lines.*.inventory_batch_id' => ['nullable', 'integer'],
+            'lines.*.warehouse_location_id' => ['nullable', 'integer'],
+            'lines.*.serial_number_id' => ['nullable', 'integer'],
+            'reason' => ['required', 'string', 'max:1000'], 'settlement_type' => ['required', 'in:supplier_credit,cash_refund,replacement'],
+            'idempotency_key' => ['nullable', 'string', 'max:128'],
+            'tax' => ['nullable', 'numeric', 'min:0'], 'discount' => ['nullable', 'numeric', 'min:0'],
+        ]);
+        $return = $service->createDraft(
+            $purchase, $data['lines'], $data['reason'], $data['settlement_type'], $request->user()->id,
+            $data['idempotency_key'] ?? null, (float) ($data['tax'] ?? 0), (float) ($data['discount'] ?? 0)
+        );
+
+        return redirect()->route('purchasing.returns.show', $return)->with('status', 'Purchase return draft disimpan.');
+    }
+
+    public function showReturn(Request $request, PurchaseReturn $purchaseReturn): View
+    {
+        abort_unless($request->user()->can('purchase.create') || $request->user()->can('purchase.approve'), 403);
+        $this->assertTenant($purchaseReturn->tenant_id);
+
+        return view('purchasing.return-show', [
+            'purchaseReturn' => $purchaseReturn->load(['purchase.contact', 'purchase.warehouse', 'lines.variant.product', 'lines.batch', 'lines.warehouseLocation']),
+        ]);
+    }
+
+    public function submitReturn(Request $request, PurchaseReturn $purchaseReturn, SupplierDocumentService $service): RedirectResponse
+    {
+        abort_unless($request->user()->can('purchase.create'), 403);
+        $this->assertTenant($purchaseReturn->tenant_id);
+        $service->submitReturn($purchaseReturn, $request->user()->id);
+
+        return back()->with('status', 'Purchase return dikirim untuk approval.');
+    }
+
+    public function approveReturn(Request $request, PurchaseReturn $purchaseReturn, SupplierDocumentService $service): RedirectResponse
+    {
+        abort_unless($request->user()->can('purchase.approve'), 403);
+        $this->assertTenant($purchaseReturn->tenant_id);
+        $service->approveReturn($purchaseReturn, $request->user()->id);
+
+        return back()->with('status', 'Purchase return disetujui.');
+    }
+
+    public function postReturn(Request $request, PurchaseReturn $purchaseReturn, SupplierDocumentService $service): RedirectResponse
+    {
+        abort_unless($request->user()->can('purchase.approve'), 403);
+        $this->assertTenant($purchaseReturn->tenant_id);
+        $service->postReturn($purchaseReturn, $request->user()->id);
+
+        return back()->with('status', 'Purchase return diposting dan tidak dapat diubah.');
     }
 
     private function authorizeView(Request $request): void

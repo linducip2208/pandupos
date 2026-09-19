@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
+use App\Models\PurchaseReturn;
 use App\Models\SupplierInvoice;
 use App\Services\PurchaseService;
 use App\Services\SupplierDocumentService;
@@ -103,8 +104,60 @@ class PurchaseController extends Controller
             'settlement_type' => ['required', 'in:supplier_credit,cash_refund,replacement'],
             'lines' => ['required', 'array', 'min:1'], 'lines.*.purchase_line_id' => ['required', 'integer'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'lines.*.inventory_batch_id' => ['nullable', 'integer'],
+            'lines.*.warehouse_location_id' => ['nullable', 'integer'],
+            'lines.*.serial_number_id' => ['nullable', 'integer'],
+            'idempotency_key' => ['nullable', 'string', 'max:128'],
+            'tax' => ['nullable', 'numeric', 'min:0'], 'discount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        return response()->json($service->createReturn($purchase, $data['lines'], $data['reason'], $data['settlement_type'], $request->user()->id), 201);
+        return response()->json($service->createReturn(
+            $purchase, $data['lines'], $data['reason'], $data['settlement_type'], $request->user()->id,
+            $data['idempotency_key'] ?? $request->header('Idempotency-Key'),
+            (float) ($data['tax'] ?? 0), (float) ($data['discount'] ?? 0)
+        ), 201);
+    }
+
+    public function storeDraftReturn(Request $request, Purchase $purchase, SupplierDocumentService $service)
+    {
+        abort_unless($request->user()->can('purchase.create'), 403);
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:1000'],
+            'settlement_type' => ['required', 'in:supplier_credit,cash_refund,replacement'],
+            'lines' => ['required', 'array', 'min:1'], 'lines.*.purchase_line_id' => ['required', 'integer'],
+            'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'lines.*.inventory_batch_id' => ['nullable', 'integer'],
+            'lines.*.warehouse_location_id' => ['nullable', 'integer'],
+            'lines.*.serial_number_id' => ['nullable', 'integer'],
+            'idempotency_key' => ['nullable', 'string', 'max:128'],
+            'tax' => ['nullable', 'numeric', 'min:0'], 'discount' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        return response()->json($service->createDraft(
+            $purchase, $data['lines'], $data['reason'], $data['settlement_type'], $request->user()->id,
+            $data['idempotency_key'] ?? $request->header('Idempotency-Key'),
+            (float) ($data['tax'] ?? 0), (float) ($data['discount'] ?? 0)
+        ), 201);
+    }
+
+    public function submitDraftReturn(Request $request, PurchaseReturn $purchaseReturn, SupplierDocumentService $service)
+    {
+        abort_unless($request->user()->can('purchase.create'), 403);
+
+        return response()->json($service->submitReturn($purchaseReturn, $request->user()->id)->load('lines'));
+    }
+
+    public function approveDraftReturn(Request $request, PurchaseReturn $purchaseReturn, SupplierDocumentService $service)
+    {
+        abort_unless($request->user()->can('purchase.approve'), 403);
+
+        return response()->json($service->approveReturn($purchaseReturn, $request->user()->id)->load('lines'));
+    }
+
+    public function postDraftReturn(Request $request, PurchaseReturn $purchaseReturn, SupplierDocumentService $service)
+    {
+        abort_unless($request->user()->can('purchase.approve'), 403);
+
+        return response()->json($service->postReturn($purchaseReturn, $request->user()->id)->load('lines'));
     }
 }

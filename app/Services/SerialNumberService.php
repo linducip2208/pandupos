@@ -231,11 +231,12 @@ final class SerialNumberService
     {
         $allowed = [
             'received' => ['available', 'damaged'],
-            'available' => ['sold', 'damaged', 'transferred'],
+            'available' => ['sold', 'damaged', 'transferred', 'returned_to_supplier'],
             'sold' => ['returned'],
-            'returned' => ['available', 'damaged'],
+            'returned' => ['available', 'damaged', 'returned_to_supplier'],
             'transferred' => ['available', 'damaged'],
             'damaged' => [],
+            'returned_to_supplier' => [],
         ];
 
         return DB::transaction(function () use ($tenantId, $serialNumberId, $status, $warehouseId, $allowed) {
