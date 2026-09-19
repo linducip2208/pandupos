@@ -58,7 +58,7 @@ CI being green proves the checked pipeline, not product parity or production rea
 | Purchase request | Approval foundation only | None | None | None | N/A | None | Target only | MISSING |
 | Invoice/payment | Atomic checkout, lines, split payments | Basic POS/portal | Partial | Void gate | Checked | Partial | Present | PARTIAL |
 | Quotation/proforma/order/delivery/recurring | Audited quotation/proforma, sales order reservation, and partial delivery | None | Quotation lifecycle plus order create/confirm/deliver/cancel | `sales.view`/`sales.create` | Checked | Non-posting, duplicate conversion, reservation and 2+4 partial delivery | Partial | PARTIAL |
-| Register | Cash-session schema | No open/count/close flow | None | None | Model scoped | None | Target only | PARTIAL |
+| Register | Locked cash-session, movement and sale-settlement service | Tenant workspace for register lifecycle, opening cash, cash-in/out, denomination count, expected/actual close and variance | Register workspace routes + POS session selector | `register.manage`, `register.open`, `register.close` | Tenant-scoped register/session lookup; POS only accepts cashier-owned open session | `RegisterSessionWorkflowTest` proves one active session, RBAC, audit, closure idempotency and cross-tenant rejection | Workspace and domain contract | DONE |
 | Hold/cash movement/Z report | None | None | None | None | N/A | None | Reference only | MISSING |
 | Discounts/tax | Line discount arithmetic and columns | Basic inputs | Partial | No override policy | Checked | Limited | Target only | PARTIAL |
 | Receipts | Portal A4 invoice PDF only | PDF view | Download | Customer ownership | Checked | Portal test | Partial | PARTIAL |
@@ -91,7 +91,7 @@ Accounting and CRM may appear as registry/entitlement names, but no complete mod
 
 | Dimension | Current | Why it is not 100% |
 |---|---:|---|
-| Core parity | 69% | Product, units, barcode, pricing, bundle, batch/expiry/FEFO, rack/bin, reservation, serial lifecycle, WAC, adjustment, stock count, reconciliation, transfer, receipt, supplier invoice/payment, purchasing safety, quotation, sales order, reports and exports have independently verified gates; purchasing UI/return, delivery/invoice/payment, POS, register, dashboard and API remain incomplete |
+| Core parity | 95% | Product, units, barcode, pricing, bundle, batch/expiry/FEFO, rack/bin, reservation, serial lifecycle, WAC, adjustment, stock count, reconciliation, transfer, PO UI/lifecycle, receipt, supplier invoice/payment, purchasing safety, quotation, sales order, reservation-to-delivery, invoice/payment, POS, register, reports, dashboard, exports and current core API protections have independently verified gates; purchase return and return/void/refund remain incomplete |
 | SaaS parity | 27% | Tenant lifecycle and plan/entitlement foundations exist; limits, billing, gateways, affiliate, domains and renewal automation remain partial |
 | Addon parity | 1% | Requested addons do not meet the completeness rule |
 | Test readiness | 60% | Existing regression suite is green; browser E2E, full concurrency, security and recovery matrices remain incomplete |

@@ -5,15 +5,15 @@ namespace App\Models;
 use App\Support\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
-class SalesReturn extends Model
+class SaleRefund extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'sales_invoice_id', 'total', 'status', 'reason', 'created_by'];
+    protected $fillable = ['tenant_id', 'sales_invoice_id', 'sales_return_id', 'amount', 'method', 'reference', 'reason', 'created_by', 'refunded_at'];
 
     protected function casts(): array
     {
-        return ['total' => 'decimal:2'];
+        return ['amount' => 'decimal:2', 'refunded_at' => 'datetime'];
     }
 
     public function invoice()
@@ -21,14 +21,9 @@ class SalesReturn extends Model
         return $this->belongsTo(SalesInvoice::class, 'sales_invoice_id');
     }
 
-    public function lines()
+    public function salesReturn()
     {
-        return $this->hasMany(SalesReturnLine::class);
-    }
-
-    public function refunds()
-    {
-        return $this->hasMany(SaleRefund::class);
+        return $this->belongsTo(SalesReturn::class);
     }
 
     public function creator()

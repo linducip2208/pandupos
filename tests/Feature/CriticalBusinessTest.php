@@ -107,9 +107,10 @@ class CriticalBusinessTest extends TestCase
 
         $manager = User::factory()->create();
         $manager->givePermissionTo('pos.sale.void');
-        $ss->void($inv->id, $manager->can('pos.sale.void'));
+        $ss->void($inv->id, $manager->can('pos.sale.void'), null, 'Barang tidak jadi dikirim');
         // 10 - 3 + 1 = 8, void restores net sold (3-1=2) => 10. No double-restore.
         $this->assertEquals(10, app(StockService::class)->onHand($t->id, $w->id, $v->id));
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $t->id, 'action' => 'sale.void.posted']);
     }
 
     public function test_duplicate_idempotency_creates_one_sale(): void

@@ -28,9 +28,9 @@ class PriceListWorkspaceTest extends TestCase
         $tenant = app(TenantProvisioningService::class)->provision('Price Tenant', $owner);
         $owner->forceFill(['current_tenant_id' => $tenant->id])->save();
         $unit = Unit::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'Piece', 'short_name' => 'pcs']);
-        $product = Product::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'Produk VIP', 'unit_id' => $unit->id]);
+        $product = Product::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'Produk VIP', 'barcode' => '8990001112223', 'unit_id' => $unit->id]);
         $variant = ProductVariant::withoutGlobalScopes()->create([
-            'tenant_id' => $tenant->id, 'product_id' => $product->id, 'name' => 'Default', 'sku' => 'VIP-1', 'sell_price' => 12000,
+            'tenant_id' => $tenant->id, 'product_id' => $product->id, 'name' => 'Default', 'sku' => 'VIP-1', 'barcode' => '8990001113334', 'sell_price' => 12000,
         ]);
         $group = CustomerGroup::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'VIP']);
         $customer = Contact::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'type' => 'customer', 'name' => 'Budi']);
@@ -56,8 +56,12 @@ class PriceListWorkspaceTest extends TestCase
         TenantContext::set($tenant);
         Livewire::actingAs($owner)->test(PosKasir::class)
             ->set('customerId', $customer->id)
-            ->call('addToCart', $variant->id, $product->name, $unit->id, 'pcs')
+            ->call('addToCart', $variant->id, $product->name, $unit->id, 'pcs', 0, 'exclusive')
             ->assertSet('cart.0.price', 9000.0)
             ->assertSet('cart.0.price_source', 'VIP Prioritas');
+
+        Livewire::actingAs($owner)->test(PosKasir::class)
+            ->set('search', '8990001113334')
+            ->assertSee('Produk VIP');
     }
 }

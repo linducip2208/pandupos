@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\EntitlementService;
 use App\Services\ReportService;
 use App\Services\UsageLimitService;
@@ -13,6 +14,7 @@ class DashboardController extends Controller
 {
     public function index(Request $request, ReportService $reports, UsageLimitService $usage, EntitlementService $entitlements)
     {
+        abort_unless($request->user() instanceof User, 403, 'Staff session required.');
         $tenant = TenantContext::get() ?? $request->user()->currentTenant;
         $from = now()->startOfMonth()->toDateString();
         $to = now()->toDateString();

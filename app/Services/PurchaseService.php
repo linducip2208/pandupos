@@ -26,7 +26,7 @@ final class PurchaseService
         private SerialNumberService $serials,
     ) {}
 
-    public function createDraft(int $tenantId, int $warehouseId, int $contactId, array $lines, ?int $actorId = null): Purchase
+    public function createDraft(int $tenantId, int $warehouseId, int $contactId, array $lines, ?int $actorId = null, bool $keepDraft = false): Purchase
     {
         // Validate tenant ownership of all references (prevent IDOR, mirrors SaleService).
         abort_unless(Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $warehouseId)->exists(), 422, 'Warehouse does not belong to tenant.');
@@ -38,8 +38,20 @@ final class PurchaseService
             }
         }
 
-        return DB::transaction(function () use ($tenantId, $warehouseId, $contactId, $lines, $actorId) {
+        return DB::transaction(function () use ($tenantId, $warehouseId, $contactId, $lines, $actorId, $keepDraft) {
             $total = collect($lines)->sum(fn ($l) => $l['quantity'] * $l['unit_cost']);
+            if ($keepDraft) {
+                $purchase = Purchase::withoutGlobalScopes()->create([
+                    'tenant_id' => $tenantId, 'warehouse_id' => $warehouseId, 'contact_id' => $contactId,
+                    'status' => 'draft', 'requested_by' => $actorId, 'total' => $total,
+                ]);
+                foreach ($lines as $line) {
+                    $purchase->lines()->create($line);
+                }
+                $this->audit->log($tenantId, $actorId, 'purchase.order.drafted', Purchase::class, $purchase->id, null, $purchase->load('lines')->toArray());
+
+                return $purchase;
+            }
             $managerThreshold = (float) SystemSetting::scalar($tenantId, 'purchase_manager_approval_threshold', 0);
             $ownerThreshold = (float) SystemSetting::scalar($tenantId, 'purchase_owner_approval_threshold', 0);
             $approvalLevel = $ownerThreshold > 0 && $total >= $ownerThreshold
@@ -63,6 +75,65 @@ final class PurchaseService
             $this->audit->log($tenantId, $actorId, 'purchase.order.created', Purchase::class, $purchase->id, null, $purchase->load('lines')->toArray());
 
             return $purchase;
+        });
+    }
+
+    public function updateDraft(Purchase $purchase, int $warehouseId, int $contactId, array $lines, int $actorId): Purchase
+    {
+        return DB::transaction(function () use ($purchase, $warehouseId, $contactId, $lines, $actorId) {
+            $locked = Purchase::withoutGlobalScopes()->where('tenant_id', $purchase->tenant_id)->lockForUpdate()->findOrFail($purchase->id);
+            abort_unless($locked->status === 'draft' && $locked->requested_by === $actorId, 422, 'Only an unsubmitted PO draft owned by the requester can be edited.');
+            abort_unless(Warehouse::withoutGlobalScopes()->where('tenant_id', $locked->tenant_id)->whereKey($warehouseId)->exists(), 422, 'Warehouse does not belong to tenant.');
+            abort_unless(Contact::withoutGlobalScopes()->where('tenant_id', $locked->tenant_id)->whereKey($contactId)->exists(), 422, 'Supplier does not belong to tenant.');
+            abort_if($lines === [], 422, 'Purchase order requires at least one line.');
+            foreach ($lines as $line) {
+                abort_unless(ProductVariant::withoutGlobalScopes()->where('tenant_id', $locked->tenant_id)->whereKey($line['product_variant_id'])->exists(), 422, 'Variant does not belong to tenant.');
+                abort_if(($line['quantity'] ?? 0) <= 0, 422, 'Line quantity must be greater than zero.');
+            }
+            $before = $locked->load('lines')->toArray();
+            $locked->lines()->delete();
+            foreach ($lines as $line) {
+                $locked->lines()->create($line);
+            }
+            $locked->update(['warehouse_id' => $warehouseId, 'contact_id' => $contactId, 'total' => collect($lines)->sum(fn ($line) => $line['quantity'] * $line['unit_cost'])]);
+            $this->audit->log($locked->tenant_id, $actorId, 'purchase.order.draft_updated', Purchase::class, $locked->id, $before, $locked->fresh('lines')->toArray());
+
+            return $locked->fresh('lines');
+        });
+    }
+
+    public function submitDraft(Purchase $purchase, int $actorId): Purchase
+    {
+        return DB::transaction(function () use ($purchase, $actorId) {
+            $locked = Purchase::withoutGlobalScopes()->where('tenant_id', $purchase->tenant_id)->lockForUpdate()->findOrFail($purchase->id);
+            abort_unless($locked->status === 'draft' && $locked->requested_by === $actorId, 422, 'Only the requester may submit this PO draft.');
+            $managerThreshold = (float) SystemSetting::scalar($locked->tenant_id, 'purchase_manager_approval_threshold', 0);
+            $ownerThreshold = (float) SystemSetting::scalar($locked->tenant_id, 'purchase_owner_approval_threshold', 0);
+            $level = $ownerThreshold > 0 && (float) $locked->total >= $ownerThreshold ? 'owner' : ($managerThreshold > 0 && (float) $locked->total >= $managerThreshold ? 'manager' : null);
+            $before = $locked->toArray();
+            $locked->update(['status' => $level ? 'pending_approval' : 'ordered', 'approval_level' => $level]);
+            if ($level) {
+                ApprovalRequest::withoutGlobalScopes()->create(['tenant_id' => $locked->tenant_id, 'subject_type' => 'purchase_order', 'subject_id' => $locked->id, 'amount' => $locked->total, 'status' => 'pending', 'requested_by' => $actorId, 'metadata' => ['required_level' => $level]]);
+            }
+            $this->audit->log($locked->tenant_id, $actorId, 'purchase.order.submitted', Purchase::class, $locked->id, $before, $locked->fresh()->toArray());
+
+            return $locked->fresh();
+        });
+    }
+
+    public function cancel(Purchase $purchase, int $actorId): Purchase
+    {
+        return DB::transaction(function () use ($purchase, $actorId) {
+            $locked = Purchase::withoutGlobalScopes()->where('tenant_id', $purchase->tenant_id)->lockForUpdate()->findOrFail($purchase->id);
+            abort_unless(in_array($locked->status, ['draft', 'ordered', 'pending_approval'], true), 422, 'Only unreceived purchase orders can be cancelled.');
+            abort_unless($locked->requested_by === $actorId, 403, 'Only the requester may cancel this purchase order.');
+            abort_if((float) $locked->lines()->sum('received_quantity') > 0, 422, 'Purchase order with received stock cannot be cancelled.');
+            $before = $locked->toArray();
+            $locked->update(['status' => 'cancelled']);
+            ApprovalRequest::withoutGlobalScopes()->where('tenant_id', $locked->tenant_id)->where('subject_type', 'purchase_order')->where('subject_id', $locked->id)->where('status', 'pending')->update(['status' => 'cancelled', 'decided_by' => $actorId, 'decided_at' => now(), 'reason' => 'PO cancelled by requester']);
+            $this->audit->log($locked->tenant_id, $actorId, 'purchase.order.cancelled', Purchase::class, $locked->id, $before, $locked->fresh()->toArray());
+
+            return $locked->fresh();
         });
     }
 

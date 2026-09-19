@@ -33,13 +33,13 @@ final class SaleService
      */
     public function checkout(
         int $tenantId, int $branchId, int $warehouseId, ?int $contactId,
-        array $lines, array $payments, string $idempotencyKey, ?int $cashSessionId = null,
+        array $lines, array $payments, string $idempotencyKey, ?int $cashSessionId = null, float $tax = 0,
     ): SalesInvoice {
         abort_if(trim($idempotencyKey) === '', 422, 'Idempotency-Key required.');
         // Sort lines for deterministic lock order (prevents deadlock on multi-variant checkout).
         $lines = collect($lines)->sortBy('variant_id')->values()->all();
         try {
-            return DB::transaction(function () use ($tenantId, $branchId, $warehouseId, $contactId, $lines, $payments, $idempotencyKey, $cashSessionId) {
+            return DB::transaction(function () use ($tenantId, $branchId, $warehouseId, $contactId, $lines, $payments, $idempotencyKey, $cashSessionId, $tax) {
                 // Idempotency: same key returns existing invoice, never duplicates.
                 $existing = SalesInvoice::withoutGlobalScopes()
                     ->where('tenant_id', $tenantId)->where('idempotency_key', $idempotencyKey)->first();
@@ -57,6 +57,7 @@ final class SaleService
                     $session = CashSession::withoutGlobalScopes()->lockForUpdate()
                         ->where('tenant_id', $tenantId)->where('status', 'open')->findOrFail($cashSessionId);
                     abort_unless($session->register?->branch_id === null || $session->register?->branch_id === $branchId, 422, 'Register session does not belong to the sale branch.');
+                    abort_unless($session->opened_by === auth()->id(), 403, 'Only the cashier who opened the register session may post to it.');
                 }
                 foreach ($lines as $l) {
                     abort_unless(ProductVariant::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('id', $l['variant_id'])->exists(), 422, 'Variant does not belong to tenant.');
@@ -69,23 +70,27 @@ final class SaleService
                     }
                 }
 
-                $subtotal = collect($lines)->sum(fn ($l) => $l['quantity'] * $l['unit_price'] - ($l['discount'] ?? 0));
+                $subtotal = round((float) collect($lines)->sum(fn ($line) => (float) $line['quantity'] * (float) $line['unit_price']), 2);
+                $discount = round((float) collect($lines)->sum(fn ($line) => (float) ($line['discount'] ?? 0)), 2);
+                $tax = round($tax, 2);
+                abort_if($discount < 0 || $discount > $subtotal || $tax < 0, 422, 'Discount and tax values are invalid.');
+                $total = round($subtotal - $discount + $tax, 2);
                 $paid = collect($payments)->sum(fn ($p) => $p['amount']);
 
-                if (abs($paid - $subtotal) > 0.01) {
-                    abort(422, "Split payment total ({$paid}) must equal invoice total ({$subtotal}).");
+                if (abs($paid - $total) > 0.01) {
+                    abort(422, "Split payment total ({$paid}) must equal invoice total ({$total}).");
                 }
 
-                $requiresApproval = $this->approvals->requiresApproval($tenantId, (float) $subtotal);
+                $requiresApproval = $this->approvals->requiresApproval($tenantId, $total);
 
                 $invoice = SalesInvoice::withoutGlobalScopes()->create([
                     'uuid' => (string) Str::uuid(),
                     'tenant_id' => $tenantId, 'branch_id' => $branchId, 'warehouse_id' => $warehouseId,
                     'contact_id' => $contactId, 'cash_session_id' => $cashSessionId, 'invoice_no' => 'S-'.now()->format('YmdHis').'-'.Str::upper(Str::random(4)),
                     'status' => $requiresApproval ? 'pending_approval' : 'final',
-                    'payment_status' => $requiresApproval ? 'unpaid' : ($paid > 0 ? ($paid < $subtotal - 0.01 ? 'partial' : 'paid') : 'unpaid'),
+                    'payment_status' => $requiresApproval ? 'unpaid' : ($paid > 0 ? ($paid < $total - 0.01 ? 'partial' : 'paid') : 'unpaid'),
                     'fulfillment_status' => $requiresApproval ? 'pending' : 'fulfilled',
-                    'subtotal' => $subtotal, 'total' => $subtotal,
+                    'subtotal' => $subtotal, 'discount' => $discount, 'tax' => $tax, 'total' => $total,
                     'idempotency_key' => $idempotencyKey,
                 ]);
 
@@ -146,11 +151,11 @@ final class SaleService
         }
     }
 
-    public function void(int $invoiceId, bool $canVoid, ?int $tenantId = null): void
+    public function void(int $invoiceId, bool $canVoid, ?int $tenantId = null, ?string $reason = null): void
     {
         abort_unless($canVoid, 403, 'Unauthorized to void sale.');
 
-        DB::transaction(function () use ($invoiceId, $tenantId) {
+        DB::transaction(function () use ($invoiceId, $tenantId, $reason) {
             $tenantId ??= TenantContext::id();
             $q = SalesInvoice::withoutGlobalScopes()->lockForUpdate();
             if ($tenantId !== null) {
@@ -187,7 +192,10 @@ final class SaleService
                 $this->restoreSoldInventory($invoice, (int) $line->product_variant_id, $toRestore, 'sale_void');
             }
             $invoice->update(['status' => 'void']);
-            $this->audit->log($invoice->tenant_id, auth()->id(), 'sale.void.posted', SalesInvoice::class, $invoice->id, ['status' => 'final'], ['status' => 'void']);
+            $this->audit->log($invoice->tenant_id, auth()->id(), 'sale.void.posted', SalesInvoice::class, $invoice->id, ['status' => 'final'], [
+                'status' => 'void',
+                'reason' => filled($reason) ? trim($reason) : 'Direct service invocation',
+            ]);
         });
     }
 

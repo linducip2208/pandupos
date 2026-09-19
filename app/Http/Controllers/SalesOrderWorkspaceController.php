@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Contact;
 use App\Models\ProductVariant;
+use App\Models\SalesInvoice;
 use App\Models\SalesOrder;
 use App\Models\Unit;
 use App\Models\Warehouse;
@@ -26,7 +27,7 @@ class SalesOrderWorkspaceController extends Controller
             'customers' => Contact::query()->whereIn('type', ['customer', 'both'])->orderBy('name')->get(),
             'variants' => ProductVariant::query()->with('product.unit')->where('is_active', true)->orderBy('sku')->get(),
             'units' => Unit::query()->where('is_active', true)->orderBy('name')->get(),
-            'orders' => SalesOrder::query()->with(['contact', 'lines.variant.product.unit'])->latest()->limit(30)->get(),
+            'orders' => SalesOrder::query()->with(['contact', 'invoice.payments', 'lines.variant.product.unit'])->latest()->limit(30)->get(),
         ]);
     }
 
@@ -86,6 +87,29 @@ class SalesOrderWorkspaceController extends Controller
         $service->cancel($order, $request->user()->id);
 
         return back()->with('status', "Sales Order {$order->order_no} dibatalkan dan reservasi aktif dilepas.");
+    }
+
+    public function invoice(Request $request, SalesOrder $order, SalesOrderService $service): RedirectResponse
+    {
+        abort_unless($request->user()->can('sales.create'), 403);
+        $this->assertTenant($order);
+        $invoice = $service->invoice($order, $request->user()->id);
+
+        return back()->with('status', "Invoice {$invoice->invoice_no} dibuat tanpa mutasi stok tambahan.");
+    }
+
+    public function payInvoice(Request $request, SalesInvoice $invoice, SalesOrderService $service): RedirectResponse
+    {
+        abort_unless($request->user()->can('sales.create'), 403);
+        abort_unless($invoice->tenant_id === TenantContext::idOrFail(), 404);
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'method' => ['required', 'in:cash,transfer,qris,ewallet,card,other'],
+            'reference' => ['nullable', 'string', 'max:120'],
+        ]);
+        $service->payInvoice($invoice, (float) $data['amount'], $data['method'], $data['reference'] ?? null, $request->user()->id);
+
+        return back()->with('status', 'Pembayaran invoice berhasil dicatat.');
     }
 
     private function assertTenant(SalesOrder $order): void

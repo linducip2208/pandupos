@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PurchaseReturnLine extends Model
 {
-    protected $fillable = ['purchase_return_id', 'purchase_line_id', 'product_variant_id', 'quantity', 'unit_cost', 'line_total'];
+    protected $fillable = ['purchase_return_id', 'purchase_line_id', 'product_variant_id', 'inventory_batch_id', 'warehouse_location_id', 'quantity', 'unit_cost', 'line_total'];
 
     protected function casts(): array
     {
@@ -26,5 +26,15 @@ class PurchaseReturnLine extends Model
     public function variant()
     {
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
+    public function batch()
+    {
+        return $this->belongsTo(InventoryBatch::class, 'inventory_batch_id');
+    }
+
+    public function warehouseLocation()
+    {
+        return $this->belongsTo(WarehouseLocation::class);
     }
 }

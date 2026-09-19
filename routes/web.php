@@ -31,8 +31,8 @@ use App\Http\Controllers\PriceListWorkspaceController;
 use App\Http\Controllers\ProductMasterController;
 use App\Http\Controllers\ProgrammaticSeoController;
 use App\Http\Controllers\PurchasingWorkspaceController;
-use App\Http\Controllers\ReportPageController;
 use App\Http\Controllers\RegisterWorkspaceController;
+use App\Http\Controllers\ReportPageController;
 use App\Http\Controllers\SalesDocumentWorkspaceController;
 use App\Http\Controllers\SalesOrderWorkspaceController;
 use App\Http\Controllers\SerialWorkspaceController;
@@ -141,6 +141,8 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/', [SalesOrderWorkspaceController::class, 'store'])->name('store');
         Route::post('/{order}/confirm', [SalesOrderWorkspaceController::class, 'confirm'])->name('confirm');
         Route::post('/{order}/deliver', [SalesOrderWorkspaceController::class, 'deliver'])->name('deliver');
+        Route::post('/{order}/invoice', [SalesOrderWorkspaceController::class, 'invoice'])->name('invoice');
+        Route::post('/invoices/{invoice}/payments', [SalesOrderWorkspaceController::class, 'payInvoice'])->name('invoices.payments.store');
         Route::post('/{order}/cancel', [SalesOrderWorkspaceController::class, 'cancel'])->name('cancel');
     });
     Route::prefix('sales-documents')->name('sales-documents.')->middleware(['entitlement:sales.access', 'module:sales'])->group(function () {
@@ -183,8 +185,15 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     });
     Route::prefix('purchasing')->name('purchasing.')->middleware(['entitlement:purchase.access', 'module:purchasing'])->group(function () {
         Route::get('/', [PurchasingWorkspaceController::class, 'index'])->name('index');
+        Route::get('/orders/create', [PurchasingWorkspaceController::class, 'createPurchase'])->name('orders.create');
         Route::post('/orders', [PurchasingWorkspaceController::class, 'storePurchase'])->name('orders.store');
+        Route::get('/orders/{purchase}/edit', [PurchasingWorkspaceController::class, 'editPurchase'])->name('orders.edit');
+        Route::put('/orders/{purchase}', [PurchasingWorkspaceController::class, 'updatePurchase'])->name('orders.update');
+        Route::post('/orders/{purchase}/submit', [PurchasingWorkspaceController::class, 'submitPurchase'])->name('orders.submit');
+        Route::post('/orders/{purchase}/cancel', [PurchasingWorkspaceController::class, 'cancelPurchase'])->name('orders.cancel');
+        Route::get('/orders/{purchase}/print', [PurchasingWorkspaceController::class, 'printPurchase'])->name('orders.print');
         Route::post('/orders/{purchase}/receive', [PurchasingWorkspaceController::class, 'receive'])->name('orders.receive');
+        Route::get('/orders/{purchase}/returns/create', [PurchasingWorkspaceController::class, 'createReturn'])->name('returns.create');
         Route::post('/orders/{purchase}/returns', [PurchasingWorkspaceController::class, 'storeReturn'])->name('returns.store');
         Route::post('/invoices', [PurchasingWorkspaceController::class, 'storeInvoice'])->name('invoices.store');
         Route::get('/invoices/{invoice}/print', [PurchasingWorkspaceController::class, 'printInvoice'])->name('invoices.print');

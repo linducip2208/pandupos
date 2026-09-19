@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\Contact;
+use App\Models\InventoryBatch;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Models\WarehouseLocation;
 use App\Services\PurchaseService;
 use App\Services\StockService;
 use App\Services\SupplierDocumentService;
@@ -77,6 +79,60 @@ class SupplierDocumentTest extends TestCase
         $service->createReturn($purchase, [[
             'purchase_line_id' => $line->id, 'quantity' => 5,
         ]], 'Melebihi sisa diterima', 'supplier_credit', $owner->id);
+    }
+
+    public function test_purchase_return_preserves_batch_and_rack_trace_and_rejects_foreign_trace(): void
+    {
+        [$tenant, $owner, $warehouse, $supplier, $variant] = $this->context();
+        $location = WarehouseLocation::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'code' => 'RET-A-01', 'is_active' => true,
+        ]);
+        $purchase = app(PurchaseService::class)->createDraft($tenant->id, $warehouse->id, $supplier->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 5, 'unit_cost' => 100,
+        ]]);
+        app(PurchaseService::class)->receive($purchase->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 5, 'batch_number' => 'RET-BATCH-1',
+            'warehouse_location_id' => $location->id,
+        ]], $tenant->id, $owner->id);
+        $line = $purchase->lines()->firstOrFail();
+        $batch = InventoryBatch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('batch_number', 'RET-BATCH-1')->firstOrFail();
+
+        $return = app(SupplierDocumentService::class)->createReturn($purchase, [[
+            'purchase_line_id' => $line->id, 'quantity' => 2, 'inventory_batch_id' => $batch->id,
+            'warehouse_location_id' => $location->id,
+        ]], 'Barang rusak dari batch penerimaan', 'supplier_credit', $owner->id);
+
+        $this->assertDatabaseHas('purchase_return_lines', [
+            'purchase_return_id' => $return->id, 'inventory_batch_id' => $batch->id,
+            'warehouse_location_id' => $location->id, 'quantity' => 2,
+        ]);
+        $this->assertSame(3.0, app(StockService::class)->onHandByBatch($tenant->id, $warehouse->id, $variant->id, $batch->id));
+        $this->assertSame(3.0, app(StockService::class)->onHandAtLocation($tenant->id, $warehouse->id, $variant->id, $location->id));
+
+        $foreignBatch = InventoryBatch::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'warehouse_id' => $warehouse->id, 'product_variant_id' => $variant->id,
+            'batch_number' => 'FOREIGN-PROVENANCE', 'purchase_id' => null,
+        ]);
+        $this->expectException(ValidationException::class);
+        app(SupplierDocumentService::class)->createReturn($purchase, [[
+            'purchase_line_id' => $line->id, 'quantity' => 1, 'inventory_batch_id' => $foreignBatch->id,
+        ]], 'Batch bukan asal GRN', 'supplier_credit', $owner->id);
+    }
+
+    public function test_purchase_return_rejects_duplicate_line_quantities_in_one_request(): void
+    {
+        [$tenant, $owner, $warehouse, $supplier, $variant] = $this->context();
+        $purchase = app(PurchaseService::class)->createDraft($tenant->id, $warehouse->id, $supplier->id, [[
+            'product_variant_id' => $variant->id, 'quantity' => 3, 'unit_cost' => 100,
+        ]]);
+        app(PurchaseService::class)->receive($purchase->id, [['product_variant_id' => $variant->id, 'quantity' => 3]], $tenant->id, $owner->id);
+        $line = $purchase->lines()->firstOrFail();
+
+        $this->expectException(ValidationException::class);
+        app(SupplierDocumentService::class)->createReturn($purchase, [
+            ['purchase_line_id' => $line->id, 'quantity' => 2],
+            ['purchase_line_id' => $line->id, 'quantity' => 2],
+        ], 'Tidak boleh melebihi penerimaan dalam satu request', 'supplier_credit', $owner->id);
     }
 
     public function test_payment_reference_cannot_be_reused_within_a_tenant(): void

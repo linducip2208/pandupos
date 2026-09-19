@@ -6,7 +6,7 @@
                 @foreach($products as $p)
                     @foreach($p->variants as $v)
                         <div class="col-6 col-md-4">
-                            @if($p->unit_id)<button class="btn btn-outline-primary w-100 h-100 py-3" wire:click="addToCart({{ $v->id }}, '{{ addslashes($p->name) }}', {{ $p->unit_id }}, '{{ addslashes($p->unit?->short_name ?? '') }}')">
+                            @if($p->unit_id)<button class="btn btn-outline-primary w-100 h-100 py-3" wire:click="addToCart({{ $v->id }}, '{{ addslashes($p->name) }}', {{ $p->unit_id }}, '{{ addslashes($p->unit?->short_name ?? '') }}', {{ (float) $p->tax_rate }}, '{{ $p->tax_method }}')">
                                 <div class="fw-bold">{{ $p->name }}</div>
                                 <div class="text-secondary">Rp {{ number_format($v->sell_price, 0, ',', '.') }} / {{ $p->unit?->short_name }}</div>
                             </button>@endif
@@ -29,7 +29,7 @@
                                     <button class="btn btn-outline-secondary" wire:click="dec({{ $i }})">−</button>
                                     <input class="form-control text-center" value="{{ $row['qty'] }}" readonly>
                                     <button class="btn btn-outline-secondary" wire:click="inc({{ $i }})">+</button>
-                                </div>
+                                </div><input class="form-control form-control-sm mt-1" type="number" min="0" step="0.01" wire:model.live="cart.{{ $i }}.discount" aria-label="Diskon {{ $row['name'] }}" placeholder="Diskon">
                             </td>
                         </tr>
                     @endforeach
@@ -52,7 +52,7 @@
             @endif
             <div class="card-footer">
                 @if($lastInvoiceNo)<div class="alert alert-success">Struk: {{ $lastInvoiceNo }} @if($lastChange>0)| Kembali Rp {{ number_format($lastChange,0,',','.') }}@endif</div>@endif
-                <div class="text-muted mb-2">Dibayar Rp {{ number_format($this->paid,0,',','.') }} • Kembali Rp {{ number_format(max(0,$this->change),0,',','.') }}</div>
+                <div class="text-muted mb-2">Pajak Rp {{ number_format($this->tax,0,',','.') }} · Dibayar Rp {{ number_format($this->paid,0,',','.') }} · Kembali Rp {{ number_format(max(0,$this->change),0,',','.') }}</div>
                 @foreach($payments as $i => $pay)
                     <div class="input-group mb-2">
                         <select class="form-select" wire:model="payments.{{ $i }}.method">

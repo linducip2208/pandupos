@@ -26,6 +26,11 @@ class SalesOrder extends Model
         return $this->hasMany(SalesDelivery::class);
     }
 
+    public function invoice()
+    {
+        return $this->hasOne(SalesInvoice::class);
+    }
+
     public function tenant()
     {
         return $this->belongsTo(Tenant::class);
