@@ -6,11 +6,11 @@ Updated: 2026-09-17. Scores are calculated by `php artisan readiness:score`, usi
 
 | Dimension | Score | Exact blockers |
 |---|---:|---|
-| Core | 69 | Complete purchasing UI/return lifecycle, delivery/invoice/payment; commercial POS/register, dashboard and core API |
+| Core | 95 | Complete purchase return lifecycle and return/void/refund workflow |
 | SaaS | 27 | Subscription/billing automation and verified sandbox; coupon/affiliate/announcements; domains/white-label; API/offline hardening |
 | Future addon parity | FROZEN / OUT OF SCOPE | Deferred post-v1 modules are not release blockers; see `SCOPE_FREEZE.md` |
 | Tests | 60 | Browser E2E, full concurrency and security regression matrices absent |
-| Security | 44 | Full IDOR/API/upload/secret audit and sensitive-admin hardening absent |
+| Security | 47 | Full IDOR/API/upload audit, third-party license review and sensitive-admin hardening remain incomplete |
 | Operations | 20 | Restore, staging, rollback, monitoring, alerting and load-test evidence absent |
 | Production | 0 | Security/operations/staging gates not verified |
 | Commercial | 0 | License audit, installation/onboarding/support artifacts and release gates incomplete |
@@ -23,7 +23,7 @@ Updated: 2026-09-17. Scores are calculated by `php artisan readiness:score`, usi
 4. ~~Stock adjustment, stock count and reconciliation lifecycles.~~ VERIFIED: adjustment draft/review/segregated approval/post; count snapshot/variance/segregated approval/post; and read-only ledger/balance/batch/serial/location/reservation anomaly checks in platform health. Transfer remains open as its own complete gate.
 5. Purchase request, multi-line PO/GRN/AP/return/statement/PDF/export. Purchase Receipt is VERIFIED: tenant-scoped partial GRN UI/API, 30/40/30 cumulative validation, duplicate retry, audit, batch/PO/supplier provenance, rack/bin and serial registration without double stock are covered by `PurchasingSafetyTest`, `BatchExpirySerialTest` and `PurchasingWorkspaceUiTest`. Supplier Invoice is VERIFIED: tenant UI/API, supplier/PO validation, duplicate protection, audit and tenant-scoped printable output are covered by `PurchasingWorkspaceUiTest`, `SupplierDocumentTest` and `PurchasingSafetyTest`. Supplier Payment is VERIFIED: partial/full payment, invoice row locking, balance and overpayment checks, tenant-scoped unique non-empty references, approval permission, tenant rejection and audit are covered by the same regression suite. Safety is VERIFIED: PO stock timing, 30/40/30 receipts, idempotent retry, over-receipt/invoice/payment/return protection, approval and tenant isolation.
 6. Quotation → order → reservation → delivery → invoice → payment → credit note/return/refund lifecycle.
-7. Register, cash movement, hold/resume, discount/tax/credit, receipt layouts and printer contract.
+7. POS hold/resume persistence, discount/tax/credit controls, receipt layouts and printer contract.
 8. Dashboard financial visibility/performance, current API authorization matrix and any retained import foundation.
 
 Each item remains PARTIAL until backend, UI, API where relevant, permission, tenant isolation, audit, tests and documentation are all evidenced.

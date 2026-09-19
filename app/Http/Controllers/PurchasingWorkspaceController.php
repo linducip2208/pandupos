@@ -49,19 +49,74 @@ class PurchasingWorkspaceController extends Controller
         abort_unless($request->user()->can('purchase.create'), 403);
         $data = $request->validate([
             'warehouse_id' => ['required', 'integer'], 'contact_id' => ['required', 'integer'],
-            'product_variant_id' => ['required', 'integer'], 'quantity' => ['required', 'numeric', 'gt:0'],
-            'unit_id' => ['required', 'integer'],
-            'unit_cost' => ['required', 'numeric', 'min:0'],
+            'product_variant_id' => ['required_without:lines', 'integer'], 'quantity' => ['required_without:lines', 'numeric', 'gt:0'],
+            'unit_id' => ['required_without:lines', 'integer'],
+            'unit_cost' => ['required_without:lines', 'numeric', 'min:0'],
+            'lines' => ['nullable', 'array', 'min:1'],
+            'lines.*.product_variant_id' => ['required_with:lines', 'integer'], 'lines.*.quantity' => ['required_with:lines', 'numeric', 'gt:0'],
+            'lines.*.unit_id' => ['required_with:lines', 'integer'], 'lines.*.unit_cost' => ['required_with:lines', 'numeric', 'min:0'],
+            'save_as' => ['nullable', 'in:draft,submit'],
         ]);
-        $variant = ProductVariant::query()->with('product')->findOrFail($data['product_variant_id']);
-        abort_unless($variant->product?->unit_id, 422, 'Produk harus memiliki satuan dasar.');
-        $factor = $conversions->convert(TenantContext::idOrFail(), 1, (int) $data['unit_id'], (int) $variant->product->unit_id);
-        $baseQuantity = $conversions->convert(TenantContext::idOrFail(), $data['quantity'], (int) $data['unit_id'], (int) $variant->product->unit_id);
-        $purchase = $service->createDraft(TenantContext::idOrFail(), (int) $data['warehouse_id'], (int) $data['contact_id'], [[
-            'product_variant_id' => $data['product_variant_id'], 'quantity' => $baseQuantity, 'unit_cost' => round((float) $data['unit_cost'] / $factor, 2),
-        ]], $request->user()->id);
+        $lines = $this->normalizedLines($data['lines'] ?? [[
+            'product_variant_id' => $data['product_variant_id'], 'quantity' => $data['quantity'], 'unit_id' => $data['unit_id'], 'unit_cost' => $data['unit_cost'],
+        ]], $conversions);
+        $purchase = $service->createDraft(TenantContext::idOrFail(), (int) $data['warehouse_id'], (int) $data['contact_id'], $lines, $request->user()->id, ($data['save_as'] ?? 'submit') === 'draft');
 
-        return back()->with('status', $purchase->status === 'pending_approval' ? 'PO dibuat dan menunggu approval.' : 'PO berhasil dibuat.');
+        return back()->with('status', $purchase->status === 'draft' ? 'PO draft disimpan.' : ($purchase->status === 'pending_approval' ? 'PO dibuat dan menunggu approval.' : 'PO berhasil dibuat.'));
+    }
+
+    public function editPurchase(Request $request, Purchase $purchase): View
+    {
+        abort_unless($request->user()->can('purchase.create'), 403);
+        $this->assertTenant($purchase->tenant_id);
+        abort_unless($purchase->status === 'draft' && $purchase->requested_by === $request->user()->id, 422);
+
+        return $this->purchaseForm($purchase->load('lines.variant.product.unit'));
+    }
+
+    public function createPurchase(Request $request): View
+    {
+        abort_unless($request->user()->can('purchase.create'), 403);
+
+        return $this->purchaseForm();
+    }
+
+    public function updatePurchase(Request $request, Purchase $purchase, PurchaseService $service, UnitConversionService $conversions): RedirectResponse
+    {
+        abort_unless($request->user()->can('purchase.create'), 403);
+        $this->assertTenant($purchase->tenant_id);
+        $data = $request->validate(['warehouse_id' => ['required', 'integer'], 'contact_id' => ['required', 'integer'], 'lines' => ['required', 'array', 'min:1'], 'lines.*.product_variant_id' => ['required', 'integer'], 'lines.*.quantity' => ['required', 'numeric', 'gt:0'], 'lines.*.unit_id' => ['required', 'integer'], 'lines.*.unit_cost' => ['required', 'numeric', 'min:0']]);
+        $service->updateDraft($purchase, (int) $data['warehouse_id'], (int) $data['contact_id'], $this->normalizedLines($data['lines'], $conversions), $request->user()->id);
+
+        return redirect()->route('purchasing.index')->with('status', 'PO draft diperbarui.');
+    }
+
+    public function submitPurchase(Request $request, Purchase $purchase, PurchaseService $service): RedirectResponse
+    {
+        abort_unless($request->user()->can('purchase.create'), 403);
+        $this->assertTenant($purchase->tenant_id);
+        $service->submitDraft($purchase, $request->user()->id);
+
+        return back()->with('status', 'PO dikirim untuk approval atau siap diterima.');
+    }
+
+    public function cancelPurchase(Request $request, Purchase $purchase, PurchaseService $service): RedirectResponse
+    {
+        abort_unless($request->user()->can('purchase.create'), 403);
+        $this->assertTenant($purchase->tenant_id);
+        $service->cancel($purchase, $request->user()->id);
+
+        return back()->with('status', 'PO dibatalkan tanpa mengubah stok.');
+    }
+
+    public function printPurchase(Request $request, Purchase $purchase): View
+    {
+        abort_unless($request->user()->can('purchase.create') || $request->user()->can('purchase.approve'), 403);
+        $this->assertTenant($purchase->tenant_id);
+
+        return view('purchasing.purchase-order-print', [
+            'purchase' => $purchase->load(['contact', 'warehouse.branch', 'lines.variant.product.unit']),
+        ]);
     }
 
     public function receive(Request $request, Purchase $purchase, PurchaseService $service): RedirectResponse
@@ -135,17 +190,37 @@ class PurchasingWorkspaceController extends Controller
         ]);
     }
 
+    public function createReturn(Request $request, Purchase $purchase): View
+    {
+        abort_unless($request->user()->can('purchase.approve'), 403);
+        $this->assertTenant($purchase->tenant_id);
+        abort_unless(in_array($purchase->status, ['partial', 'received'], true), 422);
+
+        return view('purchasing.return-form', [
+            'purchase' => $purchase->load(['contact', 'warehouse', 'lines.variant.product', 'lines.goodsReceiptLines.batch', 'lines.goodsReceiptLines.warehouseLocation']),
+        ]);
+    }
+
     public function storeReturn(Request $request, Purchase $purchase, SupplierDocumentService $service): RedirectResponse
     {
         abort_unless($request->user()->can('purchase.approve'), 403);
         $this->assertTenant($purchase->tenant_id);
         $data = $request->validate([
-            'purchase_line_id' => ['required', 'integer'], 'quantity' => ['required', 'numeric', 'gt:0'],
+            'purchase_line_id' => ['required_without:lines', 'integer'], 'quantity' => ['required_without:lines', 'numeric', 'gt:0'],
+            'inventory_batch_id' => ['nullable', 'integer'], 'warehouse_location_id' => ['nullable', 'integer'],
+            'lines' => ['nullable', 'array', 'min:1'],
+            'lines.*.purchase_line_id' => ['required_with:lines', 'integer'],
+            'lines.*.quantity' => ['required_with:lines', 'numeric', 'gt:0'],
+            'lines.*.inventory_batch_id' => ['nullable', 'integer'],
+            'lines.*.warehouse_location_id' => ['nullable', 'integer'],
             'reason' => ['required', 'string', 'max:1000'], 'settlement_type' => ['required', 'in:supplier_credit,cash_refund,replacement'],
         ]);
-        $service->createReturn($purchase, [[
+        $lines = $data['lines'] ?? [[
             'purchase_line_id' => $data['purchase_line_id'], 'quantity' => $data['quantity'],
-        ]], $data['reason'], $data['settlement_type'], $request->user()->id);
+            'inventory_batch_id' => $data['inventory_batch_id'] ?? null,
+            'warehouse_location_id' => $data['warehouse_location_id'] ?? null,
+        ]];
+        $service->createReturn($purchase, $lines, $data['reason'], $data['settlement_type'], $request->user()->id);
 
         return back()->with('status', 'Purchase return berhasil diposting.');
     }
@@ -158,5 +233,27 @@ class PurchasingWorkspaceController extends Controller
     private function assertTenant(int $tenantId): void
     {
         abort_unless($tenantId === TenantContext::idOrFail(), 404);
+    }
+
+    private function normalizedLines(array $lines, UnitConversionService $conversions): array
+    {
+        return collect($lines)->map(function (array $line) use ($conversions) {
+            $variant = ProductVariant::query()->with('product')->findOrFail($line['product_variant_id']);
+            abort_unless($variant->product?->unit_id, 422, 'Produk harus memiliki satuan dasar.');
+            $factor = $conversions->convert(TenantContext::idOrFail(), 1, (int) $line['unit_id'], (int) $variant->product->unit_id);
+
+            return ['product_variant_id' => (int) $line['product_variant_id'], 'quantity' => $conversions->convert(TenantContext::idOrFail(), $line['quantity'], (int) $line['unit_id'], (int) $variant->product->unit_id), 'unit_cost' => round((float) $line['unit_cost'] / $factor, 2)];
+        })->values()->all();
+    }
+
+    private function purchaseForm(?Purchase $purchase = null): View
+    {
+        return view('purchasing.form', [
+            'purchase' => $purchase,
+            'warehouses' => Warehouse::query()->orderBy('name')->get(),
+            'suppliers' => Contact::query()->whereIn('type', ['supplier', 'both'])->orderBy('name')->get(),
+            'variants' => ProductVariant::query()->with('product.unit')->orderBy('sku')->get(),
+            'units' => Unit::query()->where('is_active', true)->orderBy('name')->get(),
+        ]);
     }
 }

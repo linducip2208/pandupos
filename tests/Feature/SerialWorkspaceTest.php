@@ -45,7 +45,7 @@ class SerialWorkspaceTest extends TestCase
 
         TenantContext::set($tenant);
         Livewire::actingAs($owner)->test(PosKasir::class)
-            ->call('addToCart', $variant->id, $product->name, $unit->id, 'pcs')
+            ->call('addToCart', $variant->id, $product->name, $unit->id, 'pcs', 0, 'exclusive')
             ->assertSee('IMEI-123')
             ->set('cart.0.serial_number_ids', [(string) SerialNumber::withoutGlobalScopes()->where('serial_number', 'IMEI-123')->value('id')])
             ->assertSet('cart.0.serial_number_ids.0', (string) SerialNumber::withoutGlobalScopes()->where('serial_number', 'IMEI-123')->value('id'));

@@ -85,6 +85,46 @@ class SalesOrderDeliveryTest extends TestCase
         $this->assertSame('released', $confirmed->lines->first()->reservation()->firstOrFail()->refresh()->status);
     }
 
+    public function test_fully_delivered_order_creates_one_unpaid_invoice_without_second_stock_mutation(): void
+    {
+        $this->seed(PlatformSeeder::class);
+        $user = User::factory()->create();
+        $tenant = app(TenantProvisioningService::class)->provision('Invoice Order Tenant', $user);
+        $branch = Branch::withoutGlobalScopes()->where('tenant_id', $tenant->id)->firstOrFail();
+        $warehouse = Warehouse::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'branch_id' => $branch->id, 'name' => 'Invoice Warehouse', 'code' => 'INV-SO']);
+        $customer = Contact::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'type' => 'customer', 'name' => 'Invoice Customer']);
+        $product = Product::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'Invoice Item', 'sku' => 'INV-SO-P']);
+        $variant = ProductVariant::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'product_id' => $product->id, 'name' => 'Default', 'sku' => 'INV-SO-V']);
+        $stock = app(StockService::class);
+        $stock->increase($tenant->id, $warehouse->id, $variant->id, 5, 100, 'opening', null);
+        $service = app(SalesOrderService::class);
+        $order = $service->create($tenant->id, [
+            'branch_id' => $branch->id, 'warehouse_id' => $warehouse->id, 'contact_id' => $customer->id,
+            'lines' => [['product_variant_id' => $variant->id, 'quantity' => 2, 'unit_price' => 250]],
+        ], $user->id);
+        $order = $service->confirm($order, $user->id);
+        $service->deliver($order, [['sales_order_line_id' => $order->lines->first()->id, 'quantity' => 2]], $user->id);
+        $afterDelivery = $stock->onHand($tenant->id, $warehouse->id, $variant->id);
+
+        $first = $service->invoice($order->fresh(), $user->id);
+        $retry = $service->invoice($order->fresh(), $user->id);
+
+        $this->assertSame($first->id, $retry->id);
+        $this->assertSame('final', $first->status);
+        $this->assertSame('fulfilled', $first->fulfillment_status);
+        $this->assertSame('unpaid', $first->payment_status);
+        $this->assertSame(500.0, (float) $first->total);
+        $this->assertSame($afterDelivery, $stock->onHand($tenant->id, $warehouse->id, $variant->id));
+        $this->assertDatabaseCount('sales_invoices', 1);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'action' => 'sales_invoice.created_from_order']);
+
+        $service->payInvoice($first, 200, 'transfer', 'SO-PAY-1', $user->id);
+        $this->assertSame('partial', $first->fresh()->payment_status);
+        $service->payInvoice($first->fresh(), 300, 'cash', 'SO-PAY-2', $user->id);
+        $this->assertSame('paid', $first->fresh()->payment_status);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'action' => 'sales_invoice.payment.recorded']);
+    }
+
     public function test_workspace_confirm_deliver_and_cancel_routes_are_tenant_scoped(): void
     {
         $this->seed(PlatformSeeder::class);

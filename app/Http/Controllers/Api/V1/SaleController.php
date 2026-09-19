@@ -50,7 +50,8 @@ class SaleController extends Controller
 
     public function void(SalesInvoice $invoice, SaleService $service, Request $request)
     {
-        $service->void($invoice->id, $request->user()->can('pos.sale.void'), TenantContext::idOrFail());
+        $data = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
+        $service->void($invoice->id, $request->user()->can('pos.sale.void'), TenantContext::idOrFail(), $data['reason']);
 
         return response()->json(['ok' => true]);
     }

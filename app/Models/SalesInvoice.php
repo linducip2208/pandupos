@@ -10,7 +10,7 @@ class SalesInvoice extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'uuid', 'tenant_id', 'branch_id', 'warehouse_id', 'cash_session_id', 'contact_id',
+        'uuid', 'tenant_id', 'branch_id', 'warehouse_id', 'sales_order_id', 'cash_session_id', 'contact_id',
         'invoice_no', 'status', 'payment_status', 'fulfillment_status',
         'subtotal', 'discount', 'tax', 'total', 'idempotency_key',
     ];
@@ -50,8 +50,23 @@ class SalesInvoice extends Model
         return $this->belongsTo(CashSession::class);
     }
 
+    public function salesOrder()
+    {
+        return $this->belongsTo(SalesOrder::class);
+    }
+
     public function paymentProofs()
     {
         return $this->hasMany(PaymentProof::class);
+    }
+
+    public function returns()
+    {
+        return $this->hasMany(SalesReturn::class);
+    }
+
+    public function refunds()
+    {
+        return $this->hasMany(SaleRefund::class);
     }
 }

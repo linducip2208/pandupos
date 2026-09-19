@@ -128,6 +128,22 @@ class BusinessFlowTest extends TestCase
         $this->assertEquals(1, SalesInvoice::withoutGlobalScopes()->where('idempotency_key', $key)->count());
     }
 
+    public function test_checkout_preserves_subtotal_discount_tax_and_total_invariant(): void
+    {
+        ['tenant' => $tenant, 'warehouse' => $warehouse, 'branch' => $branch, 'variant' => $variant] = $this->setupTenant();
+        app(StockService::class)->increase($tenant->id, $warehouse->id, $variant->id, 2, 100, 'opening', null);
+
+        $invoice = app(SaleService::class)->checkout($tenant->id, $branch->id, $warehouse->id, null, [
+            ['variant_id' => $variant->id, 'quantity' => 2, 'unit_price' => 100, 'discount' => 15],
+        ], [['method' => 'cash', 'amount' => 203.5]], 'tax-'.uniqid(), null, 18.5);
+
+        $this->assertSame('200.00', $invoice->subtotal);
+        $this->assertSame('15.00', $invoice->discount);
+        $this->assertSame('18.50', $invoice->tax);
+        $this->assertSame('203.50', $invoice->total);
+        $this->assertSame('paid', $invoice->payment_status);
+    }
+
     public function test_stock_transfer(): void
     {
         ['tenant' => $t, 'variant' => $v] = $this->setupTenant();

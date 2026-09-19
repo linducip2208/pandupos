@@ -20,7 +20,7 @@ class PosKasir extends Component
 {
     public string $search = '';
 
-    /** @var array<int, array{variant_id:int,name:string,base_price:float,price:float,qty:float,base_unit_id:int,unit_id:int,unit_name:string,factor:float,inventory_batch_id:?int,serial_number_ids:array<int,int>}> */
+    /** @var array<int, array{variant_id:int,name:string,base_price:float,price:float,qty:float,discount:float,tax_rate:float,tax_method:string,base_unit_id:int,unit_id:int,unit_name:string,factor:float,inventory_batch_id:?int,serial_number_ids:array<int,int>}> */
     public array $cart = [];
 
     /** @var array<int, array{method:string,amount:float}> */
@@ -42,7 +42,7 @@ class PosKasir extends Component
         $this->cashSessionId = CashSession::query()->where('status', 'open')->where('opened_by', auth()->id())->value('id');
     }
 
-    public function addToCart(int $variantId, string $name, int $baseUnitId, string $unitName, PriceResolverService $prices): void
+    public function addToCart(int $variantId, string $name, int $baseUnitId, string $unitName, float $taxRate, string $taxMethod, PriceResolverService $prices): void
     {
         foreach ($this->cart as &$row) {
             if ($row['variant_id'] === $variantId) {
@@ -58,7 +58,8 @@ class PosKasir extends Component
         $this->cart[] = [
             'variant_id' => $variantId, 'name' => $name, 'base_price' => $resolved['price'], 'price' => $resolved['price'], 'qty' => 1,
             'base_unit_id' => $baseUnitId, 'unit_id' => $baseUnitId, 'unit_name' => $unitName, 'factor' => 1,
-            'price_source' => $resolved['source'], 'inventory_batch_id' => null, 'serial_number_ids' => [],
+            'price_source' => $resolved['source'], 'discount' => 0, 'tax_rate' => $taxRate, 'tax_method' => $taxMethod,
+            'inventory_batch_id' => null, 'serial_number_ids' => [],
         ];
     }
 
@@ -107,7 +108,18 @@ class PosKasir extends Component
 
     public function getTotalProperty(): float
     {
-        return collect($this->cart)->sum(fn ($r) => $r['qty'] * $r['price']);
+        return round(collect($this->cart)->sum(fn ($row) => $row['qty'] * $row['price'] - (float) ($row['discount'] ?? 0)) + $this->tax, 2);
+    }
+
+    public function getTaxProperty(): float
+    {
+        return round(collect($this->cart)->sum(function (array $row) {
+            if (($row['tax_method'] ?? 'exclusive') !== 'exclusive') {
+                return 0;
+            }
+
+            return max(0, $row['qty'] * $row['price'] - (float) ($row['discount'] ?? 0)) * ((float) ($row['tax_rate'] ?? 0) / 100);
+        }), 2);
     }
 
     public function getPaidProperty(): float
@@ -159,12 +171,14 @@ class PosKasir extends Component
             $tenantId, $branchId, $warehouseId, $this->customerId,
             collect($this->cart)->map(fn ($r) => [
                 'variant_id' => $r['variant_id'], 'quantity' => $r['qty'] * $r['factor'], 'unit_price' => $r['base_price'],
+                'discount' => (float) ($r['discount'] ?? 0),
                 'inventory_batch_id' => $r['inventory_batch_id'] ?? null,
                 'serial_number_ids' => $r['serial_number_ids'] ?? [],
             ])->all(),
             $this->payments,
             'web-'.uniqid(),
             $this->cashSessionId,
+            $this->tax,
         );
 
         $this->lastInvoiceNo = $invoice->invoice_no;
@@ -178,7 +192,17 @@ class PosKasir extends Component
     {
         TenantContext::idOrFail();
         $products = Product::with(['variants', 'unit'])
-            ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
+            ->when($this->search, function ($query) {
+                $term = trim($this->search);
+                $query->where(function ($catalog) use ($term) {
+                    $catalog->where('name', 'like', "%{$term}%")
+                        ->orWhere('sku', 'like', "%{$term}%")
+                        ->orWhere('barcode', $term)
+                        ->orWhereHas('variants', fn ($variants) => $variants
+                            ->where('sku', 'like', "%{$term}%")
+                            ->orWhere('barcode', $term));
+                });
+            })
             ->limit(24)->get();
 
         return view('livewire.pos-kasir', [
