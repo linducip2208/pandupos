@@ -9,7 +9,7 @@ class SalesReturn extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'sales_invoice_id', 'total', 'status', 'reason', 'created_by'];
+    protected $fillable = ['tenant_id', 'sales_invoice_id', 'total', 'status', 'reason', 'created_by', 'idempotency_key'];
 
     protected function casts(): array
     {

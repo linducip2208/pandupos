@@ -6,7 +6,7 @@ This file renders the canonical score ledger from `app/Support/Readiness/Readine
 
 | Dimension | Score | Evidence |
 |---|---:|---|
-| Core parity | 95% | Product, units, barcode, pricing, bundle, batch/expiry/FEFO, rack/bin, reservation, serial lifecycle, WAC, stock adjustment, stock count, reconciliation, transfer, PO UI/lifecycle, purchase receipt, purchasing safety, supplier invoice/payment, quotation, sales order, reservation-to-delivery, invoice/payment, POS, register, reports, dashboard, exports and current core API protections have independently verified evidence; remaining purchase return and return/void/refund remain incomplete |
+| Core parity | 100% | All core gates have independently verified evidence, including the staged purchase-return lifecycle and the return/void/refund reversal workflow; see `php artisan readiness:score` |
 | SaaS parity | 27% | Tenant lifecycle and plan/entitlement foundations are evidenced; limits, billing and automation remain incomplete |
 | Future addon parity | FROZEN / OUT OF SCOPE | Deferred post-v1 work; excluded from v1 release scoring by [SCOPE_FREEZE.md](SCOPE_FREEZE.md) |
 | Test readiness | 60% | The regression suite is green; E2E, concurrency, security and recovery matrices remain absent |

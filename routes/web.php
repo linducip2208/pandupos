@@ -35,6 +35,7 @@ use App\Http\Controllers\RegisterWorkspaceController;
 use App\Http\Controllers\ReportPageController;
 use App\Http\Controllers\SalesDocumentWorkspaceController;
 use App\Http\Controllers\SalesOrderWorkspaceController;
+use App\Http\Controllers\SalesReturnWorkspaceController;
 use App\Http\Controllers\SerialWorkspaceController;
 use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
@@ -145,6 +146,12 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/invoices/{invoice}/payments', [SalesOrderWorkspaceController::class, 'payInvoice'])->name('invoices.payments.store');
         Route::post('/{order}/cancel', [SalesOrderWorkspaceController::class, 'cancel'])->name('cancel');
     });
+    Route::prefix('sales-returns')->name('sales-returns.')->middleware(['entitlement:sales.access', 'module:sales'])->group(function () {
+        Route::get('/', [SalesReturnWorkspaceController::class, 'index'])->name('index');
+        Route::post('/invoices/{invoice}/returns', [SalesReturnWorkspaceController::class, 'store'])->name('returns.store');
+        Route::post('/returns/{salesReturn}/refunds', [SalesReturnWorkspaceController::class, 'refund'])->name('refunds.store');
+        Route::post('/invoices/{invoice}/void', [SalesReturnWorkspaceController::class, 'void'])->name('void.store');
+    });
     Route::prefix('sales-documents')->name('sales-documents.')->middleware(['entitlement:sales.access', 'module:sales'])->group(function () {
         Route::get('/', [SalesDocumentWorkspaceController::class, 'index'])->name('index');
         Route::post('/quotations', [SalesDocumentWorkspaceController::class, 'store'])->name('quotations.store');
@@ -195,6 +202,11 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/orders/{purchase}/receive', [PurchasingWorkspaceController::class, 'receive'])->name('orders.receive');
         Route::get('/orders/{purchase}/returns/create', [PurchasingWorkspaceController::class, 'createReturn'])->name('returns.create');
         Route::post('/orders/{purchase}/returns', [PurchasingWorkspaceController::class, 'storeReturn'])->name('returns.store');
+        Route::post('/orders/{purchase}/returns/draft', [PurchasingWorkspaceController::class, 'storeDraftReturn'])->name('returns.draft');
+        Route::get('/returns/{purchaseReturn}', [PurchasingWorkspaceController::class, 'showReturn'])->name('returns.show');
+        Route::post('/returns/{purchaseReturn}/submit', [PurchasingWorkspaceController::class, 'submitReturn'])->name('returns.submit');
+        Route::post('/returns/{purchaseReturn}/approve', [PurchasingWorkspaceController::class, 'approveReturn'])->name('returns.approve');
+        Route::post('/returns/{purchaseReturn}/post', [PurchasingWorkspaceController::class, 'postReturn'])->name('returns.post');
         Route::post('/invoices', [PurchasingWorkspaceController::class, 'storeInvoice'])->name('invoices.store');
         Route::get('/invoices/{invoice}/print', [PurchasingWorkspaceController::class, 'printInvoice'])->name('invoices.print');
         Route::post('/invoices/{invoice}/payments', [PurchasingWorkspaceController::class, 'pay'])->name('payments.store');

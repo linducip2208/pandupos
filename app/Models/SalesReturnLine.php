@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class SalesReturnLine extends Model
 {
-    protected $fillable = ['sales_return_id', 'sales_line_id', 'quantity', 'unit_price'];
+    protected $fillable = ['sales_return_id', 'sales_line_id', 'quantity', 'unit_price', 'inventory_batch_id', 'serial_number_id'];
 
     protected function casts(): array
     {

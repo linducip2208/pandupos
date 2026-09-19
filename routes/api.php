@@ -88,11 +88,17 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     Route::post('supplier-invoices', [PurchaseController::class, 'storeSupplierInvoice']);
     Route::post('supplier-invoices/{invoice}/payments', [PurchaseController::class, 'paySupplierInvoice']);
     Route::post('purchases/{purchase}/returns', [PurchaseController::class, 'storeReturn']);
+    Route::post('purchases/{purchase}/return-drafts', [PurchaseController::class, 'storeDraftReturn']);
+    Route::post('purchase-returns/{purchaseReturn}/submit', [PurchaseController::class, 'submitDraftReturn']);
+    Route::post('purchase-returns/{purchaseReturn}/approve', [PurchaseController::class, 'approveDraftReturn']);
+    Route::post('purchase-returns/{purchaseReturn}/post', [PurchaseController::class, 'postDraftReturn']);
 
     // Sales / POS: atomic checkout + idempotency
     Route::get('sales', [SaleController::class, 'index'])->middleware('can:sales.view');
     Route::post('sales', [SaleController::class, 'store'])->middleware('can:pos.sale.create');
     Route::post('sales/{invoice}/void', [SaleController::class, 'void'])->middleware('can:pos.sale.void');
+    Route::post('sales/{invoice}/returns', [SaleController::class, 'storeReturn'])->middleware('can:pos.sale.create');
+    Route::post('sales-returns/{salesReturn}/refunds', [SaleController::class, 'storeRefund'])->middleware('can:pos.sale.void');
     Route::middleware(['entitlement:sales.access', 'module:sales'])->prefix('sales-documents')->group(function () {
         Route::get('quotations', [SalesDocumentController::class, 'index']);
         Route::post('quotations', [SalesDocumentController::class, 'store']);

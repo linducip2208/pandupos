@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
 use App\Services\SaleService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -54,5 +55,43 @@ class SaleController extends Controller
         $service->void($invoice->id, $request->user()->can('pos.sale.void'), TenantContext::idOrFail(), $data['reason']);
 
         return response()->json(['ok' => true]);
+    }
+
+    public function storeReturn(SalesInvoice $invoice, SaleService $service, Request $request)
+    {
+        $tenantId = TenantContext::idOrFail();
+        $data = $request->validate([
+            'lines' => 'required|array|min:1',
+            'lines.*.variant_id' => ['required', Rule::exists('product_variants', 'id')->where('tenant_id', $tenantId)],
+            'lines.*.quantity' => 'required|numeric|min:0.001',
+            'lines.*.unit_price' => 'nullable|numeric|min:0',
+            'lines.*.inventory_batch_id' => ['nullable', Rule::exists('inventory_batches', 'id')->where('tenant_id', $tenantId)],
+            'lines.*.serial_number_ids' => ['nullable', 'array'],
+            'lines.*.serial_number_ids.*' => ['integer', 'distinct', Rule::exists('serial_numbers', 'id')->where('tenant_id', $tenantId)],
+            'reason' => ['required', 'string', 'max:1000'],
+            'idempotency_key' => ['nullable', 'string', 'max:128'],
+        ]);
+
+        return response()->json($service->return(
+            $invoice->id, $data['lines'], $tenantId, $request->user()->id,
+            $data['idempotency_key'] ?? $request->header('Idempotency-Key'),
+            $data['reason'], $request->user()->can('pos.sale.create')
+        )->load('lines'), 201);
+    }
+
+    public function storeRefund(SalesReturn $salesReturn, SaleService $service, Request $request)
+    {
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'method' => ['required', 'in:cash,transfer,qris,ewallet,card'],
+            'reference' => ['nullable', 'string', 'max:100'],
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        return response()->json($service->refund(
+            $salesReturn->sales_invoice_id, $salesReturn->id, (float) $data['amount'], $data['method'],
+            $data['reference'] ?? $request->header('Idempotency-Key'), $data['reason'], $request->user()->id,
+            $request->user()->can('pos.sale.void'), TenantContext::idOrFail()
+        ), 201);
     }
 }

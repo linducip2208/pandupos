@@ -9,7 +9,7 @@ class SaleRefund extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'sales_invoice_id', 'sales_return_id', 'amount', 'method', 'reference', 'reason', 'created_by', 'refunded_at'];
+    protected $fillable = ['tenant_id', 'sales_invoice_id', 'sales_return_id', 'amount', 'method', 'reference', 'reason', 'created_by', 'cash_session_movement_id', 'refunded_at'];
 
     protected function casts(): array
     {
