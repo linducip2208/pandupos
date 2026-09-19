@@ -83,7 +83,7 @@ class ApiSecurityTest extends TestCase
         $product = Product::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'name' => 'P', 'sku' => 'RP-'.uniqid()]);
         $variant = ProductVariant::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'product_id' => $product->id, 'name' => 'D', 'sku' => 'RV-'.uniqid(), 'sell_price' => 5000]);
         app(StockService::class)->increase($tenant->id, $warehouse->id, $variant->id, 10, 1000, 'opening', 1);
-        Sanctum::actingAs($owner);
+        Sanctum::actingAs($owner, ['sales:write']);
         $payload = ['branch_id' => $branch->id, 'warehouse_id' => $warehouse->id, 'lines' => [['variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 5000]], 'payments' => [['method' => 'cash', 'amount' => 5000]]];
         $key = 'replay-'.uniqid();
         $a = $this->postJson('/api/v1/sales', $payload, ['X-Tenant-ID' => $tenant->id, 'Idempotency-Key' => $key])->assertCreated();

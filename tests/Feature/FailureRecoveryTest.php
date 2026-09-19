@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BillingTransaction;
 use App\Models\Branch;
 use App\Models\Contact;
 use App\Models\Product;
@@ -16,8 +17,13 @@ use App\Services\StockService;
 use App\Services\SupplierDocumentService;
 use App\Services\TenantProvisioningService;
 use Database\Seeders\PlatformSeeder;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -122,6 +128,83 @@ class FailureRecoveryTest extends TestCase
         $this->actingAs($owner)->getJson('/api/v1/me', ['X-Tenant-ID' => $tenant->id])->assertOk();
     }
 
+    public function test_database_queue_job_fails_once_then_retries_to_success_without_duplicate_effect(): void
+    {
+        config(['queue.default' => 'database']);
+        Cache::put('flaky-attempts', 0);
+        Cache::forget('flaky-done');
+
+        dispatch(new FlakyCounterJob);
+        // First worker pass: job throws, stays queued for retry (tries=3), no side effect.
+        Artisan::call('queue:work', ['--once' => true, '--tries' => 3, '--sleep' => 0]);
+        $this->assertSame(1, Cache::get('flaky-attempts'));
+        $this->assertNull(Cache::get('flaky-done'));
+
+        // Second worker pass: retry succeeds, side effect applied exactly once.
+        Artisan::call('queue:work', ['--once' => true, '--tries' => 3, '--sleep' => 0]);
+        $this->assertSame(2, Cache::get('flaky-attempts'));
+        $this->assertSame(1, Cache::get('flaky-done'));
+        $this->assertSame(0, DB::table('failed_jobs')->count());
+        config(['queue.default' => 'sync']);
+    }
+
+    public function test_payment_gateway_timeout_leaves_invoice_unpaid_and_retry_succeeds_once(): void
+    {
+        $this->seed(PlatformSeeder::class);
+        $owner = User::factory()->create();
+        $tenant = app(TenantProvisioningService::class)->provision('Toko PayTimeout', $owner);
+        $billing = app(BillingService::class);
+        $inv = $billing->createInvoice($tenant->id, null, 75000);
+        $tx = $billing->recordAttempt($tenant->id, $inv->id, 'xendit', 'timeout-'.uniqid(), 75000);
+
+        // Gateway timeout reported as failure: invoice stays issued, attempt marked failed.
+        $billing->handleWebhook('xendit', $tx->gateway_ref, ['tenant_id' => $tenant->id, 'invoice_id' => $inv->id, 'amount' => 75000], 'failed');
+        $this->assertSame('issued', $inv->refresh()->status);
+
+        // Retry succeeds: paid exactly once, single transaction row.
+        $billing->handleWebhook('xendit', $tx->gateway_ref, ['tenant_id' => $tenant->id, 'invoice_id' => $inv->id, 'amount' => 75000], 'success');
+        $this->assertSame('paid', $inv->refresh()->status);
+        $this->assertEquals(1, BillingTransaction::withoutGlobalScopes()->where('gateway_ref', $tx->gateway_ref)->count());
+    }
+
+    public function test_backup_and_restore_roundtrip_recovers_data_from_file_artifact(): void
+    {
+        $scratch = tempnam(sys_get_temp_dir(), 'pandupos-drill-').'.sqlite';
+        @unlink($scratch);
+        touch($scratch);
+        // Use an isolated connection name so RefreshDatabase's transacted
+        // :memory: connection is never disturbed by the drill.
+        config(['database.connections.scratch' => [
+            'driver' => 'sqlite', 'database' => $scratch, 'prefix' => '', 'foreign_key_constraints' => true,
+        ]]);
+        config(['database.default' => 'scratch']);
+
+        try {
+            Artisan::call('migrate', ['--force' => true]);
+            DB::table('cache')->insert([
+                'key' => 'drill-marker', 'value' => serialize('present'), 'expiration' => now()->addHour()->getTimestamp(),
+            ]);
+            $this->assertSame(0, Artisan::call('backup:database'));
+            $disk = Storage::disk('local');
+            $artifacts = collect($disk->files('backups'))->filter(fn ($f) => str_ends_with($f, '.sqlite'));
+            $this->assertTrue($artifacts->isNotEmpty(), 'Backup must produce a sqlite artifact.');
+            $this->assertTrue(collect($disk->files('backups'))->contains(fn ($f) => str_ends_with($f, '.manifest.json')), 'Backup must produce a manifest.');
+            $artifact = $artifacts->sort()->last();
+
+            // Simulate loss, then restore from the artifact.
+            DB::table('cache')->where('key', 'drill-marker')->delete();
+            $this->assertSame(0, DB::table('cache')->where('key', 'drill-marker')->count());
+            $this->assertSame(0, Artisan::call('backup:restore', ['file' => $artifact, '--force' => true]));
+            $this->assertSame(1, DB::table('cache')->where('key', 'drill-marker')->count());
+
+            $disk->deleteDirectory('backups');
+        } finally {
+            config(['database.default' => 'sqlite']);
+            DB::purge('scratch');
+            @unlink($scratch);
+        }
+    }
+
     public function test_queue_sync_failure_does_not_corrupt_stock(): void
     {
         ['tenant' => $t, 'warehouse' => $w, 'variant' => $v] = $this->setupTenant('Toko QueueFail');
@@ -135,5 +218,30 @@ class FailureRecoveryTest extends TestCase
             $this->assertTrue(true);
         }
         $this->assertEquals($before, $stock->onHand($t->id, $w->id, $v->id));
+    }
+}
+
+/** Test-support job: fails on first attempt, succeeds on retry with a single side effect. */
+class FlakyCounterJob implements ShouldQueue
+{
+    use InteractsWithQueue;
+
+    public int $tries = 3;
+
+    public function backoff(): int
+    {
+        return 0;
+    }
+
+    public function handle(): void
+    {
+        $attempts = (int) Cache::get('flaky-attempts', 0) + 1;
+        Cache::put('flaky-attempts', $attempts);
+        if ($attempts < 2) {
+            throw new \RuntimeException('Simulated transient worker failure.');
+        }
+        if (Cache::get('flaky-done') === null) {
+            Cache::put('flaky-done', 1);
+        }
     }
 }

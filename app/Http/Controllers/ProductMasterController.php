@@ -15,6 +15,7 @@ use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -211,7 +212,7 @@ class ProductMasterController extends Controller
             'brand_id' => ['nullable', Rule::exists('brands', 'id')->where('tenant_id', $tenantId)], 'unit_id' => ['nullable', Rule::exists('units', 'id')->where('tenant_id', $tenantId)],
             'alert_quantity' => ['required', 'numeric', 'min:0'], 'tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'tax_method' => ['required', Rule::in(['inclusive', 'exclusive', 'zero', 'exempt'])], 'track_inventory' => ['nullable', 'boolean'], 'is_active' => ['nullable', 'boolean'],
-            'image' => ['nullable', 'image', 'max:2048'], 'warehouse_ids' => ['nullable', 'array'], 'warehouse_ids.*' => [Rule::exists('warehouses', 'id')->where('tenant_id', $tenantId)],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'mimetypes:image/jpeg,image/png,image/webp', 'max:2048', 'dimensions:max_width=4000,max_height=4000'], 'warehouse_ids' => ['nullable', 'array'], 'warehouse_ids.*' => [Rule::exists('warehouses', 'id')->where('tenant_id', $tenantId)],
             'variants' => ['required', 'array', 'min:1'], 'variants.*.id' => ['nullable', 'integer'], 'variants.*.name' => ['required', 'string', 'max:255'],
             'variants.*.sku' => ['nullable', 'string', 'max:64'], 'variants.*.barcode' => ['nullable', 'string', 'max:64'],
             'variants.*.purchase_price' => ['required', 'numeric', 'min:0'], 'variants.*.sell_price' => ['required', 'numeric', 'min:0'],
@@ -225,6 +226,9 @@ class ProductMasterController extends Controller
         $payload['track_inventory'] = $data['product_type'] === 'service' ? false : $request->boolean('track_inventory');
         $payload['is_active'] = $request->boolean('is_active', true);
         if ($request->hasFile('image')) {
+            if ($product?->image_path) {
+                Storage::disk('public')->delete($product->image_path);
+            }
             $payload['image_path'] = $request->file('image')->store('products', 'public');
         } elseif ($product) {
             $payload['image_path'] = $product->image_path;
@@ -243,7 +247,7 @@ class ProductMasterController extends Controller
                 return [trim($key) => trim($value)];
             })->filter(fn ($value, $key) => $key !== '')->all();
             $variant = $product->variants()->updateOrCreate(['id' => $row['id'] ?? null], [
-                'tenant_id' => $product->tenant_id, 'name' => $row['name'], 'sku' => $row['sku'] ?: null, 'barcode' => $row['barcode'] ?: null,
+                'tenant_id' => $product->tenant_id, 'name' => $row['name'], 'sku' => ($row['sku'] ?? null) ?: null, 'barcode' => ($row['barcode'] ?? null) ?: null,
                 'purchase_price' => $row['purchase_price'], 'sell_price' => $row['sell_price'], 'attributes' => $attributes ?: null, 'is_active' => true,
             ]);
             $kept[] = $variant->id;

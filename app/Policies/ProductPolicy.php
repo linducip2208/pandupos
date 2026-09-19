@@ -9,8 +9,9 @@ class ProductPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('inventory.view') || $user->is_platform_admin
-            || $user->memberships()->exists();
+        // Server-side gate: catalog browsing requires an explicit grant.
+        // Mere tenant membership is not sufficient.
+        return $user->hasPermissionTo('inventory.view') || $user->hasPermissionTo('products.manage') || $user->is_platform_admin;
     }
 
     public function view(User $user, Product $product): bool
@@ -20,12 +21,11 @@ class ProductPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('inventory.adjust') || $user->is_platform_admin
-            || $user->memberships()->exists();
+        return $user->hasPermissionTo('products.manage') || $user->is_platform_admin;
     }
 
     public function update(User $user, Product $product): bool
     {
-        return $this->view($user, $product) && ($user->hasPermissionTo('products.manage') || $user->is_platform_admin || $user->memberships()->exists());
+        return $this->view($user, $product) && ($user->hasPermissionTo('products.manage') || $user->is_platform_admin);
     }
 }

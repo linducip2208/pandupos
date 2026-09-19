@@ -18,7 +18,7 @@ $schema = [
     ],
 ];
 @endphp
-<script type="application/ld+json">{!! json_encode($schema, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) !!}</script>
+<script type="application/ld+json">{!! json_encode($schema, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) !!}</script>
 @endpush
 @section('content')
 <section class="page-hero"><div class="public-container"><span class="eyebrow">PANDUAN PEMILIHAN 2026</span><h1>{{ $title }}</h1><p>Perbandingan berbasis kebutuhan operasional, bukan sekadar daftar fitur. Gunakan panduan ini untuk menilai transaksi, persediaan, kontrol tim, biaya, dan kesiapan pertumbuhan.</p></div></section>

@@ -30,10 +30,10 @@ class PurchasingWorkspaceController extends Controller
         return view('purchasing.index', [
             'warehouses' => Warehouse::query()->orderBy('name')->get(),
             'locations' => $locations,
-            'receiptLocationsJson' => $locations->map(fn (WarehouseLocation $location) => [
+            'receiptLocations' => $locations->map(fn (WarehouseLocation $location) => [
                 'id' => $location->id, 'warehouse_id' => $location->warehouse_id, 'code' => $location->code,
-            ])->values()->toJson(),
-            'purchaseWarehousesJson' => $purchases->mapWithKeys(fn (Purchase $purchase) => [$purchase->id => $purchase->warehouse_id])->toJson(),
+            ])->values()->all(),
+            'purchaseWarehouses' => $purchases->mapWithKeys(fn (Purchase $purchase) => [$purchase->id => $purchase->warehouse_id])->all(),
             'suppliers' => Contact::query()->whereIn('type', ['supplier', 'both'])->orderBy('name')->get(),
             'variants' => ProductVariant::query()->with('product.unit')->orderBy('sku')->get(),
             'batches' => InventoryBatch::query()->orderBy('batch_number')->get(),

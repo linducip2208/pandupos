@@ -73,8 +73,8 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const locations = {!! $receiptLocationsJson !!};
-    const purchaseWarehouses = {!! $purchaseWarehousesJson !!};
+    const locations = @json($receiptLocations);
+    const purchaseWarehouses = @json($purchaseWarehouses);
 
     document.querySelectorAll('form[action*="/receive"]').forEach((form) => {
         const match = form.action.match(/\/purchasing\/orders\/(\d+)\/receive$/);

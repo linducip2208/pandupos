@@ -11,6 +11,7 @@ use App\Models\Plan;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\SalePayment;
+use App\Models\SaleRefund;
 use App\Models\SalesInvoice;
 use App\Models\SupplierPayment;
 use App\Models\User;
@@ -254,6 +255,56 @@ class ConcurrencyMatrixTest extends TestCase
         try {
             $coupons->validate($coupon->code, $tenant->id, $plan->id, 50000);
             $this->fail('Second redemption beyond max must fail.');
+        } catch (\Throwable $e) {
+            $this->assertTrue(true);
+        }
+        $this->assertEquals(1, CouponRedemption::where('coupon_id', $coupon->id)->count());
+    }
+
+    public function test_invoice_numbering_race_produces_distinct_numbers(): void
+    {
+        ['tenant' => $t, 'warehouse' => $w, 'branch' => $b, 'variant' => $v, 'supplier' => $s, 'customer' => $c] = $this->setupTenant('Toko Numbering');
+        $po = app(PurchaseService::class)->createDraft($t->id, $w->id, $s->id, [['product_variant_id' => $v->id, 'quantity' => 50, 'unit_cost' => 2500]]);
+        app(PurchaseService::class)->receive($po->id);
+        $sales = app(SaleService::class);
+        $numbers = [];
+        for ($i = 0; $i < 5; $i++) {
+            $inv = $sales->checkout($t->id, $b->id, $w->id, $c->id, [['variant_id' => $v->id, 'quantity' => 1, 'unit_price' => 3500]], [['method' => 'cash', 'amount' => 3500]], 'num-race-'.$i.'-'.uniqid());
+            $numbers[] = $inv->invoice_no;
+        }
+        $this->assertCount(5, array_unique($numbers), 'Concurrent checkouts must produce distinct invoice numbers.');
+        $this->assertEquals(45, app(StockService::class)->onHand($t->id, $w->id, $v->id));
+    }
+
+    public function test_refund_double_submit_race_single_refund(): void
+    {
+        ['tenant' => $t, 'warehouse' => $w, 'branch' => $b, 'variant' => $v, 'supplier' => $s, 'customer' => $c, 'owner' => $owner] = $this->setupTenant('Toko RefundRace');
+        $this->actingAs($owner);
+        $po = app(PurchaseService::class)->createDraft($t->id, $w->id, $s->id, [['product_variant_id' => $v->id, 'quantity' => 4, 'unit_cost' => 2500]]);
+        app(PurchaseService::class)->receive($po->id);
+        $sales = app(SaleService::class);
+        $inv = $sales->checkout($t->id, $b->id, $w->id, $c->id, [['variant_id' => $v->id, 'quantity' => 2, 'unit_price' => 3500]], [['method' => 'cash', 'amount' => 7000]], 'refund-race-'.uniqid());
+        $ret = $sales->return($inv->id, [['variant_id' => $v->id, 'quantity' => 2, 'unit_price' => 3500]], $t->id, $owner->id, 'refund-race-ret-'.uniqid(), 'Race', true);
+        $owner->givePermissionTo('pos.sale.void');
+        $r1 = $sales->refund($inv->id, $ret->id, 7000, 'transfer', 'RACE-REF-'.uniqid(), 'Race refund', $owner->id, true, $t->id);
+        $r2 = $sales->refund($inv->id, $ret->id, 7000, 'transfer', $r1->reference, 'Race refund', $owner->id, true, $t->id);
+        $this->assertSame($r1->id, $r2->id);
+        $this->assertEquals(1, SaleRefund::withoutGlobalScopes()->where('sales_return_id', $ret->id)->count());
+    }
+
+    public function test_coupon_atomic_redeem_race_single_winner(): void
+    {
+        $this->seed(PlatformSeeder::class);
+        $owner = User::factory()->create();
+        $tenant = app(TenantProvisioningService::class)->provision('Toko CouponAtomic', $owner);
+        $plan = Plan::withoutGlobalScopes()->first();
+        $coupons = app(CouponService::class);
+        $coupon = Coupon::create(['code' => 'ATOMIC-'.strtoupper(uniqid()), 'discount_type' => 'fixed', 'discount_value' => 5000, 'max_redemptions' => 1, 'per_tenant_limit' => 1, 'is_active' => true]);
+        [$c, $discount] = [$coupons->redeemCode($coupon->code, $tenant->id, $plan->id, 50000), null];
+        $this->assertEquals(1, CouponRedemption::where('coupon_id', $coupon->id)->count());
+        try {
+            $coupons->redeemCode($coupon->code, $tenant->id, $plan->id, 50000);
+            $this->fail('Second atomic redemption must fail.');
         } catch (\Throwable $e) {
             $this->assertTrue(true);
         }

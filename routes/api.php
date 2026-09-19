@@ -95,7 +95,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
 
     // Sales / POS: atomic checkout + idempotency
     Route::get('sales', [SaleController::class, 'index'])->middleware('can:sales.view');
-    Route::post('sales', [SaleController::class, 'store'])->middleware('can:pos.sale.create');
+    Route::post('sales', [SaleController::class, 'store'])->middleware(['can:pos.sale.create', 'token-ability:sales:write']);
     Route::post('sales/{invoice}/void', [SaleController::class, 'void'])->middleware('can:pos.sale.void');
     Route::post('sales/{invoice}/returns', [SaleController::class, 'storeReturn'])->middleware('can:pos.sale.create');
     Route::post('sales-returns/{salesReturn}/refunds', [SaleController::class, 'storeRefund'])->middleware('can:pos.sale.void');

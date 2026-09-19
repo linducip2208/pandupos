@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BarcodeWorkspaceController;
@@ -66,13 +67,13 @@ Route::get('/{intent}-pos/{industry}/{city}/{feature}', [ProgrammaticSeoControll
     ->where(['intent' => 'aplikasi|software|sistem|platform|solusi|rekomendasi|panduan|otomasi|digitalisasi|manajemen', 'industry' => '[a-z0-9-]+', 'city' => '[a-z0-9-]+', 'feature' => '[a-z0-9-]+'])->name('pseo.growth');
 
 Route::get('/login', [AuthController::class, 'login'])->name('login');
-Route::post('/login', [AuthController::class, 'attempt'])->name('login.attempt');
+Route::post('/login', [AuthController::class, 'attempt'])->middleware('throttle:10,1')->name('login.attempt');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::prefix('portal')->name('portal.')->group(function () {
     Route::middleware('guest:customer')->group(function () {
         Route::get('/login', [PortalAuthController::class, 'create'])->name('login');
-        Route::post('/login', [PortalAuthController::class, 'store'])->name('login.attempt');
+        Route::post('/login', [PortalAuthController::class, 'store'])->middleware('throttle:10,1')->name('login.attempt');
     });
     Route::middleware(['auth:customer', 'portal.tenant'])->group(function () {
         Route::post('/logout', [PortalAuthController::class, 'destroy'])->name('logout');
@@ -82,7 +83,8 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/invoices', [PortalInvoiceController::class, 'index'])->name('invoices.index');
         Route::get('/invoices/{invoice}', [PortalInvoiceController::class, 'show'])->whereNumber('invoice')->name('invoices.show');
         Route::get('/invoices/{invoice}/pdf', [PortalInvoiceController::class, 'pdf'])->whereNumber('invoice')->name('invoices.pdf');
-        Route::post('/invoices/{invoice}/payment-proof', [PortalPaymentProofController::class, 'store'])->whereNumber('invoice')->name('payment-proofs.store');
+        Route::post('/invoices/{invoice}/payment-proof', [PortalPaymentProofController::class, 'store'])->whereNumber('invoice')->middleware('throttle:20,1')->name('payment-proofs.store');
+        Route::get('/invoices/{invoice}/payment-proof/{proof}', [PortalPaymentProofController::class, 'download'])->whereNumber(['invoice', 'proof'])->name('payment-proofs.download');
     });
 });
 
@@ -170,6 +172,9 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/reports/{type}/xlsx', [ReportPageController::class, 'xlsx'])->name('reports.xlsx');
         Route::get('/reports/{type}/pdf', [ReportPageController::class, 'pdf'])->name('reports.pdf');
     });
+    Route::get('/tokens', [ApiTokenController::class, 'index'])->name('tokens.index');
+    Route::post('/tokens', [ApiTokenController::class, 'store'])->name('tokens.store');
+    Route::delete('/tokens/{token}', [ApiTokenController::class, 'destroy'])->name('tokens.destroy');
     Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
     Route::post('/approvals/settings', [ApprovalController::class, 'setting'])->name('approvals.setting');
     Route::post('/approvals/{approval}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');

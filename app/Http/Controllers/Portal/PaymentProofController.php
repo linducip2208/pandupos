@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PaymentProof;
 use App\Models\SalesInvoice;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class PaymentProofController extends Controller
 {
@@ -14,7 +15,9 @@ class PaymentProofController extends Controller
         $customer = auth('customer')->user();
         $invoice = SalesInvoice::query()->where('contact_id', $customer->contact_id)->findOrFail($invoice);
         $validated = $request->validate([
-            'proof' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            // Extension allowlist + content sniffing + size cap. Stored on the
+            // private disk under a tenant-scoped prefix with a hashed filename.
+            'proof' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'mimetypes:image/jpeg,image/png,application/pdf', 'max:5120'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
         $file = $validated['proof'];
@@ -34,5 +37,22 @@ class PaymentProofController extends Controller
         ]);
 
         return back()->with('status', 'Bukti pembayaran berhasil dikirim untuk verifikasi.');
+    }
+
+    /** Owner-only download from private storage with correct MIME and nosniff. */
+    public function download(int $invoice, int $proof)
+    {
+        $customer = auth('customer')->user();
+        $invoice = SalesInvoice::query()->where('contact_id', $customer->contact_id)->findOrFail($invoice);
+        $record = PaymentProof::query()
+            ->where('sales_invoice_id', $invoice->id)
+            ->where('tenant_id', $customer->tenant_id)
+            ->findOrFail($proof);
+        abort_unless(Storage::disk('local')->exists($record->path), 404);
+
+        return Storage::disk('local')->download($record->path, $record->original_name, [
+            'Content-Type' => $record->mime_type,
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureTokenAbility;
 use App\Http\Middleware\EntitlementMiddleware;
 use App\Http\Middleware\ModuleEnabledMiddleware;
 use App\Http\Middleware\PortalTenantMiddleware;
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'entitlement' => EntitlementMiddleware::class,
             'module' => ModuleEnabledMiddleware::class,
             'portal.tenant' => PortalTenantMiddleware::class,
+            'token-ability' => EnsureTokenAbility::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
