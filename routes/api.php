@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\SyncController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Controllers\Api\V1\WooWebhookController;
+use App\Http\Controllers\Api\V1\ZatcaController;
 use App\Http\Controllers\PlatformTenantController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -207,6 +208,13 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::get('memberships', [GymController::class, 'memberships']);
         Route::post('subscribe', [GymController::class, 'subscribe']);
         Route::post('memberships/{membership}/transition', [GymController::class, 'transition']);
+    });
+    // ZATCA (tenant-scoped; requires zatca.view/manage + enabled module)
+    Route::prefix('zatca')->middleware('module:zatca')->group(function () {
+        Route::get('documents', [ZatcaController::class, 'index']);
+        Route::post('documents', [ZatcaController::class, 'generate']);
+        Route::get('documents/{document}', [ZatcaController::class, 'show']);
+        Route::post('documents/{document}/report', [ZatcaController::class, 'markReported']);
     });
     // Field force (tenant-scoped; requires fieldforce.view/manage + enabled module)
     Route::prefix('fieldforce')->middleware('module:fieldforce')->group(function () {

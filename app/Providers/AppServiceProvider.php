@@ -23,6 +23,7 @@ use App\Models\Project;
 use App\Models\RepairOrder;
 use App\Models\User;
 use App\Models\WoConnection;
+use App\Models\ZatcaDocument;
 use App\Policies\AccountingPolicy;
 use App\Policies\AiPolicy;
 use App\Policies\AssetPolicy;
@@ -38,6 +39,7 @@ use App\Policies\ProductPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\RepairPolicy;
 use App\Policies\WooPolicy;
+use App\Policies\ZatcaPolicy;
 use App\Services\Costing\WeightedAverageCostStrategy;
 use App\Services\EntitlementService;
 use App\Services\ModuleRegistry;
@@ -86,6 +88,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(RepairOrder::class, RepairPolicy::class);
         Gate::policy(WoConnection::class, WooPolicy::class);
+        Gate::policy(ZatcaDocument::class, ZatcaPolicy::class);
 
         BlogPost::saved(function (BlogPost $post): void {
             Cache::forget('seo.sitemap.index');

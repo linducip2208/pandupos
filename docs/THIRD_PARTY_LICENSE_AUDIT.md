@@ -16,6 +16,7 @@ Scope: `composer.json`, `composer.lock`, `package.json`, `package-lock.json`,
 | phpoffice/phpspreadsheet | ^5.9 | LGPL-2.1+ | yes (library use) |
 | picqer/php-barcode-generator | ^3.2.0 | LGPL-3.0+ | yes (library use) |
 | spatie/laravel-permission | ^8.3 | MIT | yes |
+| bacon/bacon-qr-code | ^3.1 | BSD-2-Clause | yes (library use, ZATCA QR SVG) |
 | fakerphp/faker (dev) | ^1.23 | MIT | yes (dev only) |
 | laravel/pint (dev) | ^1.27 | MIT | yes (dev only) |
 | phpunit/phpunit (dev) | ^12.5 | BSD-3-Clause | yes (dev only) |

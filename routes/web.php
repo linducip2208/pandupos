@@ -56,6 +56,7 @@ use App\Http\Controllers\SerialWorkspaceController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\WooWorkspaceController;
+use App\Http\Controllers\ZatcaWorkspaceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => auth()->check() ? redirect()->route('dashboard') : view('welcome'))->name('home');
@@ -353,6 +354,12 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/tasks/{task}/transition', [FieldForceWorkspaceController::class, 'transition'])->name('transition');
         Route::post('/tasks/{task}/checkin', [FieldForceWorkspaceController::class, 'checkIn'])->name('checkin');
         Route::post('/visits/{visit}/checkout', [FieldForceWorkspaceController::class, 'checkOut'])->name('checkout');
+    });
+    Route::prefix('zatca')->name('zatca.')->middleware(['module:zatca'])->group(function () {
+        Route::get('/', [ZatcaWorkspaceController::class, 'index'])->name('index');
+        Route::post('/generate', [ZatcaWorkspaceController::class, 'generate'])->name('generate');
+        Route::post('/notes', [ZatcaWorkspaceController::class, 'issueNote'])->name('notes.issue');
+        Route::post('/documents/{document}/report', [ZatcaWorkspaceController::class, 'markReported'])->name('report');
     });
 });
 

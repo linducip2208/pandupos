@@ -185,7 +185,7 @@ final class SaleService
                 if ($toRestore <= 0) {
                     continue;
                 }
-                $variant = ProductVariant::withoutGlobalScopes()->with('product')->findOrFail($line->product_variant_id);
+                $variant = $this->variantWithProduct($invoice->tenant_id, $line->product_variant_id);
                 if (! $variant->product->track_inventory) {
                     continue;
                 }
@@ -287,7 +287,7 @@ final class SaleService
                     'idempotency_key' => $idempotencyKey,
                 ]);
                 foreach ($prepared as [$salesLine, $rl, $batchId, $serialIds]) {
-                    $variant = ProductVariant::withoutGlobalScopes()->with('product')->findOrFail($rl['variant_id']);
+                    $variant = $this->variantWithProduct($invoice->tenant_id, $rl['variant_id']);
                     if ($serialIds->isNotEmpty()) {
                         foreach ($serialIds as $serialId) {
                             $serial = SerialNumber::withoutGlobalScopes()
@@ -487,6 +487,22 @@ final class SaleService
         }
     }
 
+    /**
+     * Tenant-explicit variant+product loader. Lazy/eager relations honor the
+     * ambient TenantContext, which is wrong for queued/console flows acting
+     * on an explicit tenant id — always scope both sides explicitly.
+     */
+    private function variantWithProduct(int $tenantId, int $variantId): ProductVariant
+    {
+        $variant = ProductVariant::withoutGlobalScopes()
+            ->with(['product' => fn ($q) => $q->withoutGlobalScopes()->where('tenant_id', $tenantId)])
+            ->where('tenant_id', $tenantId)
+            ->findOrFail($variantId);
+        abort_if(! $variant->product, 422, 'Variant product does not belong to tenant.');
+
+        return $variant;
+    }
+
     private function decreaseSoldInventory(
         int $tenantId,
         int $warehouseId,
@@ -496,7 +512,7 @@ final class SaleService
         int $referenceId,
         ?int $batchId = null,
     ): void {
-        $variant = ProductVariant::withoutGlobalScopes()->with('product')->findOrFail($variantId);
+        $variant = $this->variantWithProduct($tenantId, $variantId);
         if (! $variant->product->track_inventory || $variant->product->product_type === 'service') {
             return;
         }
