@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\ShopApiController;
 use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\SyncController;
 use App\Http\Controllers\Api\V1\WebhookController;
+use App\Http\Controllers\Api\V1\WooWebhookController;
 use App\Http\Controllers\PlatformTenantController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -213,6 +214,9 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
 // Inbound payment webhooks: signature-authenticated, not session-auth (no auth middleware).
 // Same gateway_ref is idempotent; replays are safe. Secret per gateway from env.
 Route::post('v1/payments/webhooks/{gateway}', [PaymentWebhookController::class, 'handle']);
+
+// WooCommerce order webhooks: signature-verified per connection, idempotent.
+Route::post('v1/woocommerce/webhook/{connection}', [WooWebhookController::class, 'handle'])->middleware('throttle:120,1');
 
 // Platform admin (no tenant scope, gate platform-admin)
 Route::prefix('v1/platform')->middleware(['auth:sanctum', 'can:platform-admin'])->group(function () {

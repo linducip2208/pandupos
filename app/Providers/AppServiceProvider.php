@@ -15,9 +15,9 @@ use App\Models\JournalEntry;
 use App\Models\MrpBom;
 use App\Models\MrpWorkOrder;
 use App\Models\PayrollRun;
-use App\Models\Product;
 use App\Models\Project;
 use App\Models\RepairOrder;
+use App\Models\WoConnection;
 use App\Models\User;
 use App\Policies\AccountingPolicy;
 use App\Policies\AssetPolicy;
@@ -29,6 +29,7 @@ use App\Policies\PayrollPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\RepairPolicy;
+use App\Policies\WooPolicy;
 use App\Services\Costing\WeightedAverageCostStrategy;
 use App\Services\EntitlementService;
 use App\Services\ModuleRegistry;
@@ -72,6 +73,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PayrollRun::class, PayrollPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(RepairOrder::class, RepairPolicy::class);
+        Gate::policy(WoConnection::class, WooPolicy::class);
 
         BlogPost::saved(function (BlogPost $post): void {
             Cache::forget('seo.sitemap.index');

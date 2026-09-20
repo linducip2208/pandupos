@@ -51,6 +51,7 @@ use App\Http\Controllers\SalesReturnWorkspaceController;
 use App\Http\Controllers\SerialWorkspaceController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\WooWorkspaceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => auth()->check() ? redirect()->route('dashboard') : view('welcome'))->name('home');
@@ -312,6 +313,11 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/', [EcommerceWorkspaceController::class, 'index'])->name('index');
         Route::post('/products/{product}/publish', [EcommerceWorkspaceController::class, 'publish'])->name('products.publish');
         Route::post('/orders/{order}/transition', [EcommerceWorkspaceController::class, 'transition'])->name('orders.transition');
+    });
+    Route::prefix('woo')->name('woo.')->middleware(['module:woocommerce'])->group(function () {
+        Route::get('/', [WooWorkspaceController::class, 'index'])->name('index');
+        Route::post('/connections', [WooWorkspaceController::class, 'store'])->name('store');
+        Route::post('/connections/{connection}/sync', [WooWorkspaceController::class, 'sync'])->name('sync');
     });
 });
 

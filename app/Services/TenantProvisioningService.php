@@ -48,7 +48,7 @@ final class TenantProvisioningService
             $tenantPermissions = Permission::query()->whereIn('name', [
                 'pos.sale.create', 'pos.sale.void', 'register.manage', 'register.open', 'register.close', 'inventory.view', 'products.manage',
                 'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve',
-                'sales.view', 'sales.create', 'reports.view', 'settings.manage', 'accounting.view', 'accounting.manage', 'crm.view', 'crm.manage', 'mrp.view', 'mrp.manage', 'repair.view', 'repair.manage', 'project.view', 'project.manage', 'asset.view', 'asset.manage', 'hrm.view', 'hrm.manage', 'payroll.view', 'payroll.manage', 'ecommerce.view', 'ecommerce.manage',
+                'sales.view', 'sales.create', 'reports.view', 'settings.manage', 'accounting.view', 'accounting.manage', 'crm.view', 'crm.manage', 'mrp.view', 'mrp.manage', 'repair.view', 'repair.manage', 'project.view', 'project.manage', 'asset.view', 'asset.manage', 'hrm.view', 'hrm.manage', 'payroll.view', 'payroll.manage', 'ecommerce.view', 'ecommerce.manage', 'woocommerce.view', 'woocommerce.manage',
             ])->get();
             if ($tenantPermissions->isNotEmpty()) {
                 $owner->givePermissionTo($tenantPermissions);
