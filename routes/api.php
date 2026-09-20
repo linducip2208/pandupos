@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AccountingController;
+use App\Http\Controllers\Api\V1\AssetController;
 use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CrmController;
@@ -171,6 +172,13 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('/{project}/tasks', [ProjectController::class, 'storeTask']);
         Route::post('/tasks/{task}/advance', [ProjectController::class, 'advanceTask']);
         Route::post('/{project}/time', [ProjectController::class, 'logTime']);
+    });
+    // Assets (tenant-scoped; requires asset.view/manage + enabled module)
+    Route::prefix('assets')->middleware('module:asset')->group(function () {
+        Route::get('/', [AssetController::class, 'index']);
+        Route::post('/', [AssetController::class, 'store']);
+        Route::get('/{asset}/schedule', [AssetController::class, 'schedule']);
+        Route::post('/{asset}/dispose', [AssetController::class, 'dispose']);
     });
 
     // Webhooks (tenant outgoing management)

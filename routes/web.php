@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountingWorkspaceController;
+use App\Http\Controllers\AssetWorkspaceController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Auth\ReauthenticationController;
@@ -276,6 +277,15 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/milestones/{milestone}/complete', [ProjectWorkspaceController::class, 'completeMilestone'])->name('milestones.complete');
         Route::post('/{project}/time', [ProjectWorkspaceController::class, 'logTime'])->name('time.store');
         Route::post('/{project}/expenses', [ProjectWorkspaceController::class, 'addExpense'])->name('expenses.store');
+    });
+    Route::prefix('assets')->name('asset.')->middleware(['module:asset'])->group(function () {
+        Route::get('/', [AssetWorkspaceController::class, 'index'])->name('index');
+        Route::post('/', [AssetWorkspaceController::class, 'store'])->name('store');
+        Route::get('/{asset}/schedule', [AssetWorkspaceController::class, 'schedule'])->name('schedule');
+        Route::post('/{asset}/transfer', [AssetWorkspaceController::class, 'transfer'])->name('transfer');
+        Route::post('/{asset}/maintain', [AssetWorkspaceController::class, 'maintain'])->name('maintain');
+        Route::post('/{asset}/return', [AssetWorkspaceController::class, 'returnFromMaintenance'])->name('return');
+        Route::post('/{asset}/dispose', [AssetWorkspaceController::class, 'dispose'])->name('dispose');
     });
 });
 

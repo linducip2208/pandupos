@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Contracts\CostingStrategy;
 use App\Http\Middleware\TenantMiddleware;
 use App\Models\Account;
+use App\Models\Asset;
 use App\Models\BlogPost;
 use App\Models\CrmLead;
 use App\Models\CrmOpportunity;
@@ -16,6 +17,7 @@ use App\Models\Project;
 use App\Models\RepairOrder;
 use App\Models\User;
 use App\Policies\AccountingPolicy;
+use App\Policies\AssetPolicy;
 use App\Policies\CrmPolicy;
 use App\Policies\MrpPolicy;
 use App\Policies\ProductPolicy;
@@ -53,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(Product::class, ProductPolicy::class);
         Gate::policy(Account::class, AccountingPolicy::class);
+        Gate::policy(Asset::class, AssetPolicy::class);
         Gate::policy(JournalEntry::class, AccountingPolicy::class);
         Gate::policy(CrmLead::class, CrmPolicy::class);
         Gate::policy(CrmOpportunity::class, CrmPolicy::class);
