@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\CrmController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\HrmController;
+use App\Http\Controllers\Api\V1\HmsController;
 use App\Http\Controllers\Api\V1\InventoryConfigurationController;
 use App\Http\Controllers\Api\V1\InventoryControlController;
 use App\Http\Controllers\Api\V1\MeController;
@@ -191,6 +192,16 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('employees/{employee}/attend', [HrmController::class, 'attend']);
         Route::post('employees/{employee}/leave', [HrmController::class, 'requestLeave']);
         Route::post('leaves/{leave}/decide', [HrmController::class, 'decideLeave']);
+    });
+    // HMS (tenant-scoped; requires hms.view/manage + enabled module)
+    Route::prefix('hms')->middleware('module:hms')->group(function () {
+        Route::get('patients', [HmsController::class, 'patients']);
+        Route::post('patients', [HmsController::class, 'storePatient']);
+        Route::post('appointments', [HmsController::class, 'schedule']);
+        Route::post('appointments/{appointment}/transition', [HmsController::class, 'transitionAppointment']);
+        Route::post('invoices', [HmsController::class, 'storeInvoice']);
+        Route::post('invoices/{invoice}/pay', [HmsController::class, 'payInvoice']);
+        Route::get('patients/{patient}/history', [HmsController::class, 'history']);
     });
     // Payroll (tenant-scoped; requires payroll.view/manage + enabled module)
     Route::prefix('payroll')->middleware('module:payroll')->group(function () {

@@ -15,6 +15,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocsController;
 use App\Http\Controllers\EcommerceWorkspaceController;
 use App\Http\Controllers\HrmWorkspaceController;
+use App\Http\Controllers\HmsWorkspaceController;
 use App\Http\Controllers\InventoryWorkspaceController;
 use App\Http\Controllers\MrpWorkspaceController;
 use App\Http\Controllers\PayrollWorkspaceController;
@@ -308,6 +309,16 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/runs/{run}/approve', [PayrollWorkspaceController::class, 'approve'])->name('approve');
         Route::post('/runs/{run}/paid', [PayrollWorkspaceController::class, 'markPaid'])->name('paid');
         Route::get('/runs/{run}/payslip/{employee}', [PayrollWorkspaceController::class, 'payslip'])->name('payslip');
+    });
+    Route::prefix('hms')->name('hms.')->middleware(['module:hms'])->group(function () {
+        Route::get('/', [HmsWorkspaceController::class, 'index'])->name('index');
+        Route::post('/patients', [HmsWorkspaceController::class, 'storePatient'])->name('patients.store');
+        Route::post('/doctors', [HmsWorkspaceController::class, 'storeDoctor'])->name('doctors.store');
+        Route::post('/appointments', [HmsWorkspaceController::class, 'schedule'])->name('appointments.schedule');
+        Route::post('/appointments/{appointment}/transition', [HmsWorkspaceController::class, 'transitionAppointment'])->name('appointments.transition');
+        Route::post('/appointments/{appointment}/record', [HmsWorkspaceController::class, 'storeRecord'])->name('appointments.record');
+        Route::post('/invoices', [HmsWorkspaceController::class, 'storeInvoice'])->name('invoices.store');
+        Route::post('/invoices/{invoice}/pay', [HmsWorkspaceController::class, 'payInvoice'])->name('invoices.pay');
     });
     Route::prefix('ecommerce')->name('ecommerce.')->middleware(['module:ecommerce'])->group(function () {
         Route::get('/', [EcommerceWorkspaceController::class, 'index'])->name('index');
