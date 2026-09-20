@@ -38,6 +38,7 @@ use App\Http\Controllers\ProductMasterController;
 use App\Http\Controllers\ProgrammaticSeoController;
 use App\Http\Controllers\PurchasingWorkspaceController;
 use App\Http\Controllers\RegisterWorkspaceController;
+use App\Http\Controllers\ProjectWorkspaceController;
 use App\Http\Controllers\RepairWorkspaceController;
 use App\Http\Controllers\ReportPageController;
 use App\Http\Controllers\SalesDocumentWorkspaceController;
@@ -264,6 +265,17 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/orders/{order}/parts', [RepairWorkspaceController::class, 'addPart'])->name('orders.parts');
         Route::post('/orders/{order}/pay', [RepairWorkspaceController::class, 'pay'])->name('orders.pay');
         Route::post('/orders/{order}/deliver', [RepairWorkspaceController::class, 'deliver'])->name('orders.deliver');
+    });
+    Route::prefix('projects')->name('project.')->middleware(['module:project'])->group(function () {
+        Route::get('/', [ProjectWorkspaceController::class, 'index'])->name('index');
+        Route::post('/', [ProjectWorkspaceController::class, 'store'])->name('store');
+        Route::post('/{project}/transition', [ProjectWorkspaceController::class, 'transition'])->name('transition');
+        Route::post('/{project}/tasks', [ProjectWorkspaceController::class, 'storeTask'])->name('tasks.store');
+        Route::post('/tasks/{task}/advance', [ProjectWorkspaceController::class, 'advanceTask'])->name('tasks.advance');
+        Route::post('/{project}/milestones', [ProjectWorkspaceController::class, 'storeMilestone'])->name('milestones.store');
+        Route::post('/milestones/{milestone}/complete', [ProjectWorkspaceController::class, 'completeMilestone'])->name('milestones.complete');
+        Route::post('/{project}/time', [ProjectWorkspaceController::class, 'logTime'])->name('time.store');
+        Route::post('/{project}/expenses', [ProjectWorkspaceController::class, 'addExpense'])->name('expenses.store');
     });
 });
 

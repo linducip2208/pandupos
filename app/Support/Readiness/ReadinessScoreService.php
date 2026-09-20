@@ -67,7 +67,7 @@ final class ReadinessScoreService
                 ['CRM', 8, true, 'CrmTest (8 tests/46 assertions): module gating, lead status machine with skip rejection, idempotent lead→customer conversion (idempotency before status guard), guarded pipeline requiring a real customer for won, quotation linkage, overdue follow-ups, tenant isolation, RBAC, API lifecycle; docs/CRM.md'],
                 ['Manufacturing / MRP', 8, true, 'MrpTest (10 tests/58 assertions): versioned BOMs with self/cross-tenant validation, multi-level explosion with scrap and cycle guard, shortage-listed release block, full produce flow (proportional consumption, running-average costing, scrap, over-production refusal), cancel rules, work-order movement provenance, tenant isolation, RBAC, API + workspace flows; docs/MRP.md'],
                 ['Repair', 6, true, 'RepairTest (7 tests/45 assertions): intake→diagnosis→work→delivery machine with guards, single stock deduction at delivery with provenance, warranty free-but-consuming, payment balance enforcement, module gating, tenant isolation, RBAC, API + workspace flows; docs/REPAIR.md'],
-                ['Project', 6, false, 'Projects/tasks/timesheet not implemented'],
+                ['Project', 6, true, 'ProjectTest (8 tests/42 assertions): guarded project/task lifecycles (completion requires done tasks), milestones, 24h-capped timesheets, expenses, budget profitability, module gating, tenant isolation, RBAC, API + workspace flows; docs/PROJECT.md'],
                 ['Asset Management', 6, false, 'Asset register/depreciation not implemented'],
                 ['HRM', 6, false, 'Employees/attendance/leave not implemented'],
                 ['Payroll', 8, false, 'Salary structure/payroll-run/payslip not implemented'],
@@ -81,7 +81,7 @@ final class ReadinessScoreService
                 ['Cheque', 4, false, 'Cheque receipt/deposit/clearance/bounce not implemented'],
             ]),
             'tests' => $this->dimension([
-                ['Regression suite', 60, true, 'Latest local full suite: 508 tests / 1946 assertions (1 mysql-only backup test skips on sqlite); MySQL CI matrix runs the same suite green'],
+                ['Regression suite', 60, true, 'Latest local full suite: 516 tests / 1988 assertions (1 mysql-only backup test skips on sqlite); MySQL CI matrix runs the same suite green'],
                 ['Critical browser E2E', 10, true, '14 Playwright tests green on MySQL-seeded Chromium via npm run test:e2e (setup + auth, catalog→PO→receive→register→POS checkout with cash change→close, reports, SaaS plan change with re-auth); CI e2e job on mysql:8; docs/E2E.md. The suite caught three production-class bugs HTTP tests missed: Livewire update route without tenant context (POS 403), register close rejecting blank optional denominations (422), cash tender overpay rejected instead of change (422)'],
                 ['Concurrency', 10, true, 'ConcurrencyMatrixTest (15 tests): last-stock, batch FEFO, serial reserve/sell/transfer, reservation ATP, invoice/payment/PO idempotency, webhook duplicate, usage-limit, atomic coupon redemption, numbering uniqueness, refund double-submit races'],
                 ['Security regression', 10, true, 'SecurityRegressionFullMatrixTest: cross-tenant read/write/API/export matrix, RBAC denial on void/return/platform actions, platform-admin gating with no state change'],

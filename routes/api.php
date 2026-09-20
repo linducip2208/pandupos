@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\MrpController;
 use App\Http\Controllers\Api\V1\PaymentWebhookController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PurchaseController;
+use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\RepairController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SaleController;
@@ -161,6 +162,15 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('orders/{order}/transition', [RepairController::class, 'transition']);
         Route::post('orders/{order}/parts', [RepairController::class, 'addPart']);
         Route::post('orders/{order}/pay', [RepairController::class, 'pay']);
+    });
+    // Projects (tenant-scoped; requires project.view/manage + enabled module)
+    Route::prefix('projects')->middleware('module:project')->group(function () {
+        Route::get('/', [ProjectController::class, 'index']);
+        Route::post('/', [ProjectController::class, 'store']);
+        Route::post('/{project}/transition', [ProjectController::class, 'transition']);
+        Route::post('/{project}/tasks', [ProjectController::class, 'storeTask']);
+        Route::post('/tasks/{task}/advance', [ProjectController::class, 'advanceTask']);
+        Route::post('/{project}/time', [ProjectController::class, 'logTime']);
     });
 
     // Webhooks (tenant outgoing management)
