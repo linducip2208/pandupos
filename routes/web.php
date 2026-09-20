@@ -36,9 +36,9 @@ use App\Http\Controllers\Portal\PaymentProofController as PortalPaymentProofCont
 use App\Http\Controllers\PriceListWorkspaceController;
 use App\Http\Controllers\ProductMasterController;
 use App\Http\Controllers\ProgrammaticSeoController;
+use App\Http\Controllers\ProjectWorkspaceController;
 use App\Http\Controllers\PurchasingWorkspaceController;
 use App\Http\Controllers\RegisterWorkspaceController;
-use App\Http\Controllers\ProjectWorkspaceController;
 use App\Http\Controllers\RepairWorkspaceController;
 use App\Http\Controllers\ReportPageController;
 use App\Http\Controllers\SalesDocumentWorkspaceController;
