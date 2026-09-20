@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CrmController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\HrmController;
 use App\Http\Controllers\Api\V1\InventoryConfigurationController;
 use App\Http\Controllers\Api\V1\InventoryControlController;
 use App\Http\Controllers\Api\V1\MeController;
@@ -179,6 +180,14 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('/', [AssetController::class, 'store']);
         Route::get('/{asset}/schedule', [AssetController::class, 'schedule']);
         Route::post('/{asset}/dispose', [AssetController::class, 'dispose']);
+    });
+    // HRM (tenant-scoped; requires hrm.view/manage + enabled module)
+    Route::prefix('hrm')->middleware('module:hrm')->group(function () {
+        Route::get('employees', [HrmController::class, 'employees']);
+        Route::post('employees', [HrmController::class, 'storeEmployee']);
+        Route::post('employees/{employee}/attend', [HrmController::class, 'attend']);
+        Route::post('employees/{employee}/leave', [HrmController::class, 'requestLeave']);
+        Route::post('leaves/{leave}/decide', [HrmController::class, 'decideLeave']);
     });
 
     // Webhooks (tenant outgoing management)

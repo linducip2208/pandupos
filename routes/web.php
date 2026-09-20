@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountingWorkspaceController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AssetWorkspaceController;
+use App\Http\Controllers\HrmWorkspaceController;
 use App\Http\Controllers\Auth\ReauthenticationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BarcodeWorkspaceController;
@@ -286,6 +287,15 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/{asset}/maintain', [AssetWorkspaceController::class, 'maintain'])->name('maintain');
         Route::post('/{asset}/return', [AssetWorkspaceController::class, 'returnFromMaintenance'])->name('return');
         Route::post('/{asset}/dispose', [AssetWorkspaceController::class, 'dispose'])->name('dispose');
+    });
+    Route::prefix('hrm')->name('hrm.')->middleware(['module:hrm'])->group(function () {
+        Route::get('/', [HrmWorkspaceController::class, 'index'])->name('index');
+        Route::post('/employees', [HrmWorkspaceController::class, 'storeEmployee'])->name('employees.store');
+        Route::post('/employees/{employee}/checkin', [HrmWorkspaceController::class, 'checkIn'])->name('employees.checkin');
+        Route::post('/employees/{employee}/checkout', [HrmWorkspaceController::class, 'checkOut'])->name('employees.checkout');
+        Route::post('/employees/{employee}/leave', [HrmWorkspaceController::class, 'requestLeave'])->name('employees.leave');
+        Route::post('/leaves/{leave}/decide', [HrmWorkspaceController::class, 'decideLeave'])->name('leaves.decide');
+        Route::post('/holidays', [HrmWorkspaceController::class, 'storeHoliday'])->name('holidays.store');
     });
 });
 
