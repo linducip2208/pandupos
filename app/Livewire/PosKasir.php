@@ -167,6 +167,18 @@ class PosKasir extends Component
         $branchId = $this->branchId($tenantId);
         $warehouseId = Warehouse::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('id');
 
+        // Cash tendering: a single cash line may exceed the total; the drawer
+        // nets exactly the invoice total and the excess is customer change.
+        // Split payments must still balance exactly (enforced by SaleService).
+        $change = 0.0;
+        if (count($this->payments) === 1 && ($this->payments[0]['method'] ?? null) === 'cash') {
+            $tendered = round((float) ($this->payments[0]['amount'] ?? 0), 2);
+            if ($tendered > $this->total) {
+                $change = round($tendered - $this->total, 2);
+                $this->payments[0]['amount'] = $this->total;
+            }
+        }
+
         $invoice = $sales->checkout(
             $tenantId, $branchId, $warehouseId, $this->customerId,
             collect($this->cart)->map(fn ($r) => [
@@ -182,7 +194,7 @@ class PosKasir extends Component
         );
 
         $this->lastInvoiceNo = $invoice->invoice_no;
-        $this->lastChange = round(collect($this->payments)->sum(fn ($p) => (float) $p['amount']) - $this->total, 2);
+        $this->lastChange = $change > 0 ? $change : round(collect($this->payments)->sum(fn ($p) => (float) $p['amount']) - $this->total, 2);
         $this->cart = [];
         $this->payments = [['method' => 'cash', 'amount' => 0]];
         session()->flash('status', 'Terjual: '.$invoice->invoice_no.($this->lastChange > 0 ? " | Kembali: {$this->lastChange}" : ''));

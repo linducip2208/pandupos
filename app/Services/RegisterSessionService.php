@@ -104,6 +104,12 @@ final class RegisterSessionService
         foreach ($counts as $denomination => $count) {
             $denomination = (int) $denomination;
             abort_unless(in_array($denomination, self::DENOMINATIONS, true), 422, 'Unsupported denomination.');
+            // Blank inputs arrive as null (ConvertEmptyStringsToNull): the
+            // denomination breakdown is optional, so blanks are skipped while
+            // explicitly provided counts must stay whole non-negative numbers.
+            if ($count === null || $count === '') {
+                continue;
+            }
             abort_unless(is_numeric($count) && (float) $count >= 0 && floor((float) $count) === (float) $count, 422, 'Denomination count must be a whole non-negative number.');
             $count = (int) $count;
             if ($count > 0) {

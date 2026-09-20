@@ -55,7 +55,10 @@ class ProductMasterUiTest extends TestCase
         $product = Product::firstOrFail();
         $response->assertRedirect(route('product-master.show', $product));
         $this->assertCount(2, $product->variants);
-        $this->assertSame('Regular', $product->variants->first()->attributes['Ukuran']);
+        // Order-explicit: row order without ORDER BY is driver-dependent.
+        $regular = $product->variants->firstWhere('name', 'Regular');
+        $this->assertNotNull($regular);
+        $this->assertSame('Regular', $regular->attributes['Ukuran']);
         $this->assertDatabaseHas('product_locations', ['product_id' => $product->id, 'warehouse_id' => $warehouse->id, 'is_active' => true]);
         Storage::disk('public')->assertExists($product->image_path);
         $this->actingAs($owner)->get(route('product-master.show', $product))->assertOk()->assertSeeText('Kopi Susu')->assertSeeText('Regular');

@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -34,9 +36,44 @@ class OpsReadinessTest extends TestCase
 
     public function test_backup_command_fails_safely_on_memory(): void
     {
-        // phpunit uses :memory: → command must return FAILURE, not throw.
+        // phpunit sqlite uses :memory: → command must return FAILURE, not throw.
+        if (DB::getDriverName() !== 'sqlite' || config('database.default') !== 'sqlite') {
+            $this->markTestSkipped('Only applies to in-memory sqlite runs.');
+        }
         $code = Artisan::call('backup:database');
         $this->assertEquals(1, $code);
+    }
+
+    public function test_backup_command_succeeds_and_verifies_on_mysql(): void
+    {
+        if (DB::getDriverName() !== 'mysql') {
+            $this->markTestSkipped('MySQL backup path only.');
+        }
+        if ($this->binaryPath('mysqldump') === null) {
+            $this->markTestSkipped('mysqldump binary not available.');
+        }
+        $disk = Storage::disk('local');
+        $before = collect($disk->files('backups'));
+
+        $this->assertSame(0, Artisan::call('backup:database'));
+        $fresh = collect($disk->files('backups'))->diff($before);
+        $this->assertTrue($fresh->contains(fn ($f) => str_ends_with($f, '.sql')), 'Backup must produce a mysql artifact.');
+        $this->assertTrue($fresh->contains(fn ($f) => str_ends_with($f, '.manifest.json')), 'Backup must produce a manifest.');
+
+        $disk->delete($fresh->all());
+    }
+
+    private function binaryPath(string $bin): ?string
+    {
+        $found = trim((string) shell_exec(($this->isWindows() ? 'where' : 'command -v').' '.$bin.' 2>NUL'));
+        $first = preg_split('/\R/', $found)[0] ?? '';
+
+        return $first !== '' && is_file($first) ? $first : null;
+    }
+
+    private function isWindows(): bool
+    {
+        return DIRECTORY_SEPARATOR === '\\';
     }
 
     public function test_restore_refuses_missing_artifact(): void

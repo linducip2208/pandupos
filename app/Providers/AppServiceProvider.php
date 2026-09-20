@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Contracts\CostingStrategy;
+use App\Http\Middleware\TenantMiddleware;
 use App\Models\BlogPost;
 use App\Models\Product;
 use App\Models\User;
@@ -13,7 +14,10 @@ use App\Services\ModuleRegistry;
 use App\Services\Seo\IndexNowService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
+use Livewire\Mechanisms\HandleRequests\RequireLivewireHeaders;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -44,5 +48,12 @@ class AppServiceProvider extends ServiceProvider
         });
 
         BlogPost::deleted(fn () => Cache::forget('seo.sitemap.index'));
+
+        // Livewire registers its update endpoint outside the web route groups,
+        // so tenant-scoped components (POS) would lose TenantContext and fail
+        // closed with 403 on every interaction. Resolve tenant context here too,
+        // with the same fail-closed membership semantics as page loads.
+        Livewire::setUpdateRoute(fn ($handle, $path) => Route::post($path, $handle)
+            ->middleware(['web', RequireLivewireHeaders::class, TenantMiddleware::class]));
     }
 }

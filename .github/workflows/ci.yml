@@ -7,12 +7,27 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [sqlite, mysql]
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: pandupos_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     env:
       APP_ENV: testing
       APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       APP_DEBUG: false
-      DB_CONNECTION: sqlite
-      DB_DATABASE: ':memory:'
       CACHE_STORE: array
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
@@ -34,6 +49,20 @@ jobs:
       - run: npm run build
       - name: Scan tracked files for committed secrets
         run: bash scripts/scan-secrets.sh
+      - name: Configure database (sqlite)
+        if: matrix.db == 'sqlite'
+        run: |
+          echo "DB_CONNECTION=sqlite" >> $GITHUB_ENV
+          echo "DB_DATABASE=:memory:" >> $GITHUB_ENV
+      - name: Configure database (mysql)
+        if: matrix.db == 'mysql'
+        run: |
+          echo "DB_CONNECTION=mysql" >> $GITHUB_ENV
+          echo "DB_HOST=127.0.0.1" >> $GITHUB_ENV
+          echo "DB_PORT=3306" >> $GITHUB_ENV
+          echo "DB_DATABASE=pandupos_test" >> $GITHUB_ENV
+          echo "DB_USERNAME=root" >> $GITHUB_ENV
+          echo "DB_PASSWORD=root" >> $GITHUB_ENV
       - name: Run PHPUnit
         shell: bash
         run: |
@@ -46,3 +75,60 @@ jobs:
       - name: Audit Composer dependencies
         if: always()
         run: composer audit
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: pandupos_e2e
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      APP_ENV: local
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      APP_DEBUG: false
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: pandupos_e2e
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      PLATFORM_ADMIN_EMAIL: admin@e2e.local
+      PLATFORM_ADMIN_PASSWORD: E2eAdmin123!
+      E2E_BASE_URL: http://127.0.0.1:8766
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, bcmath, ctype, fileinfo, gd, json, tokenizer, xml, zip
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - run: composer install --prefer-dist --no-progress
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Migrate and seed E2E database
+        run: php artisan migrate:fresh --seed --force
+      - name: Serve application
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8766 > /tmp/e2e-serve.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8766/login && break || sleep 2; done
+      - name: Run Playwright E2E
+        run: npm run test:e2e
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test-results/

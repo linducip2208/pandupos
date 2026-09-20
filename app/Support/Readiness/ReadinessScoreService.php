@@ -66,8 +66,8 @@ final class ReadinessScoreService
                 ['Deferred post-v1 addon parity', 0, false, 'Out of v1 scope; informational only and excluded from release readiness'],
             ]),
             'tests' => $this->dimension([
-                ['Regression suite', 60, true, 'Latest local full suite: 470 tests / 1723 assertions'],
-                ['Critical browser E2E', 10, false, 'No browser-driver suite; critical paths are covered at the HTTP-kernel level only'],
+                ['Regression suite', 60, true, 'Latest local full suite: 473 tests / 1731 assertions (1 mysql-only backup test skips on sqlite); MySQL CI matrix runs the same suite green'],
+                ['Critical browser E2E', 10, true, '14 Playwright tests green on MySQL-seeded Chromium via npm run test:e2e (setup + auth, catalog→PO→receive→register→POS checkout with cash change→close, reports, SaaS plan change with re-auth); CI e2e job on mysql:8; docs/E2E.md. The suite caught three production-class bugs HTTP tests missed: Livewire update route without tenant context (POS 403), register close rejecting blank optional denominations (422), cash tender overpay rejected instead of change (422)'],
                 ['Concurrency', 10, true, 'ConcurrencyMatrixTest (15 tests): last-stock, batch FEFO, serial reserve/sell/transfer, reservation ATP, invoice/payment/PO idempotency, webhook duplicate, usage-limit, atomic coupon redemption, numbering uniqueness, refund double-submit races'],
                 ['Security regression', 10, true, 'SecurityRegressionFullMatrixTest: cross-tenant read/write/API/export matrix, RBAC denial on void/return/platform actions, platform-admin gating with no state change'],
                 ['Failure and recovery paths', 10, true, 'FailureRecoveryTest (10 tests): failed checkout atomicity, duplicate-job idempotency, real database-queue fail-then-retry, payment timeout with retry, backup/restore file roundtrip, cache-outage serving, oversell rejection'],
@@ -87,7 +87,7 @@ final class ReadinessScoreService
                 ['Repository secret scan', 3, true, 'scripts/scan-secrets.sh: tracked-content credential signatures, forbidden env/dump/key files and .env.example real-secret checks; latest local run clean'],
                 ['Third-party license security review', 3, true, 'docs/THIRD_PARTY_LICENSE_AUDIT.md: composer licenses + npm ls + UltimatePOS grep clean; MIT/LGPL library use only, no redistributedUI/fork violations'],
                 ['Sensitive admin foundations', 5, true, 'Platform authorization and audit foundations'],
-                ['Sensitive admin hardening', 5, true, 'SensitiveAdminReauthTest (9 tests/37 assertions): RequireSensitiveReauth enforces fresh password confirmation (600s window) on 18 sensitive platform mutations, impersonating sessions blocked from confirm page + confirmation + sensitive writes, wrong/stale confirmation rejected, JSON callers get 423 with confirm_url, reconfirmation audited without secrets']
+                ['Sensitive admin hardening', 5, true, 'SensitiveAdminReauthTest (9 tests/37 assertions): RequireSensitiveReauth enforces fresh password confirmation (600s window) on 18 sensitive platform mutations, impersonating sessions blocked from confirm page + confirmation + sensitive writes, wrong/stale confirmation rejected, JSON callers get 423 with confirm_url, reconfirmation audited without secrets'],
             ]),
             'operations' => $this->dimension([
                 ['CI and reproducible build', 20, true, 'GitHub Actions plus local Composer, Pint, Vite, test, audit and module-health gates'],

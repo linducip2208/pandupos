@@ -39,5 +39,4 @@ Completed: 2026-09-19.
 ## Result
 
 No critical blocker for v1. Residual non-blocking items tracked separately:
-browser-E2E (HTTP-kernel level covers critical paths) and MySQL-staging
-re-benchmark before the SLO is committed.
+MySQL-staging re-benchmark before the SLO is committed.

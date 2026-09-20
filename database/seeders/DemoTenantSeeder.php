@@ -3,11 +3,13 @@
 namespace Database\Seeders;
 
 use App\Models\Branch;
+use App\Models\Category;
 use App\Models\Contact;
 use App\Models\CustomerLogin;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\PurchaseService;
@@ -43,6 +45,20 @@ class DemoTenantSeeder extends Seeder
             ['tenant_id' => $tenant->id, 'code' => 'GDG-PST'],
             ['branch_id' => $branch->id, 'name' => 'Gudang Pusat', 'is_active' => true]
         );
+        // Base master data so a fresh demo tenant can immediately create
+        // sellable products (POS buttons require a base unit).
+        $pcs = null;
+        foreach ([['Pieces', 'Pcs'], ['Dus', 'Dus'], ['Kilogram', 'Kg'], ['Liter', 'L']] as [$unitName, $short]) {
+            $unit = Unit::withoutGlobalScopes()->firstOrCreate(
+                ['tenant_id' => $tenant->id, 'short_name' => $short],
+                ['name' => $unitName, 'is_active' => true]
+            );
+            $pcs ??= $short === 'Pcs' ? $unit : null;
+        }
+        Category::withoutGlobalScopes()->firstOrCreate(
+            ['tenant_id' => $tenant->id, 'name' => 'Umum'],
+            ['is_active' => true]
+        );
         $supplier = Contact::withoutGlobalScopes()->firstOrCreate(
             ['tenant_id' => $tenant->id, 'type' => 'supplier', 'name' => 'Supplier Demo']
         );
@@ -60,6 +76,10 @@ class DemoTenantSeeder extends Seeder
                 ['tenant_id' => $tenant->id, 'sku' => $sku],
                 ['name' => $name, 'is_active' => true]
             );
+            // Demo products must be sellable through POS (buttons render only with a base unit).
+            if ($pcs && ! $p->unit_id) {
+                $p->update(['unit_id' => $pcs->id]);
+            }
             $v = ProductVariant::withoutGlobalScopes()->firstOrCreate(
                 ['tenant_id' => $tenant->id, 'sku' => $sku.'-V'],
                 ['product_id' => $p->id, 'name' => 'Default', 'purchase_price' => $buy, 'sell_price' => $sell]

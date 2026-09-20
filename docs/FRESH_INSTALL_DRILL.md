@@ -10,10 +10,10 @@ inherited state and reach healthy operation.
 2. `composer install` → clean (86 packages, funding note only).
 3. Remove the copied dev sqlite; create an empty `database/database.sqlite`.
 4. `Copy-Item .env.example .env` + `php artisan key:generate`.
-5. `php artisan migrate --force` → all 127 migrations ran from an EMPTY database
+5. `php artisan migrate --force` → all 61 migrations ran from an EMPTY database
    (first-ever schema build).
 6. `php artisan storage:link` → `public/storage` connected.
-7. `php artisan migrate:status` → 127 `[Ran]`.
+7. `php artisan migrate:status` → 61 `[Ran]`.
 8. `php artisan health:check` → 10/10 PASS on the fresh database.
 
 ## Result
@@ -22,7 +22,7 @@ inherited state and reach healthy operation.
 |---|---|
 | composer install | PASS |
 | key:generate | PASS |
-| migrate --force (empty DB) | PASS (127 migrations) |
+| migrate --force (empty DB) | PASS (61 migrations) |
 | storage:link | PASS |
 | health:check | PASS 10/10 (app/db/cache/queue/failed_jobs/storage/disk/backup_freshness/mail/offline_sync) |
 

@@ -169,6 +169,13 @@ class FailureRecoveryTest extends TestCase
 
     public function test_backup_and_restore_roundtrip_recovers_data_from_file_artifact(): void
     {
+        // The file-copy drill is sqlite-specific; MySQL drills the real
+        // mysqldump/mysql roundtrip against an isolated scratch database.
+        if (DB::getDriverName() === 'mysql') {
+            $this->mysqlBackupRestoreRoundtrip();
+
+            return;
+        }
         $scratch = tempnam(sys_get_temp_dir(), 'pandupos-drill-').'.sqlite';
         @unlink($scratch);
         touch($scratch);
@@ -203,6 +210,54 @@ class FailureRecoveryTest extends TestCase
             DB::purge('scratch');
             @unlink($scratch);
         }
+    }
+
+    private function mysqlBackupRestoreRoundtrip(): void
+    {
+        if ($this->binaryPath('mysqldump') === null || $this->binaryPath('mysql') === null) {
+            $this->markTestSkipped('mysqldump/mysql binaries not available.');
+        }
+        $base = config('database.connections.mysql');
+        $dsn = "mysql:host={$base['host']};port={$base['port']}";
+        $pdo = new \PDO($dsn, $base['username'], $base['password'], [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
+        $pdo->exec('DROP DATABASE IF EXISTS `pandupos_drill`');
+        $pdo->exec('CREATE DATABASE `pandupos_drill` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+        config(['database.connections.scratch' => array_merge($base, ['database' => 'pandupos_drill'])]);
+        config(['database.default' => 'scratch']);
+        $disk = Storage::disk('local');
+        $before = collect($disk->files('backups'));
+
+        try {
+            Artisan::call('migrate', ['--force' => true]);
+            DB::table('cache')->insert([
+                'key' => 'drill-marker', 'value' => serialize('present'), 'expiration' => now()->addHour()->getTimestamp(),
+            ]);
+            $this->assertSame(0, Artisan::call('backup:database'));
+            $fresh = collect($disk->files('backups'))->diff($before);
+            $artifact = $fresh->first(fn ($f) => str_ends_with($f, '.sql'));
+            $this->assertNotNull($artifact, 'Backup must produce a mysql artifact.');
+            $this->assertTrue($fresh->contains(fn ($f) => str_ends_with($f, '.manifest.json')), 'Backup must produce a manifest.');
+
+            // Simulate loss, then restore from the artifact.
+            DB::table('cache')->where('key', 'drill-marker')->delete();
+            $this->assertSame(0, DB::table('cache')->where('key', 'drill-marker')->count());
+            $this->assertSame(0, Artisan::call('backup:restore', ['file' => $artifact, '--force' => true]));
+            $this->assertSame(1, DB::table('cache')->where('key', 'drill-marker')->count());
+
+            $disk->delete($fresh->all());
+        } finally {
+            config(['database.default' => 'mysql']);
+            DB::purge('scratch');
+            $pdo->exec('DROP DATABASE IF EXISTS `pandupos_drill`');
+        }
+    }
+
+    private function binaryPath(string $bin): ?string
+    {
+        $found = trim((string) shell_exec((DIRECTORY_SEPARATOR === '\\' ? 'where' : 'command -v').' '.$bin.' 2>NUL'));
+        $first = preg_split('/\R/', $found)[0] ?? '';
+
+        return $first !== '' && is_file($first) ? $first : null;
     }
 
     public function test_queue_sync_failure_does_not_corrupt_stock(): void

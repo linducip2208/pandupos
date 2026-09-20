@@ -5,7 +5,8 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "screenshots": "node scripts/screenshot.cjs && node scripts/screenshot-mobile.cjs"
+        "screenshots": "node scripts/screenshot.cjs && node scripts/screenshot-mobile.cjs",
+        "test:e2e": "playwright test"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Process\Process;
 
 class RestoreDatabase extends Command
 {
@@ -41,15 +42,18 @@ class RestoreDatabase extends Command
         } elseif ($driver === 'mysql') {
             $tmp = tempnam(sys_get_temp_dir(), 'restore-').'.sql';
             file_put_contents($tmp, $disk->get($file));
-            $cmd = sprintf('mysql --host=%s --port=%s --user=%s %s < %s', escapeshellarg($config['host']), escapeshellarg((string) $config['port']), escapeshellarg($config['username']), escapeshellarg($config['database']), escapeshellarg($tmp));
-            $env = ['MYSQL_PWD' => $config['password']];
-            $proc = proc_open($cmd, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $env);
-            $out = stream_get_contents($pipes[1]);
-            $err = stream_get_contents($pipes[2]);
-            $code = proc_close($proc);
+            // Array argv (no shell) + stdin feed: portable across Windows/cmd
+            // and POSIX shells, unlike string commands with escapeshellarg.
+            $process = new Process([
+                'mysql',
+                '--host='.$config['host'], '--port='.$config['port'],
+                '--user='.$config['username'], $config['database'],
+            ], null, ['MYSQL_PWD' => $config['password']]);
+            $process->setInput(file_get_contents($tmp));
+            $process->setTimeout(300)->run();
             @unlink($tmp);
-            if ($code !== 0) {
-                $this->error('mysql restore failed: '.$err.' '.$out);
+            if (! $process->isSuccessful()) {
+                $this->error('mysql restore failed: '.$process->getErrorOutput().' '.$process->getOutput());
 
                 return self::FAILURE;
             }

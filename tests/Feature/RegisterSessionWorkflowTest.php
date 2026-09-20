@@ -44,6 +44,26 @@ class RegisterSessionWorkflowTest extends TestCase
         $service->close($closed, $owner->id, 130000);
     }
 
+    public function test_register_close_accepts_blank_optional_denomination_fields(): void
+    {
+        [$owner, $tenant, , , $register] = $this->context('Register Close Blank');
+        $this->actingAs($owner);
+        $service = app(RegisterSessionService::class);
+
+        $session = $service->open($tenant->id, $register->id, $owner->id, 50000);
+
+        // The workspace UI always submits every denomination input; blanks
+        // arrive as null and must be accepted (breakdown is optional), while a
+        // provided breakdown must still equal the actual cash.
+        $this->post(route('registers.close', $session), [
+            'actual_amount' => 50000,
+            'denominations' => [100000 => null, 50000 => null, 20000 => ''],
+        ])->assertRedirect();
+
+        $this->assertSame('closed', $session->refresh()->status);
+        $this->assertSame('0.00', $session->refresh()->variance_amount);
+    }
+
     public function test_session_enforces_single_open_per_register_owner_closure_and_tenant_boundary(): void
     {
         [$owner, $tenant, , , $register] = $this->context('Register A');

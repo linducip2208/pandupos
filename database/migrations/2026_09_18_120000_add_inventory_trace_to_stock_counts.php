@@ -17,6 +17,10 @@ return new class extends Migration
                 ->constrained('inventory_batches')->restrictOnDelete();
             $table->foreignId('serial_number_id')->nullable()->after('inventory_batch_id')
                 ->constrained('serial_numbers')->restrictOnDelete();
+            // MySQL refuses to drop a unique index that still backs a foreign
+            // key's required leftmost index (SQLite silently allows it): keep a
+            // plain index on stock_count_id first so the FK stays covered.
+            $table->index('stock_count_id', 'stock_count_lines_stock_count_id_index');
             $table->dropUnique(['stock_count_id', 'product_variant_id']);
             $table->unique(['stock_count_id', 'product_variant_id', 'inventory_batch_id', 'serial_number_id'], 'stock_count_line_trace_unique');
         });
