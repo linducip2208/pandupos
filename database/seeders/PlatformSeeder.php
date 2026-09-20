@@ -79,7 +79,7 @@ class PlatformSeeder extends Seeder
             Role::findOrCreate($role, 'web');
         }
 
-        foreach (['pos.sale.create', 'pos.sale.void', 'register.manage', 'register.open', 'register.close', 'inventory.view', 'products.manage', 'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve', 'sales.view', 'sales.create', 'reports.view', 'settings.manage', 'accounting.view', 'accounting.manage'] as $perm) {
+        foreach (['pos.sale.create', 'pos.sale.void', 'register.manage', 'register.open', 'register.close', 'inventory.view', 'products.manage', 'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve', 'sales.view', 'sales.create', 'reports.view', 'settings.manage', 'accounting.view', 'accounting.manage', 'crm.view', 'crm.manage'] as $perm) {
             Permission::findOrCreate($perm, 'web');
         }
 

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AccountingController;
 use App\Http\Controllers\Api\V1\CatalogController;
+use App\Http\Controllers\Api\V1\CrmController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -133,6 +134,14 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('journals', [AccountingController::class, 'storeJournal']);
         Route::post('journals/{entry}/post', [AccountingController::class, 'postJournal']);
         Route::post('journals/{entry}/void', [AccountingController::class, 'voidJournal']);
+    });
+    // CRM (tenant-scoped; requires crm.view/manage + enabled module)
+    Route::prefix('crm')->middleware('module:crm')->group(function () {
+        Route::get('leads', [CrmController::class, 'leads']);
+        Route::post('leads', [CrmController::class, 'storeLead']);
+        Route::get('opportunities', [CrmController::class, 'opportunities']);
+        Route::post('opportunities', [CrmController::class, 'storeOpportunity']);
+        Route::post('opportunities/{opportunity}/advance', [CrmController::class, 'advanceOpportunity']);
     });
 
     // Webhooks (tenant outgoing management)

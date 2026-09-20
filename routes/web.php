@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountingWorkspaceController;
+use App\Http\Controllers\CrmWorkspaceController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Auth\ReauthenticationController;
@@ -230,6 +231,17 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/reports', [AccountingWorkspaceController::class, 'reports'])->name('reports');
         Route::get('/periods', [AccountingWorkspaceController::class, 'periods'])->name('periods.index');
         Route::post('/periods/close', [AccountingWorkspaceController::class, 'closePeriod'])->name('periods.close');
+    });
+    Route::prefix('crm')->name('crm.')->middleware(['module:crm'])->group(function () {
+        Route::get('/', [CrmWorkspaceController::class, 'index'])->name('index');
+        Route::post('/leads', [CrmWorkspaceController::class, 'storeLead'])->name('leads.store');
+        Route::post('/leads/{lead}/transition', [CrmWorkspaceController::class, 'transitionLead'])->name('leads.transition');
+        Route::post('/leads/{lead}/convert', [CrmWorkspaceController::class, 'convertLead'])->name('leads.convert');
+        Route::post('/opportunities', [CrmWorkspaceController::class, 'storeOpportunity'])->name('opportunities.store');
+        Route::post('/opportunities/{opportunity}/advance', [CrmWorkspaceController::class, 'advanceOpportunity'])->name('opportunities.advance');
+        Route::post('/opportunities/{opportunity}/quotation', [CrmWorkspaceController::class, 'linkQuotation'])->name('opportunities.quotation');
+        Route::post('/activities', [CrmWorkspaceController::class, 'storeActivity'])->name('activities.store');
+        Route::post('/activities/{activity}/complete', [CrmWorkspaceController::class, 'completeActivity'])->name('activities.complete');
     });
 });
 
