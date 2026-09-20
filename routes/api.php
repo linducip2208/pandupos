@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\Api\V1\AccountingController;
 use App\Http\Controllers\Api\V1\CatalogController;
-use App\Http\Controllers\Api\V1\CrmController;
 use App\Http\Controllers\Api\V1\ContactController;
+use App\Http\Controllers\Api\V1\CrmController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\InventoryConfigurationController;

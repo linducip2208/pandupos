@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\AccountingWorkspaceController;
-use App\Http\Controllers\CrmWorkspaceController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Auth\ReauthenticationController;
@@ -10,6 +9,7 @@ use App\Http\Controllers\BarcodeWorkspaceController;
 use App\Http\Controllers\BatchWorkspaceController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\BundleWorkspaceController;
+use App\Http\Controllers\CrmWorkspaceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocsController;
 use App\Http\Controllers\InventoryWorkspaceController;
