@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\MrpController;
 use App\Http\Controllers\Api\V1\PaymentWebhookController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\PurchaseController;
+use App\Http\Controllers\Api\V1\RepairController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\SalesDocumentController;
@@ -152,6 +153,14 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('orders', [MrpController::class, 'storeOrder']);
         Route::post('orders/{order}/transition', [MrpController::class, 'transition']);
         Route::post('orders/{order}/produce', [MrpController::class, 'produce']);
+    });
+    // Repair (tenant-scoped; requires repair.view/manage + enabled module)
+    Route::prefix('repair')->middleware('module:repair')->group(function () {
+        Route::get('orders', [RepairController::class, 'index']);
+        Route::post('orders', [RepairController::class, 'store']);
+        Route::post('orders/{order}/transition', [RepairController::class, 'transition']);
+        Route::post('orders/{order}/parts', [RepairController::class, 'addPart']);
+        Route::post('orders/{order}/pay', [RepairController::class, 'pay']);
     });
 
     // Webhooks (tenant outgoing management)

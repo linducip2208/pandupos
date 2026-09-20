@@ -11,12 +11,14 @@ use App\Models\CrmOpportunity;
 use App\Models\JournalEntry;
 use App\Models\MrpBom;
 use App\Models\MrpWorkOrder;
+use App\Models\RepairOrder;
 use App\Models\Product;
 use App\Models\User;
 use App\Policies\AccountingPolicy;
 use App\Policies\CrmPolicy;
 use App\Policies\MrpPolicy;
 use App\Policies\ProductPolicy;
+use App\Policies\RepairPolicy;
 use App\Services\Costing\WeightedAverageCostStrategy;
 use App\Services\EntitlementService;
 use App\Services\ModuleRegistry;
@@ -54,6 +56,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(CrmOpportunity::class, CrmPolicy::class);
         Gate::policy(MrpBom::class, MrpPolicy::class);
         Gate::policy(MrpWorkOrder::class, MrpPolicy::class);
+        Gate::policy(RepairOrder::class, RepairPolicy::class);
 
         BlogPost::saved(function (BlogPost $post): void {
             Cache::forget('seo.sitemap.index');

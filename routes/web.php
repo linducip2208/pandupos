@@ -38,6 +38,7 @@ use App\Http\Controllers\ProductMasterController;
 use App\Http\Controllers\ProgrammaticSeoController;
 use App\Http\Controllers\PurchasingWorkspaceController;
 use App\Http\Controllers\RegisterWorkspaceController;
+use App\Http\Controllers\RepairWorkspaceController;
 use App\Http\Controllers\ReportPageController;
 use App\Http\Controllers\SalesDocumentWorkspaceController;
 use App\Http\Controllers\SalesOrderWorkspaceController;
@@ -254,6 +255,15 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/orders/{order}/produce', [MrpWorkspaceController::class, 'produce'])->name('orders.produce');
         Route::post('/orders/{order}/finish', [MrpWorkspaceController::class, 'finish'])->name('orders.finish');
         Route::post('/orders/{order}/cancel', [MrpWorkspaceController::class, 'cancel'])->name('orders.cancel');
+    });
+    Route::prefix('repair')->name('repair.')->middleware(['module:repair'])->group(function () {
+        Route::get('/', [RepairWorkspaceController::class, 'index'])->name('index');
+        Route::post('/orders', [RepairWorkspaceController::class, 'store'])->name('orders.store');
+        Route::post('/orders/{order}/diagnose', [RepairWorkspaceController::class, 'diagnose'])->name('orders.diagnose');
+        Route::post('/orders/{order}/transition', [RepairWorkspaceController::class, 'transition'])->name('orders.transition');
+        Route::post('/orders/{order}/parts', [RepairWorkspaceController::class, 'addPart'])->name('orders.parts');
+        Route::post('/orders/{order}/pay', [RepairWorkspaceController::class, 'pay'])->name('orders.pay');
+        Route::post('/orders/{order}/deliver', [RepairWorkspaceController::class, 'deliver'])->name('orders.deliver');
     });
 });
 

@@ -23,6 +23,7 @@ class PlatformSeeder extends Seeder
             ['slug' => 'accounting', 'name' => 'Accounting', 'is_core' => false, 'is_paid' => true, 'metadata' => ['dependencies' => []]],
             ['slug' => 'crm', 'name' => 'CRM', 'is_core' => false, 'metadata' => ['dependencies' => []]],
             ['slug' => 'manufacturing', 'name' => 'Manufacturing', 'is_core' => false, 'metadata' => ['dependencies' => ['inventory']]],
+            ['slug' => 'repair', 'name' => 'Repair', 'is_core' => false, 'metadata' => ['dependencies' => ['inventory']]],
         ];
 
         foreach ($modules as $m) {
@@ -80,7 +81,7 @@ class PlatformSeeder extends Seeder
             Role::findOrCreate($role, 'web');
         }
 
-        foreach (['pos.sale.create', 'pos.sale.void', 'register.manage', 'register.open', 'register.close', 'inventory.view', 'products.manage', 'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve', 'sales.view', 'sales.create', 'reports.view', 'settings.manage', 'accounting.view', 'accounting.manage', 'crm.view', 'crm.manage', 'mrp.view', 'mrp.manage'] as $perm) {
+        foreach (['pos.sale.create', 'pos.sale.void', 'register.manage', 'register.open', 'register.close', 'inventory.view', 'products.manage', 'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve', 'sales.view', 'sales.create', 'reports.view', 'settings.manage', 'accounting.view', 'accounting.manage', 'crm.view', 'crm.manage', 'mrp.view', 'mrp.manage', 'repair.view', 'repair.manage'] as $perm) {
             Permission::findOrCreate($perm, 'web');
         }
 
