@@ -60,6 +60,7 @@ final class SupplierDocumentService
                 'balance' => $total, 'status' => $total == 0.0 ? 'paid' : 'posted',
             ]);
             $this->audit->log($tenantId, $actorId, 'purchase.supplier_invoice.created', SupplierInvoice::class, $invoice->id, null, $invoice->toArray());
+            $this->postInvoiceToAccounting($tenantId, $invoice, $actorId);
 
             return $invoice;
         });
@@ -91,6 +92,7 @@ final class SupplierDocumentService
             $balance = round((float) $locked->total - $paid, 2);
             $locked->update(['paid' => $paid, 'balance' => $balance, 'status' => $balance == 0.0 ? 'paid' : 'partial']);
             $this->audit->log($locked->tenant_id, $actorId, 'purchase.supplier_payment.created', SupplierPayment::class, $payment->id, null, $payment->toArray());
+            $this->postPaymentToAccounting($locked->tenant_id, $payment, $actorId);
 
             return $payment;
         });
@@ -101,6 +103,23 @@ final class SupplierDocumentService
      * The draft path enforces requester/approver segregation; the legacy
      * createReturn() fast-track remains for single privileged postings.
      */
+    /** Post AP invoice/payment inside the originating transaction when accounting is enabled. */
+    private function postInvoiceToAccounting(int $tenantId, SupplierInvoice $invoice, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($tenantId, 'accounting')) {
+            return;
+        }
+        app(AccountingService::class)->postSupplierInvoice($invoice, $actorId);
+    }
+
+    private function postPaymentToAccounting(int $tenantId, SupplierPayment $payment, int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($tenantId, 'accounting')) {
+            return;
+        }
+        app(AccountingService::class)->recordSupplierPayment($payment, $actorId);
+    }
+
     public function createDraft(
         Purchase $purchase,
         array $lines,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountingWorkspaceController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Auth\ReauthenticationController;
@@ -218,6 +219,17 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/invoices', [PurchasingWorkspaceController::class, 'storeInvoice'])->name('invoices.store');
         Route::get('/invoices/{invoice}/print', [PurchasingWorkspaceController::class, 'printInvoice'])->name('invoices.print');
         Route::post('/invoices/{invoice}/payments', [PurchasingWorkspaceController::class, 'pay'])->name('payments.store');
+    });
+    Route::prefix('accounting')->name('accounting.')->middleware(['module:accounting'])->group(function () {
+        Route::get('/', [AccountingWorkspaceController::class, 'index'])->name('index');
+        Route::post('/accounts', [AccountingWorkspaceController::class, 'storeAccount'])->name('accounts.store');
+        Route::get('/journals', [AccountingWorkspaceController::class, 'journals'])->name('journals.index');
+        Route::post('/journals', [AccountingWorkspaceController::class, 'storeJournal'])->name('journals.store');
+        Route::post('/journals/{entry}/post', [AccountingWorkspaceController::class, 'postEntry'])->name('journals.post');
+        Route::post('/journals/{entry}/void', [AccountingWorkspaceController::class, 'voidEntry'])->name('journals.void');
+        Route::get('/reports', [AccountingWorkspaceController::class, 'reports'])->name('reports');
+        Route::get('/periods', [AccountingWorkspaceController::class, 'periods'])->name('periods.index');
+        Route::post('/periods/close', [AccountingWorkspaceController::class, 'closePeriod'])->name('periods.close');
     });
 });
 

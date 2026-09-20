@@ -130,12 +130,14 @@ final class SaleService
                 if ($requiresApproval) {
                     $this->approvals->requestForSale($invoice, $payments, auth()->id());
                 } else {
+                    $postedPayments = [];
                     foreach ($payments as $p) {
-                        $invoice->payments()->create([
+                        $postedPayments[] = $invoice->payments()->create([
                             'tenant_id' => $tenantId, 'method' => $p['method'],
                             'amount' => $p['amount'], 'reference' => $p['reference'] ?? null,
                         ]);
                     }
+                    $this->postSaleToAccounting($tenantId, $invoice, $postedPayments);
                 }
 
                 $this->audit->log($tenantId, auth()->id(), 'sale.checkout.posted', SalesInvoice::class, $invoice->id, null, [
@@ -450,6 +452,24 @@ final class SaleService
             ->where('reference_id', $invoice->id)->where('product_variant_id', $variantId)
             ->where('inventory_batch_id', $batchId)->where('movement_type', 'in')->sum('quantity');
         abort_if($restoredInBatch + $quantity > $soldInBatch + 0.000001, 422, 'Return quantity exceeds sold quantity in the selected batch.');
+    }
+
+    /**
+     * Post invoice + receipts to the accounting ledger. Runs inside the sale
+     * transaction and only when the accounting module is enabled, so Core
+     * behavior is unchanged for tenants without the module.
+     */
+    private function postSaleToAccounting(int $tenantId, SalesInvoice $invoice, array $payments): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($tenantId, 'accounting')) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $actorId = auth()->id();
+        $accounting->postSalesInvoice($invoice, $actorId);
+        foreach ($payments as $payment) {
+            $accounting->recordCustomerReceipt($payment, $actorId);
+        }
     }
 
     private function validateReturnSerials(SalesInvoice $invoice, int $variantId, $serialIds, float $quantity): void

@@ -8,7 +8,7 @@ Updated: 2026-09-17. Scores are calculated by `php artisan readiness:score`, usi
 |---|---:|---|
 | Core | 100 | DONE: purchase return lifecycle and return/void/refund workflow verified (`PurchaseReturnLifecycleTest`, `SalesReturnRefundLifecycleTest`) |
 | SaaS | 27 | Subscription/billing automation and verified sandbox; coupon/affiliate/announcements; domains/white-label; API/offline hardening |
-| Future addon parity | FROZEN / OUT OF SCOPE | Deferred post-v1 modules are not release blockers; see `SCOPE_FREEZE.md` |
+| Future addon parity | OPEN, 12/100 | Accounting implemented (`AccountingTest`, `docs/ACCOUNTING.md`); 15 addon gates remain and score only on real implementation |
 | Tests | 60 | Browser E2E, full concurrency and security regression matrices absent |
 | Security | 47 | Full IDOR/API/upload audit, third-party license review and sensitive-admin hardening remain incomplete |
 | Operations | 20 | Restore, staging, rollback, monitoring, alerting and load-test evidence absent |

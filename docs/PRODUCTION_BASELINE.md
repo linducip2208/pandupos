@@ -28,7 +28,7 @@ Recorded: 2026-09-18 (Asia/Jakarta)
 | Production | 0 |
 | Commercial | 0 |
 
-Future addon parity is frozen and out of scope for v1.
+Future addon parity is OPEN: the Accounting module is implemented with evidence (`AccountingTest`, `docs/ACCOUNTING.md`); remaining addons score only on real implementation.
 
 ## Known blockers
 

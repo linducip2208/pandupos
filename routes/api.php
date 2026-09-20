@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AccountingController;
 use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DeviceController;
@@ -124,6 +125,15 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
     Route::post('sync/push', [SyncController::class, 'push']);
     Route::get('devices', [DeviceController::class, 'index']);
     Route::post('devices/revoke', [DeviceController::class, 'revoke']);
+    // Accounting (tenant-scoped; requires accounting.view/manage + enabled module)
+    Route::prefix('accounting')->middleware('module:accounting')->group(function () {
+        Route::get('accounts', [AccountingController::class, 'accounts']);
+        Route::get('trial-balance', [AccountingController::class, 'trialBalance']);
+        Route::get('profit-loss', [AccountingController::class, 'profitLoss']);
+        Route::post('journals', [AccountingController::class, 'storeJournal']);
+        Route::post('journals/{entry}/post', [AccountingController::class, 'postJournal']);
+        Route::post('journals/{entry}/void', [AccountingController::class, 'voidJournal']);
+    });
 
     // Webhooks (tenant outgoing management)
     Route::get('webhooks', [WebhookController::class, 'index']);

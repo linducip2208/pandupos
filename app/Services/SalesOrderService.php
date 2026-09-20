@@ -215,9 +215,19 @@ final class SalesOrderService
                 'reference' => $payment->reference,
                 'payment_status' => $locked->fresh()->payment_status,
             ]);
+            $this->postReceiptToAccounting($locked->tenant_id, $payment, $actorId);
 
             return $payment;
         });
+    }
+
+    /** Post a customer receipt inside the payment transaction when accounting is enabled. */
+    private function postReceiptToAccounting(int $tenantId, SalePayment $payment, int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($tenantId, 'accounting')) {
+            return;
+        }
+        app(AccountingService::class)->recordCustomerReceipt($payment, $actorId);
     }
 
     private function validateReferences(int $tenantId, array $data): void

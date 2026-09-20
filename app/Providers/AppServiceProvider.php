@@ -4,9 +4,12 @@ namespace App\Providers;
 
 use App\Contracts\CostingStrategy;
 use App\Http\Middleware\TenantMiddleware;
+use App\Models\Account;
 use App\Models\BlogPost;
+use App\Models\JournalEntry;
 use App\Models\Product;
 use App\Models\User;
+use App\Policies\AccountingPolicy;
 use App\Policies\ProductPolicy;
 use App\Services\Costing\WeightedAverageCostStrategy;
 use App\Services\EntitlementService;
@@ -39,6 +42,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('platform-admin', fn (User $user) => $user->is_platform_admin);
 
         Gate::policy(Product::class, ProductPolicy::class);
+        Gate::policy(Account::class, AccountingPolicy::class);
+        Gate::policy(JournalEntry::class, AccountingPolicy::class);
 
         BlogPost::saved(function (BlogPost $post): void {
             Cache::forget('seo.sitemap.index');
