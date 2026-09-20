@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\AccountingWorkspaceController;
-use App\Http\Controllers\AssetWorkspaceController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\ApprovalController;
+use App\Http\Controllers\AssetWorkspaceController;
 use App\Http\Controllers\Auth\ReauthenticationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BarcodeWorkspaceController;
