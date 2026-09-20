@@ -13,6 +13,7 @@ use App\Http\Controllers\BundleWorkspaceController;
 use App\Http\Controllers\CrmWorkspaceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocsController;
+use App\Http\Controllers\EcommerceWorkspaceController;
 use App\Http\Controllers\HrmWorkspaceController;
 use App\Http\Controllers\InventoryWorkspaceController;
 use App\Http\Controllers\MrpWorkspaceController;
@@ -48,6 +49,7 @@ use App\Http\Controllers\SalesDocumentWorkspaceController;
 use App\Http\Controllers\SalesOrderWorkspaceController;
 use App\Http\Controllers\SalesReturnWorkspaceController;
 use App\Http\Controllers\SerialWorkspaceController;
+use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
@@ -306,6 +308,20 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/runs/{run}/paid', [PayrollWorkspaceController::class, 'markPaid'])->name('paid');
         Route::get('/runs/{run}/payslip/{employee}', [PayrollWorkspaceController::class, 'payslip'])->name('payslip');
     });
+    Route::prefix('ecommerce')->name('ecommerce.')->middleware(['module:ecommerce'])->group(function () {
+        Route::get('/', [EcommerceWorkspaceController::class, 'index'])->name('index');
+        Route::post('/products/{product}/publish', [EcommerceWorkspaceController::class, 'publish'])->name('products.publish');
+        Route::post('/orders/{order}/transition', [EcommerceWorkspaceController::class, 'transition'])->name('orders.transition');
+    });
+});
+
+// Public storefront (guest, throttled; tenant resolved by slug + module flag)
+Route::prefix('shop/{slug}')->name('shop.')->group(function () {
+    Route::get('/', [ShopController::class, 'catalog'])->name('catalog');
+    Route::post('/cart', [ShopController::class, 'addToCart'])->middleware('throttle:60,1')->name('cart.add');
+    Route::get('/checkout', [ShopController::class, 'checkoutForm'])->name('checkout.form');
+    Route::post('/checkout', [ShopController::class, 'checkout'])->middleware('throttle:20,1')->name('checkout');
+    Route::get('/track', [ShopController::class, 'track'])->name('track');
 });
 
 Route::middleware('auth')->group(function () {

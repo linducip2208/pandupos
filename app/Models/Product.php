@@ -12,7 +12,7 @@ class Product extends Model
     protected $fillable = [
         'tenant_id', 'name', 'product_type', 'sku', 'barcode', 'image_path',
         'category_id', 'brand_id', 'unit_id', 'alert_quantity', 'tax_rate',
-        'tax_method', 'track_inventory', 'is_active',
+        'tax_method', 'track_inventory', 'is_active', 'is_online',
     ];
 
     protected function casts(): array
@@ -22,6 +22,7 @@ class Product extends Model
             'tax_rate' => 'decimal:4',
             'track_inventory' => 'boolean',
             'is_active' => 'boolean',
+            'is_online' => 'boolean',
         ];
     }
 

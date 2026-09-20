@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\SalesDocumentController;
 use App\Http\Controllers\Api\V1\SalesOrderController;
+use App\Http\Controllers\Api\V1\ShopApiController;
 use App\Http\Controllers\Api\V1\StockTransferController;
 use App\Http\Controllers\Api\V1\SyncController;
 use App\Http\Controllers\Api\V1\WebhookController;
@@ -197,6 +198,13 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('runs/{run}/transition', [PayrollController::class, 'transition']);
         Route::get('runs/{run}/payslip/{employee}', [PayrollController::class, 'payslip']);
     });
+    // Ecommerce admin (tenant-scoped; requires ecommerce.view/manage + enabled module)
+    Route::prefix('ecommerce')->middleware('module:ecommerce')->group(function () {
+        Route::get('orders', [ShopApiController::class, 'adminOrders']);
+        Route::post('orders/{order}/transition', [ShopApiController::class, 'adminTransition']);
+    });
+
+    // Webhooks (tenant outgoing management)
 
     // Webhooks (tenant outgoing management)
     Route::get('webhooks', [WebhookController::class, 'index']);
@@ -211,4 +219,12 @@ Route::prefix('v1/platform')->middleware(['auth:sanctum', 'can:platform-admin'])
     Route::get('tenants', [PlatformTenantController::class, 'index']);
     Route::post('tenants/{tenant}/suspend', [PlatformTenantController::class, 'suspend']);
     Route::get('health', [HealthController::class, 'show']);
+});
+
+// Public storefront API (guest, throttled; tenant resolved by slug + module flag)
+Route::prefix('v1/shop/{slug}')->group(function () {
+    Route::get('catalog', [ShopApiController::class, 'catalog']);
+    Route::post('cart', [ShopApiController::class, 'addToCart'])->middleware('throttle:60,1');
+    Route::post('checkout', [ShopApiController::class, 'checkout'])->middleware('throttle:20,1');
+    Route::get('track', [ShopApiController::class, 'track'])->middleware('throttle:60,1');
 });
