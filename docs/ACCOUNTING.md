@@ -9,7 +9,8 @@ flag (paid addon; core tenants are unaffected). All amounts are
 - **Chart of accounts** (`accounts`): code-unique per tenant, types
   asset/liability/equity/income/expense, optional `is_cash` marker used by
   the cash-flow report. `accounting:ensure-chart` (or opening the workspace)
-  bootstraps the 11 system accounts idempotently.
+  bootstraps the 14 system accounts idempotently (including 2150 Hutang
+  Gaji, 2160 Hutang Potongan Gaji and 5210 Beban Gaji for payroll).
 - **Journals** (`journal_entries` + `journal_lines`): lifecycle
   `draft → posted → void`. Posting requires a balanced journal (debit ==
   credit, positive), active tenant-owned accounts, and an open period. Void

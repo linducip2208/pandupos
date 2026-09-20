@@ -16,6 +16,7 @@ use App\Http\Controllers\DocsController;
 use App\Http\Controllers\HrmWorkspaceController;
 use App\Http\Controllers\InventoryWorkspaceController;
 use App\Http\Controllers\MrpWorkspaceController;
+use App\Http\Controllers\PayrollWorkspaceController;
 use App\Http\Controllers\Platform\AffiliateController;
 use App\Http\Controllers\Platform\AnnouncementController;
 use App\Http\Controllers\Platform\AuditController;
@@ -296,6 +297,14 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/employees/{employee}/leave', [HrmWorkspaceController::class, 'requestLeave'])->name('employees.leave');
         Route::post('/leaves/{leave}/decide', [HrmWorkspaceController::class, 'decideLeave'])->name('leaves.decide');
         Route::post('/holidays', [HrmWorkspaceController::class, 'storeHoliday'])->name('holidays.store');
+    });
+    Route::prefix('payroll')->name('payroll.')->middleware(['module:payroll'])->group(function () {
+        Route::get('/', [PayrollWorkspaceController::class, 'index'])->name('index');
+        Route::post('/structures', [PayrollWorkspaceController::class, 'storeStructure'])->name('structures.store');
+        Route::post('/runs', [PayrollWorkspaceController::class, 'storeRun'])->name('runs.store');
+        Route::post('/runs/{run}/approve', [PayrollWorkspaceController::class, 'approve'])->name('approve');
+        Route::post('/runs/{run}/paid', [PayrollWorkspaceController::class, 'markPaid'])->name('paid');
+        Route::get('/runs/{run}/payslip/{employee}', [PayrollWorkspaceController::class, 'payslip'])->name('payslip');
     });
 });
 

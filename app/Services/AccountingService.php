@@ -33,11 +33,14 @@ final class AccountingService
             ['code' => '1400', 'name' => 'Persediaan Barang', 'type' => 'asset', 'is_cash' => false],
             ['code' => '1500', 'name' => 'Pajak Masukan', 'type' => 'asset', 'is_cash' => false],
             ['code' => '2100', 'name' => 'Hutang Usaha', 'type' => 'liability', 'is_cash' => false],
+            ['code' => '2150', 'name' => 'Hutang Gaji', 'type' => 'liability', 'is_cash' => false],
+            ['code' => '2160', 'name' => 'Hutang Potongan Gaji', 'type' => 'liability', 'is_cash' => false],
             ['code' => '2200', 'name' => 'Pajak Keluaran', 'type' => 'liability', 'is_cash' => false],
             ['code' => '3100', 'name' => 'Modal Pemilik', 'type' => 'equity', 'is_cash' => false],
             ['code' => '4100', 'name' => 'Pendapatan Penjualan', 'type' => 'income', 'is_cash' => false],
             ['code' => '5100', 'name' => 'Harga Pokok Penjualan', 'type' => 'expense', 'is_cash' => false],
             ['code' => '5200', 'name' => 'Beban Operasional', 'type' => 'expense', 'is_cash' => false],
+            ['code' => '5210', 'name' => 'Beban Gaji', 'type' => 'expense', 'is_cash' => false],
         ];
     }
 

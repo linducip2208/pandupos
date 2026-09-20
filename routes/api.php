@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MetaController;
 use App\Http\Controllers\Api\V1\MrpController;
 use App\Http\Controllers\Api\V1\PaymentWebhookController;
+use App\Http\Controllers\Api\V1\PayrollController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\PurchaseController;
@@ -188,6 +189,13 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('employees/{employee}/attend', [HrmController::class, 'attend']);
         Route::post('employees/{employee}/leave', [HrmController::class, 'requestLeave']);
         Route::post('leaves/{leave}/decide', [HrmController::class, 'decideLeave']);
+    });
+    // Payroll (tenant-scoped; requires payroll.view/manage + enabled module)
+    Route::prefix('payroll')->middleware('module:payroll')->group(function () {
+        Route::get('runs', [PayrollController::class, 'runs']);
+        Route::post('runs', [PayrollController::class, 'storeRun']);
+        Route::post('runs/{run}/transition', [PayrollController::class, 'transition']);
+        Route::get('runs/{run}/payslip/{employee}', [PayrollController::class, 'payslip']);
     });
 
     // Webhooks (tenant outgoing management)

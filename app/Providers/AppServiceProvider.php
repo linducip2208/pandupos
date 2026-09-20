@@ -13,6 +13,7 @@ use App\Models\HrmEmployee;
 use App\Models\JournalEntry;
 use App\Models\MrpBom;
 use App\Models\MrpWorkOrder;
+use App\Models\PayrollRun;
 use App\Models\Product;
 use App\Models\Project;
 use App\Models\RepairOrder;
@@ -22,6 +23,7 @@ use App\Policies\AssetPolicy;
 use App\Policies\CrmPolicy;
 use App\Policies\HrmPolicy;
 use App\Policies\MrpPolicy;
+use App\Policies\PayrollPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\RepairPolicy;
@@ -64,6 +66,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(HrmEmployee::class, HrmPolicy::class);
         Gate::policy(MrpBom::class, MrpPolicy::class);
         Gate::policy(MrpWorkOrder::class, MrpPolicy::class);
+        Gate::policy(PayrollRun::class, PayrollPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(RepairOrder::class, RepairPolicy::class);
 
