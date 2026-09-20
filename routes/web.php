@@ -15,6 +15,7 @@ use App\Http\Controllers\CrmWorkspaceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocsController;
 use App\Http\Controllers\EcommerceWorkspaceController;
+use App\Http\Controllers\FieldForceWorkspaceController;
 use App\Http\Controllers\GymWorkspaceController;
 use App\Http\Controllers\HmsWorkspaceController;
 use App\Http\Controllers\HrmWorkspaceController;
@@ -345,6 +346,13 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/', [AiWorkspaceController::class, 'index'])->name('index');
         Route::post('/config', [AiWorkspaceController::class, 'storeConfig'])->name('config.store');
         Route::post('/ask', [AiWorkspaceController::class, 'ask'])->name('ask');
+    });
+    Route::prefix('fieldforce')->name('fieldforce.')->middleware(['module:fieldforce'])->group(function () {
+        Route::get('/', [FieldForceWorkspaceController::class, 'index'])->name('index');
+        Route::post('/tasks', [FieldForceWorkspaceController::class, 'store'])->name('store');
+        Route::post('/tasks/{task}/transition', [FieldForceWorkspaceController::class, 'transition'])->name('transition');
+        Route::post('/tasks/{task}/checkin', [FieldForceWorkspaceController::class, 'checkIn'])->name('checkin');
+        Route::post('/visits/{visit}/checkout', [FieldForceWorkspaceController::class, 'checkOut'])->name('checkout');
     });
 });
 

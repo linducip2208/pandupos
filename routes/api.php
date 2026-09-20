@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CrmController;
 use App\Http\Controllers\Api\V1\DeviceController;
+use App\Http\Controllers\Api\V1\FieldForceController;
 use App\Http\Controllers\Api\V1\GymController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\HmsController;
@@ -206,6 +207,14 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::get('memberships', [GymController::class, 'memberships']);
         Route::post('subscribe', [GymController::class, 'subscribe']);
         Route::post('memberships/{membership}/transition', [GymController::class, 'transition']);
+    });
+    // Field force (tenant-scoped; requires fieldforce.view/manage + enabled module)
+    Route::prefix('fieldforce')->middleware('module:fieldforce')->group(function () {
+        Route::get('tasks', [FieldForceController::class, 'tasks']);
+        Route::post('tasks', [FieldForceController::class, 'storeTask']);
+        Route::post('tasks/{task}/checkin', [FieldForceController::class, 'checkIn']);
+        Route::post('visits/{visit}/checkout', [FieldForceController::class, 'checkOut']);
+        Route::post('tasks/{task}/transition', [FieldForceController::class, 'transition']);
     });
     // HMS (tenant-scoped; requires hms.view/manage + enabled module)
     Route::prefix('hms')->middleware('module:hms')->group(function () {
