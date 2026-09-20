@@ -14,6 +14,7 @@ use App\Http\Controllers\CrmWorkspaceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocsController;
 use App\Http\Controllers\EcommerceWorkspaceController;
+use App\Http\Controllers\GymWorkspaceController;
 use App\Http\Controllers\HmsWorkspaceController;
 use App\Http\Controllers\HrmWorkspaceController;
 use App\Http\Controllers\InventoryWorkspaceController;
@@ -319,6 +320,15 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/appointments/{appointment}/record', [HmsWorkspaceController::class, 'storeRecord'])->name('appointments.record');
         Route::post('/invoices', [HmsWorkspaceController::class, 'storeInvoice'])->name('invoices.store');
         Route::post('/invoices/{invoice}/pay', [HmsWorkspaceController::class, 'payInvoice'])->name('invoices.pay');
+    });
+    Route::prefix('gym')->name('gym.')->middleware(['module:gym'])->group(function () {
+        Route::get('/', [GymWorkspaceController::class, 'index'])->name('index');
+        Route::post('/packages', [GymWorkspaceController::class, 'storePackage'])->name('packages.store');
+        Route::post('/members', [GymWorkspaceController::class, 'storeMember'])->name('members.store');
+        Route::post('/subscribe', [GymWorkspaceController::class, 'subscribe'])->name('subscribe');
+        Route::post('/memberships/{membership}/pay', [GymWorkspaceController::class, 'pay'])->name('pay');
+        Route::post('/memberships/{membership}/checkin', [GymWorkspaceController::class, 'checkIn'])->name('checkin');
+        Route::post('/memberships/{membership}/cancel', [GymWorkspaceController::class, 'cancel'])->name('cancel');
     });
     Route::prefix('ecommerce')->name('ecommerce.')->middleware(['module:ecommerce'])->group(function () {
         Route::get('/', [EcommerceWorkspaceController::class, 'index'])->name('index');

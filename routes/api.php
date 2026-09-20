@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CrmController;
 use App\Http\Controllers\Api\V1\DeviceController;
+use App\Http\Controllers\Api\V1\GymController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\HmsController;
 use App\Http\Controllers\Api\V1\HrmController;
@@ -192,6 +193,12 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('employees/{employee}/attend', [HrmController::class, 'attend']);
         Route::post('employees/{employee}/leave', [HrmController::class, 'requestLeave']);
         Route::post('leaves/{leave}/decide', [HrmController::class, 'decideLeave']);
+    });
+    // Gym (tenant-scoped; requires gym.view/manage + enabled module)
+    Route::prefix('gym')->middleware('module:gym')->group(function () {
+        Route::get('memberships', [GymController::class, 'memberships']);
+        Route::post('subscribe', [GymController::class, 'subscribe']);
+        Route::post('memberships/{membership}/transition', [GymController::class, 'transition']);
     });
     // HMS (tenant-scoped; requires hms.view/manage + enabled module)
     Route::prefix('hms')->middleware('module:hms')->group(function () {
