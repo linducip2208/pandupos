@@ -10,6 +10,7 @@ use App\Http\Controllers\BatchWorkspaceController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\BundleWorkspaceController;
 use App\Http\Controllers\CrmWorkspaceController;
+use App\Http\Controllers\MrpWorkspaceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocsController;
 use App\Http\Controllers\InventoryWorkspaceController;
@@ -242,6 +243,17 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/opportunities/{opportunity}/quotation', [CrmWorkspaceController::class, 'linkQuotation'])->name('opportunities.quotation');
         Route::post('/activities', [CrmWorkspaceController::class, 'storeActivity'])->name('activities.store');
         Route::post('/activities/{activity}/complete', [CrmWorkspaceController::class, 'completeActivity'])->name('activities.complete');
+    });
+    Route::prefix('mrp')->name('mrp.')->middleware(['module:manufacturing'])->group(function () {
+        Route::get('/boms', [MrpWorkspaceController::class, 'index'])->name('boms.index');
+        Route::post('/boms', [MrpWorkspaceController::class, 'storeBom'])->name('boms.store');
+        Route::get('/orders', [MrpWorkspaceController::class, 'orders'])->name('orders');
+        Route::post('/orders', [MrpWorkspaceController::class, 'storeOrder'])->name('orders.store');
+        Route::post('/orders/{order}/release', [MrpWorkspaceController::class, 'release'])->name('orders.release');
+        Route::post('/orders/{order}/start', [MrpWorkspaceController::class, 'start'])->name('orders.start');
+        Route::post('/orders/{order}/produce', [MrpWorkspaceController::class, 'produce'])->name('orders.produce');
+        Route::post('/orders/{order}/finish', [MrpWorkspaceController::class, 'finish'])->name('orders.finish');
+        Route::post('/orders/{order}/cancel', [MrpWorkspaceController::class, 'cancel'])->name('orders.cancel');
     });
 });
 

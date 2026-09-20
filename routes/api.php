@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AccountingController;
 use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CrmController;
+use App\Http\Controllers\Api\V1\MrpController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\InventoryConfigurationController;
@@ -142,6 +143,15 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::get('opportunities', [CrmController::class, 'opportunities']);
         Route::post('opportunities', [CrmController::class, 'storeOpportunity']);
         Route::post('opportunities/{opportunity}/advance', [CrmController::class, 'advanceOpportunity']);
+    });
+    // Manufacturing (tenant-scoped; requires mrp.view/manage + enabled module)
+    Route::prefix('mrp')->middleware('module:manufacturing')->group(function () {
+        Route::get('boms', [MrpController::class, 'boms']);
+        Route::post('boms', [MrpController::class, 'storeBom']);
+        Route::get('orders', [MrpController::class, 'orders']);
+        Route::post('orders', [MrpController::class, 'storeOrder']);
+        Route::post('orders/{order}/transition', [MrpController::class, 'transition']);
+        Route::post('orders/{order}/produce', [MrpController::class, 'produce']);
     });
 
     // Webhooks (tenant outgoing management)

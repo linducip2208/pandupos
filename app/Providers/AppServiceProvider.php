@@ -9,10 +9,13 @@ use App\Models\BlogPost;
 use App\Models\CrmLead;
 use App\Models\CrmOpportunity;
 use App\Models\JournalEntry;
+use App\Models\MrpBom;
+use App\Models\MrpWorkOrder;
 use App\Models\Product;
 use App\Models\User;
 use App\Policies\AccountingPolicy;
 use App\Policies\CrmPolicy;
+use App\Policies\MrpPolicy;
 use App\Policies\ProductPolicy;
 use App\Services\Costing\WeightedAverageCostStrategy;
 use App\Services\EntitlementService;
@@ -49,6 +52,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(JournalEntry::class, AccountingPolicy::class);
         Gate::policy(CrmLead::class, CrmPolicy::class);
         Gate::policy(CrmOpportunity::class, CrmPolicy::class);
+        Gate::policy(MrpBom::class, MrpPolicy::class);
+        Gate::policy(MrpWorkOrder::class, MrpPolicy::class);
 
         BlogPost::saved(function (BlogPost $post): void {
             Cache::forget('seo.sitemap.index');
