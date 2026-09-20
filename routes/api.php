@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AccountingController;
+use App\Http\Controllers\Api\V1\AiController;
 use App\Http\Controllers\Api\V1\AssetController;
 use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\ContactController;
@@ -144,6 +145,12 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('journals', [AccountingController::class, 'storeJournal']);
         Route::post('journals/{entry}/post', [AccountingController::class, 'postJournal']);
         Route::post('journals/{entry}/void', [AccountingController::class, 'voidJournal']);
+    });
+    // AI assistants (tenant-scoped; requires ai.view/manage + enabled module)
+    Route::prefix('ai')->middleware('module:ai')->group(function () {
+        Route::post('ask', [AiController::class, 'ask']);
+        Route::get('usage', [AiController::class, 'usage']);
+        Route::get('anomalies', [AiController::class, 'anomalies']);
     });
     // CRM (tenant-scoped; requires crm.view/manage + enabled module)
     Route::prefix('crm')->middleware('module:crm')->group(function () {

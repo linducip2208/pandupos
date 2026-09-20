@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountingWorkspaceController;
+use App\Http\Controllers\AiWorkspaceController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AssetWorkspaceController;
@@ -339,6 +340,11 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/', [WooWorkspaceController::class, 'index'])->name('index');
         Route::post('/connections', [WooWorkspaceController::class, 'store'])->name('store');
         Route::post('/connections/{connection}/sync', [WooWorkspaceController::class, 'sync'])->name('sync');
+    });
+    Route::prefix('ai')->name('ai.')->middleware(['module:ai'])->group(function () {
+        Route::get('/', [AiWorkspaceController::class, 'index'])->name('index');
+        Route::post('/config', [AiWorkspaceController::class, 'storeConfig'])->name('config.store');
+        Route::post('/ask', [AiWorkspaceController::class, 'ask'])->name('ask');
     });
 });
 
