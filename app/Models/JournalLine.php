@@ -10,7 +10,7 @@ class JournalLine extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id', 'journal_entry_id', 'account_id', 'debit', 'credit', 'description',
+        'tenant_id', 'journal_entry_id', 'account_id', 'product_variant_id', 'debit', 'credit', 'description',
     ];
 
     protected function casts(): array
@@ -26,5 +26,10 @@ class JournalLine extends Model
     public function account()
     {
         return $this->belongsTo(Account::class);
+    }
+
+    public function variant()
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 }

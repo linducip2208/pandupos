@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\AccountingPeriod;
 use App\Models\JournalEntry;
+use App\Models\ProductVariant;
 use App\Models\SalePayment;
 use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
 use App\Models\SupplierInvoice;
 use App\Models\SupplierPayment;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +24,12 @@ use Illuminate\Support\Str;
 final class AccountingService
 {
     public function __construct(private AuditService $audit) {}
+
+    /**
+     * Source key for cost-of-goods entries. Kept distinct from the sales
+     * invoice entry so idempotency lookups never collide.
+     */
+    public const COGS_SOURCE_SUFFIX = '#cogs';
 
     /** @return array<int, array{code:string,name:string,type:string,is_cash:bool}> */
     public static function defaultChart(): array
@@ -77,7 +85,7 @@ final class AccountingService
     }
 
     /**
-     * @param  array<int, array{account_code:string,debit:float,credit:float,description?:string}>  $lines
+     * @param array<int, array{account_code:string,debit:float,credit:float,description?:string,variant_id?:int}> $lines
      */
     public function createDraft(int $tenantId, string $date, ?string $description, array $lines, ?string $sourceType = null, ?int $sourceId = null, ?int $actorId = null): JournalEntry
     {
@@ -95,6 +103,9 @@ final class AccountingService
             $credit = 0.0;
             foreach ($lines as $line) {
                 $account = $this->activeAccount($tenantId, $line['account_code']);
+                if (isset($line['variant_id'])) {
+                    abort_unless(ProductVariant::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey((int) $line['variant_id'])->exists(), 422, 'Journal variant does not belong to tenant.');
+                }
                 $d = round((float) ($line['debit'] ?? 0), 2);
                 $c = round((float) ($line['credit'] ?? 0), 2);
                 abort_if($d < 0 || $c < 0 || ($d > 0 && $c > 0), 422, 'Each line must carry a debit or a credit amount, not both.');
@@ -102,6 +113,7 @@ final class AccountingService
                 $credit += $c;
                 $entry->lines()->create([
                     'tenant_id' => $tenantId, 'account_id' => $account->id,
+                    'product_variant_id' => isset($line['variant_id']) ? (int) $line['variant_id'] : null,
                     'debit' => $d, 'credit' => $c, 'description' => $line['description'] ?? null,
                 ]);
             }
