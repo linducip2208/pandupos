@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Asset;
 use App\Models\User;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Str;
 
 /**
@@ -111,8 +112,51 @@ final class AssetService
             'disposal_proceeds' => $proceeds, 'disposal_gain_loss' => round($proceeds - $book, 2),
         ]);
         $this->audit->log($locked->tenant_id, $actorId, 'asset.disposed', Asset::class, $locked->id, $before, $locked->fresh()->toArray());
+        $this->postDisposalToAccounting($locked, $actorId);
 
         return $locked->fresh();
+    }
+
+    /**
+     * Post disposal to the ledger when accounting is enabled: Dr Kas/piutang
+     * (proceeds), Cr aset tetap (book value), Cr/Cr laba/rugi disposal. Uses the
+     * asset's own code as the source reference so re-posting is idempotent.
+     */
+    private function postDisposalToAccounting(Asset $asset, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($asset->tenant_id, 'accounting')) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($asset->tenant_id);
+        $book = $this->bookValue($asset, $asset->disposed_at?->toDateString() ?? now()->toDateString());
+        $proceeds = round((float) $asset->disposal_proceeds, 2);
+        $gainLoss = round((float) $asset->disposal_gain_loss, 2);
+        if ($book <= 0 && $proceeds <= 0 && $gainLoss == 0.0) {
+            return;
+        }
+        $lines = [];
+        if ($proceeds > 0) {
+            $lines[] = ['account_code' => '1100', 'debit' => $proceeds, 'credit' => 0, 'description' => 'Hasil disposal '.$asset->code];
+        }
+        if ($book > 0) {
+            $lines[] = ['account_code' => '1400', 'debit' => 0, 'credit' => $book, 'description' => 'Nilai buku disposal '.$asset->code];
+        }
+        if ($gainLoss != 0.0) {
+            $account = $gainLoss >= 0 ? '4300' : '5310';
+            $amount = abs($gainLoss);
+            $lines[] = $gainLoss >= 0
+                ? ['account_code' => $account, 'debit' => 0, 'credit' => $amount, 'description' => 'Laba disposal '.$asset->code]
+                : ['account_code' => $account, 'debit' => $amount, 'credit' => 0, 'description' => 'Rugi disposal '.$asset->code];
+        }
+        if (count($lines) < 2) {
+            return;
+        }
+        $entry = $accounting->createDraft(
+            $asset->tenant_id, $asset->disposed_at?->toDateString() ?? now()->toDateString(),
+            'Disposal aset '.$asset->code, $lines, Asset::class, $asset->id, $actorId
+        );
+        $accounting->post($entry, $actorId);
     }
 
     /** @return array<int, array{period:int,depreciation:float,accumulated:float,book:float}> */

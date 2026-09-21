@@ -14,6 +14,7 @@ use App\Models\SerialNumber;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use App\Support\TenantContext;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;

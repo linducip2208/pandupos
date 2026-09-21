@@ -71,11 +71,11 @@ class AccountingTest extends TestCase
         app(ModuleManager::class)->enable($tenant->id, 'accounting');
         app(AccountingService::class)->ensureDefaultChart($tenant->id);
         app(AccountingService::class)->ensureDefaultChart($tenant->id); // idempotent
-        $this->assertSame(14, Account::withoutGlobalScopes()->where('tenant_id', $tenant->id)->count());
+        $this->assertSame(18, Account::withoutGlobalScopes()->where('tenant_id', $tenant->id)->count());
 
         $this->actingAs($owner)->get('/accounting')->assertOk()->assertSeeText('Piutang Usaha');
         $this->actingAs($owner)->getJson('/api/v1/accounting/accounts', ['X-Tenant-ID' => $tenant->id])
-            ->assertOk()->assertJsonCount(14, 'data');
+            ->assertOk()->assertJsonCount(18, 'data');
     }
 
     public function test_unbalanced_journal_is_rejected(): void

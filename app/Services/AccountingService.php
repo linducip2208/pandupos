@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\AccountingPeriod;
 use App\Models\JournalEntry;
 use App\Models\ProductVariant;
+use App\Models\PurchaseReturn;
 use App\Models\SalePayment;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
@@ -50,6 +51,10 @@ final class AccountingService
             ['code' => '5100', 'name' => 'Harga Pokok Penjualan', 'type' => 'expense', 'is_cash' => false],
             ['code' => '5200', 'name' => 'Beban Operasional', 'type' => 'expense', 'is_cash' => false],
             ['code' => '5210', 'name' => 'Beban Gaji', 'type' => 'expense', 'is_cash' => false],
+            ['code' => '5300', 'name' => 'Beban Penyusutan', 'type' => 'expense', 'is_cash' => false],
+            ['code' => '5310', 'name' => 'Beban Rugi disposal aset', 'type' => 'expense', 'is_cash' => false],
+            ['code' => '4200', 'name' => 'Laba Penyusutan Aset', 'type' => 'income', 'is_cash' => false],
+            ['code' => '4300', 'name' => 'Laba disposal aset', 'type' => 'income', 'is_cash' => false],
         ];
     }
 
@@ -304,6 +309,52 @@ final class AccountingService
         // Credit COGS to reverse the expense.
         $lines[] = ['account_code' => '5100', 'debit' => 0, 'credit' => $cogsTotal, 'description' => 'COGS reversal return '.$salesReturn->id];
         $entry = $this->createDraft($tenantId, $salesReturn->created_at->toDateString(), 'COGS reversal return '.$salesReturn->id, $lines, $sourceType, $salesReturn->id, $actorId);
+
+        return $this->post($entry, $actorId);
+    }
+
+    /**
+     * Reverse AP + inventory for a posted purchase return. Idempotent via the
+     * return id suffixed with COGS_SOURCE_SUFFIX. Debits the supplier liability
+     * and credits inventory at the return's recorded unit cost, mirroring the
+     * physical stock restoration in SupplierDocumentService::postReturn.
+     */
+    public function postPurchaseReturnCogs(PurchaseReturn $purchaseReturn, ?int $actorId = null): ?JournalEntry
+    {
+        $tenantId = $purchaseReturn->tenant_id;
+        $sourceType = PurchaseReturn::class . self::COGS_SOURCE_SUFFIX;
+        $existing = $this->existingPosted($tenantId, $sourceType, $purchaseReturn->id);
+        if ($existing) {
+            return $existing;
+        }
+        $this->ensureDefaultChart($tenantId);
+        $lines = [];
+        $total = 0.0;
+        $purchaseReturn->loadMissing('lines.variant.product');
+        foreach ($purchaseReturn->lines as $returnLine) {
+            if (! $returnLine->variant || ! $returnLine->variant->product || ! $returnLine->variant->product->track_inventory) {
+                continue;
+            }
+            if ($returnLine->variant->product->product_type === 'service') {
+                continue;
+            }
+            $cost = round((float) $returnLine->quantity * (float) $returnLine->unit_cost, 2);
+            if ($cost <= 0) {
+                continue;
+            }
+            $total = round($total + $cost, 2);
+            $lines[] = [
+                'account_code' => '2100', 'debit' => $cost, 'credit' => 0,
+                'variant_id' => (int) $returnLine->product_variant_id,
+                'description' => 'Purchase return '.$returnLine->variant->name.' x '.(float) $returnLine->quantity,
+            ];
+        }
+        if ($lines === [] || $total <= 0) {
+            return null;
+        }
+        // Credit inventory for goods returned to supplier.
+        $lines[] = ['account_code' => '1400', 'debit' => 0, 'credit' => $total, 'description' => 'Purchase return inventory credit '.$purchaseReturn->return_no];
+        $entry = $this->createDraft($tenantId, $purchaseReturn->posted_at?->toDateString() ?? now()->toDateString(), 'Pengembalian pembelian '.$purchaseReturn->return_no, $lines, $sourceType, $purchaseReturn->id, $actorId);
 
         return $this->post($entry, $actorId);
     }

@@ -11,6 +11,8 @@ use App\Models\SalesInvoice;
 use App\Models\SalesOrder;
 use App\Models\SalesQuotation;
 use App\Models\Warehouse;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -181,6 +183,7 @@ final class SalesOrderService
                 'invoice_no' => $invoice->invoice_no,
                 'total' => $invoice->total,
             ]);
+            $this->postInvoiceToAccounting($locked->tenant_id, $invoice, $actorId);
 
             return $invoice->load('lines');
         });
@@ -228,6 +231,17 @@ final class SalesOrderService
             return;
         }
         app(AccountingService::class)->recordCustomerReceipt($payment, $actorId);
+    }
+
+    /** Post revenue + COGS for an invoice created from a fulfilled sales order. */
+    private function postInvoiceToAccounting(int $tenantId, SalesInvoice $invoice, int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($tenantId, 'accounting')) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->postSalesInvoice($invoice, $actorId);
+        $accounting->postSaleCogs($invoice, $actorId);
     }
 
     private function validateReferences(int $tenantId, array $data): void

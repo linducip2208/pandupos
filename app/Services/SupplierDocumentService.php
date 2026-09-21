@@ -12,6 +12,7 @@ use App\Models\SerialNumber;
 use App\Models\SupplierInvoice;
 use App\Models\SupplierPayment;
 use App\Models\WarehouseLocation;
+use App\Services\AccountingService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -118,6 +119,15 @@ final class SupplierDocumentService
             return;
         }
         app(AccountingService::class)->recordSupplierPayment($payment, $actorId);
+    }
+
+    /** Reverse AP + inventory for a posted purchase return when accounting is on. */
+    private function postReturnToAccounting(PurchaseReturn $purchaseReturn, int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($purchaseReturn->tenant_id, 'accounting')) {
+            return;
+        }
+        app(AccountingService::class)->postPurchaseReturnCogs($purchaseReturn, $actorId);
     }
 
     public function createDraft(
@@ -248,6 +258,7 @@ final class SupplierDocumentService
             $before = $locked->toArray();
             $locked->update(['status' => 'posted', 'posted_at' => now()]);
             $this->audit->log($locked->tenant_id, $actorId, 'purchase.return.posted', PurchaseReturn::class, $locked->id, $before, $locked->fresh('lines')->toArray());
+            $this->postReturnToAccounting($locked, $actorId);
 
             return $locked->fresh('lines');
         });

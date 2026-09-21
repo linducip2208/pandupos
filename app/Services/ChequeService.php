@@ -6,6 +6,7 @@ use App\Models\Cheque;
 use App\Models\ChequeDeposit;
 use App\Models\Contact;
 use App\Models\JournalEntry;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -80,6 +81,7 @@ final class ChequeService
         $depositId = $locked->deposit_id;
         $locked->update(['status' => Cheque::BOUNCED, 'deposit_id' => null, 'bounce_reason' => $reason]);
         $this->closeDepositIfSettled($locked->tenant_id, $depositId);
+        $this->postBounceToAccounting($locked, $actorId);
         $this->audit->log($locked->tenant_id, $actorId, 'cheque.bounced', Cheque::class, $locked->id, $before, $locked->fresh()->toArray());
 
         return $locked->fresh();
@@ -172,6 +174,40 @@ final class ChequeService
             return;
         }
         $entry = $accounting->createDraft($cheque->tenant_id, now()->toDateString(), 'Kliring cek '.$cheque->cheque_no, $lines, Cheque::class, $cheque->id, $actorId);
+        $accounting->post($entry, $actorId);
+    }
+
+    /**
+     * A bounced receipt reverses the clearance: Dr Piutang / Cr Bank. A bounced
+     * payment reinstates the supplier liability: Dr Bank / Cr Hutang. The
+     * reversal uses the bounce id as a distinct source reference so it never
+     * collides with the original clearance entry.
+     */
+    private function postBounceToAccounting(Cheque $cheque, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($cheque->tenant_id, 'accounting')) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($cheque->tenant_id);
+        $amount = round((float) $cheque->amount, 2);
+        $sourceType = Cheque::class . '#bounce';
+        $existing = JournalEntry::withoutGlobalScopes()->where('tenant_id', $cheque->tenant_id)
+            ->where('source_type', $sourceType)->where('source_id', $cheque->id)
+            ->where('status', JournalEntry::POSTED)->first();
+        if ($existing) {
+            return;
+        }
+        $lines = $cheque->type === 'receipt'
+            ? [
+                ['account_code' => '1300', 'debit' => $amount, 'credit' => 0],
+                ['account_code' => '1200', 'debit' => 0, 'credit' => $amount],
+            ]
+            : [
+                ['account_code' => '1200', 'debit' => $amount, 'credit' => 0],
+                ['account_code' => '2100', 'debit' => 0, 'credit' => $amount],
+            ];
+        $entry = $accounting->createDraft($cheque->tenant_id, now()->toDateString(), 'Bounce cek '.$cheque->cheque_no.' (reversal)', $lines, $sourceType, $cheque->id, $actorId);
         $accounting->post($entry, $actorId);
     }
 
