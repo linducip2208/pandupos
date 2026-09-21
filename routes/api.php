@@ -146,6 +146,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::get('accounts', [AccountingController::class, 'accounts']);
         Route::get('trial-balance', [AccountingController::class, 'trialBalance']);
         Route::get('profit-loss', [AccountingController::class, 'profitLoss']);
+        Route::get('cogs', [AccountingController::class, 'cogs']);
         Route::post('journals', [AccountingController::class, 'storeJournal']);
         Route::post('journals/{entry}/post', [AccountingController::class, 'postJournal']);
         Route::post('journals/{entry}/void', [AccountingController::class, 'voidJournal']);

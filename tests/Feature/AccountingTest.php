@@ -360,4 +360,47 @@ class AccountingTest extends TestCase
         $this->actingAs($owner)->getJson('/api/v1/accounting/trial-balance', $headers)->assertOk()->assertJsonPath('data.balanced', true);
         $this->actingAs($owner)->postJson("/api/v1/accounting/journals/{$id}/void", ['reason' => 'api'], $headers)->assertOk()->assertJsonPath('data.status', 'void');
     }
+
+    public function test_api_journal_accepts_variant_id_and_cogs_endpoint(): void
+    {
+        [$tenant, $owner] = $this->context();
+        [$branch, $warehouse, $variant] = $this->stockContext($owner, $tenant);
+        $headers = ['X-Tenant-ID' => $tenant->id];
+
+        // Journal line may carry a tenant-owned variant.
+        $this->actingAs($owner)->postJson('/api/v1/accounting/journals', [
+            'entry_date' => now()->toDateString(), 'description' => 'Variant line',
+            'lines' => [
+                ['account_code' => '1100', 'debit' => 100, 'credit' => 0, 'variant_id' => $variant->id],
+                ['account_code' => '3100', 'debit' => 0, 'credit' => 100],
+            ],
+        ], $headers)->assertCreated()->assertJsonPath('data.status', 'draft')
+            ->assertJsonPath('data.lines.0.product_variant_id', $variant->id);
+
+        // Foreign variant (another tenant) is rejected.
+        [$tenantB, $ownerB] = $this->context('Toko Foreign');
+        $foreignVariant = ProductVariant::withoutGlobalScopes()->create([
+            'tenant_id' => $tenantB->id, 'product_id' => Product::withoutGlobalScopes()->create([
+                'tenant_id' => $tenantB->id, 'name' => 'Foreign', 'sku' => 'F-'.uniqid(),
+                'product_type' => 'stock', 'track_inventory' => true,
+            ])->id, 'name' => 'Default', 'sku' => 'VF-'.uniqid(), 'purchase_price' => 10, 'sell_price' => 20,
+        ]);
+        $this->actingAs($owner)->postJson('/api/v1/accounting/journals', [
+            'entry_date' => now()->toDateString(), 'description' => 'Foreign',
+            'lines' => [
+                ['account_code' => '1100', 'debit' => 10, 'credit' => 0, 'variant_id' => $foreignVariant->id],
+                ['account_code' => '3100', 'debit' => 0, 'credit' => 10],
+            ],
+        ], $headers)->assertStatus(422);
+
+        // COGS endpoint returns the per-variant cost breakdown.
+        app(SaleService::class)->checkout($tenant->id, $branch->id, $warehouse->id, null, [
+            ['variant_id' => $variant->id, 'quantity' => 3, 'unit_price' => 100],
+        ], [['method' => 'cash', 'amount' => 300]], 'acct-cogs-api', null, 0);
+        $cogsResp = $this->actingAs($owner)->getJson('/api/v1/accounting/cogs', $headers)->assertOk();
+        $cogsJson = $cogsResp->json('data');
+        $this->assertSame(150.0, round((float) $cogsJson['total'], 2));
+        $this->assertSame($variant->id, (int) $cogsJson['lines'][0]['variant_id']);
+        $this->assertSame($variant->sku, $cogsJson['lines'][0]['sku']);
+    }
 }

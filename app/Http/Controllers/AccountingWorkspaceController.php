@@ -41,10 +41,11 @@ class AccountingWorkspaceController extends Controller
     public function journals()
     {
         $this->authorize('viewAny', Account::class);
-        $entries = JournalEntry::query()->with(['lines.account'])->orderByDesc('id')->limit(100)->get();
+        $entries = JournalEntry::query()->with(['lines.account.variant'])->orderByDesc('id')->limit(100)->get();
         $accounts = Account::query()->where('is_active', true)->orderBy('code')->get();
+        $variants = \App\Models\ProductVariant::query()->with('product')->where('tenant_id', TenantContext::idOrFail())->where('is_active', true)->orderBy('id')->get();
 
-        return view('accounting.journals', ['entries' => $entries, 'accounts' => $accounts]);
+        return view('accounting.journals', ['entries' => $entries, 'accounts' => $accounts, 'variants' => $variants]);
     }
 
     public function storeJournal(Request $request, AccountingService $accounting)
@@ -56,6 +57,7 @@ class AccountingWorkspaceController extends Controller
             'lines.*.account_code' => 'required|string',
             'lines.*.debit' => 'required|numeric|min:0',
             'lines.*.credit' => 'required|numeric|min:0',
+            'lines.*.variant_id' => 'nullable|integer',
         ]);
         $entry = $accounting->createDraft(
             TenantContext::idOrFail(), $data['entry_date'], $data['description'] ?? null,
@@ -100,6 +102,7 @@ class AccountingWorkspaceController extends Controller
             'tax' => $accounting->taxSummary($tenantId, $from, $to),
             'receivables' => $accounting->receivables($tenantId),
             'payables' => $accounting->payables($tenantId),
+            'cogs' => $accounting->cogsDetail($tenantId, $from, $to),
         ]);
     }
 

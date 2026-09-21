@@ -508,6 +508,39 @@ final class AccountingService
         return ['cash_accounts' => $rows, 'total_inflow' => $inflow, 'total_outflow' => $outflow, 'net' => round($inflow - $outflow, 2)];
     }
 
+    /** @return array{total:float,lines:array<int,array{variant_id:int,sku:string,product_name:string,quantity:float,cost:float}>} */
+    public function cogsDetail(int $tenantId, string $from, string $to): array
+    {
+        $rows = DB::table('journal_lines as jl')
+            ->join('journal_entries as je', 'je.id', '=', 'jl.journal_entry_id')
+            ->join('product_variants as pv', 'pv.id', '=', 'jl.product_variant_id')
+            ->join('products as p', 'p.id', '=', 'pv.product_id')
+            ->where('jl.tenant_id', $tenantId)
+            ->where('je.status', JournalEntry::POSTED)
+            ->where('jl.product_variant_id', '>', 0)
+            ->whereDate('je.entry_date', '>=', $from)
+            ->whereDate('je.entry_date', '<=', $to)
+            ->groupBy(['jl.product_variant_id', 'pv.sku', 'p.name'])
+            ->selectRaw('jl.product_variant_id as variant_id, pv.sku as sku, p.name as product_name, SUM(jl.debit) as cost')
+            ->get();
+
+        $lines = [];
+        $total = 0.0;
+        foreach ($rows as $row) {
+            $cost = round((float) $row->cost, 2);
+            if ($cost <= 0) {
+                continue;
+            }
+            $lines[] = [
+                'variant_id' => (int) $row->variant_id, 'sku' => $row->sku,
+                'product_name' => $row->product_name, 'cost' => $cost,
+            ];
+            $total = round($total + $cost, 2);
+        }
+
+        return ['total' => $total, 'lines' => $lines];
+    }
+
     /** @return array{output_tax:float,input_tax:float,net_payable:float} */
     public function taxSummary(int $tenantId, string $from, string $to): array
     {

@@ -23,6 +23,11 @@
 <tr><td>Laba berjalan</td><td class="text-end">{{ number_format($balance['current_earnings'],2,',','.') }}</td></tr>
 <tr><th>Total ekuitas + laba</th><th class="text-end">{{ number_format($balance['total_equity'] + $balance['current_earnings'],2,',','.') }}</th></tr>
 </tbody></table></div><div class="card-footer">@if($balance['balanced'])<span class="badge bg-success">Aset = Liabilitas + Ekuitas</span>@else<span class="badge bg-danger">Tidak seimbang</span>@endif</div></div></div>
+<div class="col-12 col-xl-6"><div class="card"><div class="card-header"><h3 class="card-title">Harga Pokok Penjualan {{ $from }} s.d. {{ $to }}</h3></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>Varian</th><th>Produk</th><th class="text-end">Biaya</th></tr></thead><tbody>
+@forelse($cogs['lines'] as $r)<tr><td><span class="badge bg-light text-dark">{{ $r['sku'] }}</span></td><td>{{ $r['product_name'] }}</td><td class="text-end">{{ number_format($r['cost'],2,',','.') }}</td></tr>
+@empty<tr><td colspan="3" class="text-center text-secondary">Tidak ada COGS tercatat.</td></tr>@endforelse
+<tr><th>Total COGS</th><th></th><th class="text-end">{{ number_format($cogs['total'],2,',','.') }}</th></tr>
+</tbody></table></div></div></div>
 <div class="col-12 col-xl-6"><div class="card"><div class="card-header"><h3 class="card-title">Arus kas {{ $from }} s.d. {{ $to }}</h3></div><div class="table-responsive"><table class="table card-table"><tbody>
 @foreach($cash['cash_accounts'] as $r)<tr><td>{{ $r['code'] }} · {{ $r['name'] }}</td><td class="text-end">+{{ number_format($r['inflow'],2,',','.') }}</td><td class="text-end">-{{ number_format($r['outflow'],2,',','.') }}</td></tr>@endforeach
 <tr><th>Neto</th><th class="text-end" colspan="2">{{ number_format($cash['net'],2,',','.') }}</th></tr>

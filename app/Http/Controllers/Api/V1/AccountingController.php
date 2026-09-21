@@ -35,6 +35,15 @@ class AccountingController extends Controller
         return response()->json(['data' => $accounting->profitLoss(TenantContext::idOrFail(), $from, $to)]);
     }
 
+    public function cogs(Request $request, AccountingService $accounting)
+    {
+        $this->authorize('viewAny', Account::class);
+        $from = $request->input('from', now()->startOfMonth()->toDateString());
+        $to = $request->input('to', now()->toDateString());
+
+        return response()->json(['data' => $accounting->cogsDetail(TenantContext::idOrFail(), $from, $to)]);
+    }
+
     public function storeJournal(Request $request, AccountingService $accounting)
     {
         $this->authorize('create', Account::class);
@@ -44,6 +53,7 @@ class AccountingController extends Controller
             'lines.*.account_code' => 'required|string',
             'lines.*.debit' => 'required|numeric|min:0',
             'lines.*.credit' => 'required|numeric|min:0',
+            'lines.*.variant_id' => 'nullable|integer',
             'post' => 'nullable|boolean',
         ]);
         $entry = $accounting->createDraft(
