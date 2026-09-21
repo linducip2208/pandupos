@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\SalesInvoice;
 use App\Models\ZatcaDocument;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -77,8 +79,54 @@ final class ZatcaService
         $before = $locked->toArray();
         $locked->update(['status' => 'reported', 'clearance_id' => $clearanceId, 'reported_at' => now()]);
         $this->audit->log($locked->tenant_id, $actorId, 'zatca.reported', ZatcaDocument::class, $locked->id, $before, $locked->fresh()->toArray());
+        $this->postNoteToAccounting($locked, $actorId);
 
         return $locked->fresh();
+    }
+
+    /**
+     * A credit note reverses revenue: Dr Pendapatan / Cr Piutang. A debit note
+     * reinstates: Dr Piutang / Cr Pendapatan. Idempotent via the ZATCA doc id.
+     */
+    public function postNoteToAccounting(ZatcaDocument $document, ?int $actorId = null): ?\App\Models\JournalEntry
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($document->tenant_id, 'accounting')) {
+            return null;
+        }
+        if (! in_array($document->type, [ZatcaDocument::CREDIT_NOTE, ZatcaDocument::DEBIT_NOTE], true)) {
+            return null;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($document->tenant_id);
+        $total = round((float) $document->total, 2);
+        if ($total <= 0) {
+            return null;
+        }
+        $existing = \App\Models\JournalEntry::withoutGlobalScopes()->where('tenant_id', $document->tenant_id)
+            ->where('source_type', ZatcaDocument::class)->where('source_id', $document->id)
+            ->where('status', \App\Models\JournalEntry::POSTED)->first();
+        if ($existing) {
+            return $existing;
+        }
+        $lines = $document->type === ZatcaDocument::CREDIT_NOTE
+            ? [
+                ['account_code' => '4100', 'debit' => $total, 'credit' => 0],
+                ['account_code' => '1300', 'debit' => 0, 'credit' => $total],
+            ]
+            : [
+                ['account_code' => '1300', 'debit' => $total, 'credit' => 0],
+                ['account_code' => '4100', 'debit' => 0, 'credit' => $total],
+            ];
+
+        return DB::transaction(function () use ($accounting, $document, $actorId, $total, $lines) {
+            $entry = $accounting->createDraft(
+                $document->tenant_id, substr($document->issued_at, 0, 10),
+                ($document->type === ZatcaDocument::CREDIT_NOTE ? 'Credit note ' : 'Debit note ') . $document->uuid,
+                $lines, ZatcaDocument::class, $document->id, $actorId
+            );
+
+            return $accounting->post($entry, $actorId);
+        });
     }
 
     /** ZATCA TLV QR: tags 1 seller, 2 VAT, 3 timestamp, 4 total, 5 VAT. */

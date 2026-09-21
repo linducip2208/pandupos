@@ -6,6 +6,8 @@ use App\Models\Contact;
 use App\Models\ProductVariant;
 use App\Models\RepairOrder;
 use App\Models\Warehouse;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -143,6 +145,7 @@ final class RepairService
             $before = $locked->toArray();
             $locked->update(['status' => RepairOrder::DELIVERED, 'delivered_at' => now()]);
             $this->audit->log($locked->tenant_id, $actorId, 'repair.delivered', RepairOrder::class, $locked->id, $before, $locked->fresh()->toArray());
+            $this->postToAccounting($locked, $actorId);
 
             return $locked->fresh();
         });
@@ -186,5 +189,39 @@ final class RepairService
         }
 
         return 'RP-'.now()->format('YmdHis').'-'.Str::upper(Str::random(8));
+    }
+
+    /**
+     * Post repair revenue on delivery when accounting is on:
+     * Dr Kas/piutang / Cr Pendapatan jasa + barang. Idempotent via the order
+     * id as source reference.
+     */
+    private function postToAccounting(RepairOrder $order, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($order->tenant_id, 'accounting')) {
+            return;
+        }
+        $total = round((float) $order->total, 2);
+        if ($total <= 0) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($order->tenant_id);
+        $existing = \App\Models\JournalEntry::withoutGlobalScopes()->where('tenant_id', $order->tenant_id)
+            ->where('source_type', RepairOrder::class)->where('source_id', $order->id)
+            ->where('status', \App\Models\JournalEntry::POSTED)->first();
+        if ($existing) {
+            return;
+        }
+        $cashAccount = '1100';
+        $entry = $accounting->createDraft(
+            $order->tenant_id, $order->delivered_at?->toDateString() ?? now()->toDateString(),
+            'Penampilan reparasi '.$order->number,
+            [
+                ['account_code' => $cashAccount, 'debit' => $total, 'credit' => 0],
+                ['account_code' => '4100', 'debit' => 0, 'credit' => $total],
+            ], RepairOrder::class, $order->id, $actorId
+        );
+        $accounting->post($entry, $actorId);
     }
 }

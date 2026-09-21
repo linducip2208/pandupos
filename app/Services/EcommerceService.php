@@ -8,6 +8,8 @@ use App\Models\EcommerceOrder;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Warehouse;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -149,6 +151,7 @@ final class EcommerceService
             $before = $locked->toArray();
             $locked->update(['paid' => $amount, 'payment_method' => $method, 'status' => EcommerceOrder::PAID, 'paid_at' => now()]);
             $this->audit->log($locked->tenant_id, $actorId, 'ecommerce.order.paid', EcommerceOrder::class, $locked->id, $before, $locked->fresh()->toArray());
+            $this->postToAccounting($locked, $actorId);
 
             return $locked->fresh('lines');
         });
@@ -197,5 +200,69 @@ final class EcommerceService
         }
 
         return 'EC-'.now()->format('YmdHis').'-'.Str::upper(Str::random(8));
+    }
+
+    /** Post revenue + COGS for a paid e-commerce order when accounting is on. */
+    private function postToAccounting(EcommerceOrder $order, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($order->tenant_id, 'accounting')) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($order->tenant_id);
+        $revenue = round((float) $order->subtotal, 2);
+        $shipping = round((float) $order->shipping_fee, 2);
+        $total = round((float) $order->total, 2);
+        $lines = [['account_code' => '1100', 'debit' => $total, 'credit' => 0]];
+        if ($revenue > 0) {
+            $lines[] = ['account_code' => '4100', 'debit' => 0, 'credit' => $revenue];
+        }
+        if ($shipping > 0) {
+            $lines[] = ['account_code' => '4100', 'debit' => 0, 'credit' => $shipping];
+        }
+        $entry = $accounting->createDraft(
+            $order->tenant_id, $order->paid_at?->toDateString() ?? now()->toDateString(),
+            'Penampilan e-commerce '.$order->number, $lines, EcommerceOrder::class, $order->id, $actorId
+        );
+        $accounting->post($entry, $actorId);
+        // COGS from the order's lines using weighted-average cost.
+        $stock = app(StockService::class);
+        $cogsLines = [];
+        $cogsTotal = 0.0;
+        $order->loadMissing('lines.variant.product');
+        foreach ($order->lines as $line) {
+            if (! $line->variant || ! $line->variant->product || ! $line->variant->product->track_inventory) {
+                continue;
+            }
+            if ($line->variant->product->product_type === 'service') {
+                continue;
+            }
+            $warehouseId = Warehouse::withoutGlobalScopes()->where('tenant_id', $order->tenant_id)->orderBy('id')->value('id');
+            $unitCost = $stock->weightedAverageCost($order->tenant_id, (int) $warehouseId, (int) $line->product_variant_id);
+            if ($unitCost <= 0) {
+                continue;
+            }
+            $cost = round((float) $line->quantity * $unitCost, 2);
+            if ($cost <= 0) {
+                continue;
+            }
+            $cogsTotal = round($cogsTotal + $cost, 2);
+            $cogsLines[] = [
+                'account_code' => '5100', 'debit' => $cost, 'credit' => 0,
+                'variant_id' => (int) $line->product_variant_id,
+                'description' => 'COGS e-commerce '.$line->variant->name.' x '.(float) $line->quantity,
+            ];
+        }
+        if ($cogsLines !== [] && $cogsTotal > 0) {
+            $cogsLines[] = ['account_code' => '1400', 'debit' => 0, 'credit' => $cogsTotal, 'description' => 'COGS reversal persediaan e-commerce '.$order->number];
+            $accounting->post(
+                $accounting->createDraft(
+                    $order->tenant_id, $order->paid_at?->toDateString() ?? now()->toDateString(),
+                    'Harga Pokok Penjualan e-commerce '.$order->number, $cogsLines,
+                    EcommerceOrder::class . AccountingService::COGS_SOURCE_SUFFIX, $order->id, $actorId
+                ),
+                $actorId
+            );
+        }
     }
 }

@@ -6,6 +6,8 @@ use App\Models\MrpBom;
 use App\Models\MrpWorkOrder;
 use App\Models\ProductVariant;
 use App\Models\Warehouse;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -188,6 +190,7 @@ final class MrpService
         $before = $locked->toArray();
         $locked->update(['status' => MrpWorkOrder::DONE, 'finished_at' => now()]);
         $this->audit->log($locked->tenant_id, $actorId, 'mrp.work_order.finished', MrpWorkOrder::class, $locked->id, $before, $locked->fresh()->toArray());
+        $this->postToAccounting($locked, $actorId);
 
         return $locked->fresh();
     }
@@ -235,5 +238,39 @@ final class MrpService
         }
 
         return 'WO-'.now()->format('YmdHis').'-'.Str::upper(Str::random(8));
+    }
+
+    /**
+     * Post finished-goods receipt to the ledger when accounting is on:
+     * Dr Persediaan barang jadi / Cr Beban bahan baku. Idempotent via the
+     * work order id as source reference.
+     */
+    private function postToAccounting(MrpWorkOrder $order, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($order->tenant_id, 'accounting')) {
+            return;
+        }
+        $qtyGood = round((float) $order->quantity_produced, 3);
+        $materialCost = round((float) $order->material_cost, 2);
+        if ($qtyGood <= 0 || $materialCost <= 0) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($order->tenant_id);
+        $existing = \App\Models\JournalEntry::withoutGlobalScopes()->where('tenant_id', $order->tenant_id)
+            ->where('source_type', MrpWorkOrder::class)->where('source_id', $order->id)
+            ->where('status', \App\Models\JournalEntry::POSTED)->first();
+        if ($existing) {
+            return;
+        }
+        $entry = $accounting->createDraft(
+            $order->tenant_id, $order->finished_at?->toDateString() ?? now()->toDateString(),
+            'Serah terima barang jadi '.$order->number,
+            [
+                ['account_code' => '1400', 'debit' => $materialCost, 'credit' => 0],
+                ['account_code' => '5100', 'debit' => 0, 'credit' => $materialCost],
+            ], MrpWorkOrder::class, $order->id, $actorId
+        );
+        $accounting->post($entry, $actorId);
     }
 }

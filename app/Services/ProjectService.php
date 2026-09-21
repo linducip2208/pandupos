@@ -9,6 +9,8 @@ use App\Models\ProjectMilestone;
 use App\Models\ProjectTask;
 use App\Models\ProjectTimesheet;
 use App\Models\User;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 
 /**
  * Projects: guarded project/task lifecycles, milestones, timesheets with a
@@ -166,6 +168,7 @@ final class ProjectService
             'spent_on' => $data['spent_on'] ?? now()->toDateString(), 'created_by' => $actorId,
         ]);
         $this->audit->log($tenantId, $actorId, 'project.expense.added', ProjectExpense::class, $expense->id, null, ['amount' => $amount]);
+        $this->postExpenseToAccounting($expense, $actorId);
 
         return $expense;
     }
@@ -184,5 +187,33 @@ final class ProjectService
             'expenses' => $expenses, 'total_cost' => $total,
             'remaining' => round((float) $project->budget - $total, 2),
         ];
+    }
+
+    /** Post project expense to the ledger when accounting is on. */
+    private function postExpenseToAccounting(ProjectExpense $expense, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($expense->tenant_id, 'accounting')) {
+            return;
+        }
+        $amount = round((float) $expense->amount, 2);
+        if ($amount <= 0) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($expense->tenant_id);
+        $existing = \App\Models\JournalEntry::withoutGlobalScopes()->where('tenant_id', $expense->tenant_id)
+            ->where('source_type', ProjectExpense::class)->where('source_id', $expense->id)
+            ->where('status', \App\Models\JournalEntry::POSTED)->first();
+        if ($existing) {
+            return;
+        }
+        $entry = $accounting->createDraft(
+            $expense->tenant_id, $expense->spent_on->toDateString(), 'Beban proyek '.$expense->description,
+            [
+                ['account_code' => '5200', 'debit' => $amount, 'credit' => 0],
+                ['account_code' => '1100', 'debit' => 0, 'credit' => $amount],
+            ], ProjectExpense::class, $expense->id, $actorId
+        );
+        $accounting->post($entry, $actorId);
     }
 }
