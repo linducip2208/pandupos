@@ -17,6 +17,7 @@ use App\Models\GymMembership;
 use App\Models\HmsPatient;
 use App\Models\HrmEmployee;
 use App\Models\JournalEntry;
+use App\Models\KitchenTicket;
 use App\Models\MrpBom;
 use App\Models\MrpWorkOrder;
 use App\Models\PayrollRun;
@@ -40,6 +41,7 @@ use App\Policies\PayrollPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\RepairPolicy;
+use App\Policies\RestaurantPolicy;
 use App\Policies\WooPolicy;
 use App\Policies\ZatcaPolicy;
 use App\Services\Costing\WeightedAverageCostStrategy;
@@ -90,6 +92,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PayrollRun::class, PayrollPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(RepairOrder::class, RepairPolicy::class);
+        Gate::policy(KitchenTicket::class, RestaurantPolicy::class);
         Gate::policy(WoConnection::class, WooPolicy::class);
         Gate::policy(ZatcaDocument::class, ZatcaPolicy::class);
 

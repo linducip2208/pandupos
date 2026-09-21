@@ -29,6 +29,9 @@
 @case('blog')<path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5"/>@break
 @case('integrations')<path d="M8 12h8M12 8v8M5 5l3 3M19 5l-3 3M5 19l3-3M19 19l-3-3"/>@break
 @case('health')<path d="M3 12h4l2-6 4 12 2-6h6"/>@break
+@case('restaurant-group')<path d="M7 3v8M4 3v4a3 3 0 0 0 6 0V3M7 11v10M17 3c-2 0-3 2-3 5v6h3v7M17 3v18"/>@break
+@case('restaurant-tables')<rect x="4" y="9" width="16" height="9" rx="2"/><path d="M7 9V5M17 9V5M7 18v3M17 18v3"/>@break
+@case('restaurant-kitchen')<path d="M4 11h16v9H4zM4 11c0-3 2-4 4-4h1M8 7V4M12 4v3M7 14h.01M12 14h.01M17 14h.01"/>@break
 @default<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>
 @endswitch
 </svg></span>

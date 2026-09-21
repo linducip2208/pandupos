@@ -41,6 +41,13 @@
                             <li class="nav-item"><a class="nav-link" href="{{ route('purchasing.index') }}"><x-nav-icon name="purchasing-workspace"/><span class="nav-link-title">Purchasing Workspace</span></a></li>
                         </ul></li>
                     @endif
+                    @if(auth()->user()?->can('restaurant.view') && app(\App\Services\RestaurantService::class)->isEnabled(\App\Support\TenantContext::id()))
+                        <li class="nav-group"><button class="nav-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#nav-restaurant" aria-expanded="true"><x-nav-icon name="restaurant-group"/><span>🍽️ Restaurant</span><span class="nav-chevron">⌄</span></button><ul class="collapse show nav-submenu" id="nav-restaurant">
+                            <li class="nav-item"><a class="nav-link" href="{{ route('restaurant.index') }}"><x-nav-icon name="restaurant-tables"/><span class="nav-link-title">Meja & Booking</span></a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ route('restaurant.kitchen') }}"><x-nav-icon name="restaurant-kitchen"/><span class="nav-link-title">Dapur / KDS</span></a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ route('restaurant.modifiers') }}"><x-nav-icon name="product-master"/><span class="nav-link-title">Modifier</span></a></li>
+                        </ul></li>
+                    @endif
                     <li class="nav-group"><button class="nav-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#nav-reports" aria-expanded="true"><x-nav-icon name="report-group"/><span>📊 Laporan</span><span class="nav-chevron">⌄</span></button><ul class="collapse show nav-submenu" id="nav-reports">
                         <li class="nav-item"><a class="nav-link" href="{{ route('reports.show','bisnis') }}"><x-nav-icon name="business"/><span class="nav-link-title">Bisnis Utama</span></a></li>
                         <li class="nav-item"><a class="nav-link" href="{{ route('reports.show','keuangan') }}"><x-nav-icon name="finance"/><span class="nav-link-title">Keuangan</span></a></li>

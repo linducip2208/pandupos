@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureRestaurantEnabled;
 use App\Http\Middleware\EnsureTokenAbility;
 use App\Http\Middleware\EntitlementMiddleware;
 use App\Http\Middleware\ModuleEnabledMiddleware;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'portal.tenant' => PortalTenantMiddleware::class,
             'token-ability' => EnsureTokenAbility::class,
             'sensitive.reauth' => RequireSensitiveReauth::class,
+            'restaurant' => EnsureRestaurantEnabled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

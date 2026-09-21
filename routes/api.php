@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\PurchaseController;
 use App\Http\Controllers\Api\V1\RepairController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\RestaurantController;
 use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\SalesDocumentController;
 use App\Http\Controllers\Api\V1\SalesOrderController;
@@ -222,6 +223,16 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::get('/', [ChequeController::class, 'index']);
         Route::post('/', [ChequeController::class, 'store']);
         Route::post('/{cheque}/transition', [ChequeController::class, 'transition']);
+    });
+    // Restaurant (tenant-scoped; requires the tenant's restaurant flag + policies)
+    Route::prefix('restaurant')->middleware('restaurant')->group(function () {
+        Route::get('tickets', [RestaurantController::class, 'tickets']);
+        Route::post('tickets/fire', [RestaurantController::class, 'fire']);
+        Route::post('tickets/{ticket}/advance', [RestaurantController::class, 'advance']);
+        Route::post('tickets/{ticket}/close', [RestaurantController::class, 'close']);
+        Route::post('bookings', [RestaurantController::class, 'book']);
+        Route::post('bookings/{booking}/transition', [RestaurantController::class, 'transitionBooking']);
+        Route::post('items/{item}/refire', [RestaurantController::class, 'refire']);
     });
     // Field force (tenant-scoped; requires fieldforce.view/manage + enabled module)
     Route::prefix('fieldforce')->middleware('module:fieldforce')->group(function () {

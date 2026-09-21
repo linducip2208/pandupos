@@ -50,10 +50,12 @@ use App\Http\Controllers\PurchasingWorkspaceController;
 use App\Http\Controllers\RegisterWorkspaceController;
 use App\Http\Controllers\RepairWorkspaceController;
 use App\Http\Controllers\ReportPageController;
+use App\Http\Controllers\RestaurantWorkspaceController;
 use App\Http\Controllers\SalesDocumentWorkspaceController;
 use App\Http\Controllers\SalesOrderWorkspaceController;
 use App\Http\Controllers\SalesReturnWorkspaceController;
 use App\Http\Controllers\SerialWorkspaceController;
+use App\Http\Controllers\SettingsWorkspaceController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\WooWorkspaceController;
@@ -367,6 +369,26 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/', [ChequeWorkspaceController::class, 'store'])->name('store');
         Route::post('/deposit', [ChequeWorkspaceController::class, 'deposit'])->name('deposit');
         Route::post('/{cheque}/transition', [ChequeWorkspaceController::class, 'transition'])->name('transition');
+    });
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/business', [SettingsWorkspaceController::class, 'business'])->name('business.index');
+        Route::post('/business', [SettingsWorkspaceController::class, 'updateBusiness'])->name('business.update');
+    });
+    Route::prefix('restaurant')->name('restaurant.')->middleware(['restaurant'])->group(function () {
+        Route::get('/', [RestaurantWorkspaceController::class, 'index'])->name('index');
+        Route::get('/kitchen', [RestaurantWorkspaceController::class, 'kitchen'])->name('kitchen');
+        Route::get('/modifiers', [RestaurantWorkspaceController::class, 'modifiers'])->name('modifiers');
+        Route::post('/floors', [RestaurantWorkspaceController::class, 'storeFloor'])->name('floors.store');
+        Route::post('/tables', [RestaurantWorkspaceController::class, 'storeTable'])->name('tables.store');
+        Route::post('/bookings', [RestaurantWorkspaceController::class, 'storeBooking'])->name('bookings.store');
+        Route::post('/bookings/{booking}/transition', [RestaurantWorkspaceController::class, 'transitionBooking'])->name('bookings.transition');
+        Route::post('/modifiers/groups', [RestaurantWorkspaceController::class, 'storeModifierGroup'])->name('groups.store');
+        Route::post('/modifiers/groups/{group}/options', [RestaurantWorkspaceController::class, 'storeModifier'])->name('modifiers.store');
+        Route::post('/products/link', [RestaurantWorkspaceController::class, 'linkProduct'])->name('products.link');
+        Route::post('/tickets/fire', [RestaurantWorkspaceController::class, 'fire'])->name('tickets.fire');
+        Route::post('/tickets/{ticket}/advance', [RestaurantWorkspaceController::class, 'advance'])->name('tickets.advance');
+        Route::post('/items/{item}/refire', [RestaurantWorkspaceController::class, 'refire'])->name('items.refire');
+        Route::post('/tickets/{ticket}/close', [RestaurantWorkspaceController::class, 'close'])->name('tickets.close');
     });
 });
 

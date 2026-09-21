@@ -89,7 +89,7 @@ source, theme, controller, model, view or asset was copied — verified by
 | Gym | Packages, subscriptions, check-ins, renewal | GymTest (7/35) | `docs/GYM.md` | DONE |
 | ZatcaIntegrationKsa | TLV QR, UBL XML, notes, reporting ledger (live portal out of scope) | ZatcaTest (7/47) | `docs/ZATCA.md` | DONE |
 | Cheque | Receipt/issue, deposits, clearance, bounce, reconciliation | ChequeTest (8/44) | `docs/CHEQUE.md` | DONE |
-| Restaurant | No restaurant module (out of PanduPOS scope — boundary) | — | — | OUT OF SCOPE |
+| Restaurant | Tenant-optional feature flag (default OFF, retail default): floors/tables, bookings, modifiers, KDS tickets, cashier close-out to retail sales | RestaurantTest (10/58) | `docs/RESTAURANT.md` | DONE |
 
 Distinction: **feature parity** = the DONE rows above; **production
 readiness** = canonical ledger (`PRODUCTION_READINESS_SCORE.md`, all 100 on
