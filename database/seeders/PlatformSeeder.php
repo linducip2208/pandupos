@@ -35,6 +35,7 @@ class PlatformSeeder extends Seeder
             ['slug' => 'ai', 'name' => 'AI Assistant', 'is_core' => false, 'metadata' => ['dependencies' => []]],
             ['slug' => 'fieldforce', 'name' => 'Field Force', 'is_core' => false, 'metadata' => ['dependencies' => []]],
             ['slug' => 'zatca', 'name' => 'ZATCA', 'is_core' => false, 'metadata' => ['dependencies' => ['sales']]],
+            ['slug' => 'cheque', 'name' => 'Cheque', 'is_core' => false, 'metadata' => ['dependencies' => []]],
         ];
 
         foreach ($modules as $m) {
@@ -92,7 +93,7 @@ class PlatformSeeder extends Seeder
             Role::findOrCreate($role, 'web');
         }
 
-        foreach (['pos.sale.create', 'pos.sale.void', 'register.manage', 'register.open', 'register.close', 'inventory.view', 'products.manage', 'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve', 'sales.view', 'sales.create', 'reports.view', 'settings.manage', 'accounting.view', 'accounting.manage', 'crm.view', 'crm.manage', 'mrp.view', 'mrp.manage', 'repair.view', 'repair.manage', 'project.view', 'project.manage', 'asset.view', 'asset.manage', 'hrm.view', 'hrm.manage', 'payroll.view', 'payroll.manage', 'ecommerce.view', 'ecommerce.manage', 'woocommerce.view', 'woocommerce.manage', 'hms.view', 'hms.manage', 'gym.view', 'gym.manage', 'ai.view', 'ai.manage', 'fieldforce.view', 'fieldforce.manage', 'zatca.view', 'zatca.manage'] as $perm) {
+        foreach (['pos.sale.create', 'pos.sale.void', 'register.manage', 'register.open', 'register.close', 'inventory.view', 'products.manage', 'inventory.adjust', 'inventory.transfer', 'purchase.create', 'purchase.approve', 'sales.view', 'sales.create', 'reports.view', 'settings.manage', 'accounting.view', 'accounting.manage', 'crm.view', 'crm.manage', 'mrp.view', 'mrp.manage', 'repair.view', 'repair.manage', 'project.view', 'project.manage', 'asset.view', 'asset.manage', 'hrm.view', 'hrm.manage', 'payroll.view', 'payroll.manage', 'ecommerce.view', 'ecommerce.manage', 'woocommerce.view', 'woocommerce.manage', 'hms.view', 'hms.manage', 'gym.view', 'gym.manage', 'ai.view', 'ai.manage', 'fieldforce.view', 'fieldforce.manage', 'zatca.view', 'zatca.manage', 'cheque.view', 'cheque.manage'] as $perm) {
             Permission::findOrCreate($perm, 'web');
         }
 

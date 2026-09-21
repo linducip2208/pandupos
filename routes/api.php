@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AccountingController;
 use App\Http\Controllers\Api\V1\AiController;
 use App\Http\Controllers\Api\V1\AssetController;
 use App\Http\Controllers\Api\V1\CatalogController;
+use App\Http\Controllers\Api\V1\ChequeController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CrmController;
 use App\Http\Controllers\Api\V1\DeviceController;
@@ -215,6 +216,12 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'tenant', 'throttle:300,1'])->g
         Route::post('documents', [ZatcaController::class, 'generate']);
         Route::get('documents/{document}', [ZatcaController::class, 'show']);
         Route::post('documents/{document}/report', [ZatcaController::class, 'markReported']);
+    });
+    // Cheques (tenant-scoped; requires cheque.view/manage + enabled module)
+    Route::prefix('cheques')->middleware('module:cheque')->group(function () {
+        Route::get('/', [ChequeController::class, 'index']);
+        Route::post('/', [ChequeController::class, 'store']);
+        Route::post('/{cheque}/transition', [ChequeController::class, 'transition']);
     });
     // Field force (tenant-scoped; requires fieldforce.view/manage + enabled module)
     Route::prefix('fieldforce')->middleware('module:fieldforce')->group(function () {

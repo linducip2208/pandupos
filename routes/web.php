@@ -11,6 +11,7 @@ use App\Http\Controllers\BarcodeWorkspaceController;
 use App\Http\Controllers\BatchWorkspaceController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\BundleWorkspaceController;
+use App\Http\Controllers\ChequeWorkspaceController;
 use App\Http\Controllers\CrmWorkspaceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocsController;
@@ -360,6 +361,12 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/generate', [ZatcaWorkspaceController::class, 'generate'])->name('generate');
         Route::post('/notes', [ZatcaWorkspaceController::class, 'issueNote'])->name('notes.issue');
         Route::post('/documents/{document}/report', [ZatcaWorkspaceController::class, 'markReported'])->name('report');
+    });
+    Route::prefix('cheques')->name('cheque.')->middleware(['module:cheque'])->group(function () {
+        Route::get('/', [ChequeWorkspaceController::class, 'index'])->name('index');
+        Route::post('/', [ChequeWorkspaceController::class, 'store'])->name('store');
+        Route::post('/deposit', [ChequeWorkspaceController::class, 'deposit'])->name('deposit');
+        Route::post('/{cheque}/transition', [ChequeWorkspaceController::class, 'transition'])->name('transition');
     });
 });
 
