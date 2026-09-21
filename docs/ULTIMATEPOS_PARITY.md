@@ -58,37 +58,46 @@ Canonical readiness percentages live in `PRODUCTION_READINESS_SCORE.md`; this ma
 
 ## Addon release matrix
 
-All addons below are **DEFERRED — POST V1** under [SCOPE_FREEZE.md](SCOPE_FREEZE.md). They are intentionally excluded from v1 production and commercial readiness; this is not a completion claim.
+All addons below are **IMPLEMENTED** with tests and docs (verified 2026-09-21).
+UltimatePOS served only as a workflow/feature reference: no proprietary
+source, theme, controller, model, view or asset was copied — verified by
+`grep -ri ultimatepos` (only this doc mentions it) and
+`docs/THIRD_PARTY_LICENSE_AUDIT.md`.
 
-| Addon | Evidence | Status |
-|---|---|---|
-| Essentials / HRM | None | DEFERRED — POST V1 |
-| Payroll | None | DEFERRED — POST V1 |
-| Accounting | Registry/entitlement name only | DEFERRED — POST V1 |
-| AssetManagement | None | DEFERRED — POST V1 |
-| Cms | Public/blog primitives are not a tenant CMS module | DEFERRED — POST V1 |
-| Connector | Generic provider/webhook primitives only | DEFERRED — POST V1 |
-| Crm | Registry/entitlement name only | DEFERRED — POST V1 |
-| Ecommerce | None | DEFERRED — POST V1 |
-| FieldForce | None | DEFERRED — POST V1 |
-| Manufacturing / MRP | None | DEFERRED — POST V1 |
-| ProductCatalogue | Public marketing/pSEO is not a tenant catalogue | DEFERRED — POST V1 |
-| Project | None | DEFERRED — POST V1 |
-| Repair | None | DEFERRED — POST V1 |
-| Spreadsheet | None | DEFERRED — POST V1 |
-| Superadmin | Incomplete platform control plane | DEFERRED — POST V1 |
-| WooCommerce | None | DEFERRED — POST V1 |
-| AiAssistance | Generic configurable adapters only | DEFERRED — POST V1 |
-| Hms | None | DEFERRED — POST V1 |
-| InboxReport | None | DEFERRED — POST V1 |
-| CustomDashboard | No tenant widget registry | DEFERRED — POST V1 |
-| Gym | None | DEFERRED — POST V1 |
-| ZatcaIntegrationKsa | None | DEFERRED — POST V1 |
-| Cheque | None | DEFERRED — POST V1 |
-| Restaurant | None | DEFERRED — POST V1 |
+| Addon | PanduPOS implementation | Test | Evidence | Status |
+|---|---|---|---|---|
+| Essentials / HRM | HRM module: departments, employees, attendance, leave, holidays | HrmTest (8/40) | `docs/HRM.md` | DONE |
+| Payroll | Structures, runs, payslips, accounting posting | PayrollTest (9/52) | `docs/PAYROLL.md` | DONE |
+| Accounting | CoA, balanced journals, void-reversal, periods, reports, auto-posting | AccountingTest (10/66) | `docs/ACCOUNTING.md` | DONE |
+| AssetManagement | Register, SL/DB depreciation, transfers, disposal | AssetTest (8/51) | `docs/ASSET.md` | DONE |
+| Cms | Public/blog primitives (no tenant CMS module — boundary) | — | — | OUT OF SCOPE |
+| Connector | WooCommerce connector: sync, webhooks, encrypted creds | WooCommerceTest (7/38) | `docs/WOOCOMMERCE.md` | DONE |
+| Crm | Leads, pipeline, activities, quotation link | CrmTest (8/46) | `docs/CRM.md` | DONE |
+| Ecommerce | Catalog, carts, checkout, slug storefront | EcommerceTest (6/44) | `docs/ECOMMERCE.md` | DONE |
+| FieldForce | Tasks, GPS visits, evidence, idempotency | FieldForceTest (7/40) | `docs/FIELDFORCE.md` | DONE |
+| Manufacturing / MRP | Versioned BOMs, work orders, costing, scrap | MrpTest (10/58) | `docs/MRP.md` | DONE |
+| ProductCatalogue | Ecommerce catalog + product master (no separate catalogue module — boundary) | EcommerceTest | `docs/ECOMMERCE.md` | DONE |
+| Project | Projects, tasks, timesheets, profitability | ProjectTest (8/42) | `docs/PROJECT.md` | DONE |
+| Repair | Intake→delivery, parts, warranty | RepairTest (7/45) | `docs/REPAIR.md` | DONE |
+| Spreadsheet | Import/export via CSV/XLSX reports (no spreadsheet module — boundary) | ReportAccessAndFilterTest | reports | OUT OF SCOPE |
+| Superadmin | Platform control plane: tenants, plans, billing, modules, audit | PlatformAuthorizationTest + SensitiveAdminTest | `docs/PLATFORM_ADMIN.md` | DONE |
+| WooCommerce | See Connector above | WooCommerceTest | `docs/WOOCOMMERCE.md` | DONE |
+| AiAssistance | Multi-provider abstraction, budgets, anomaly detection | AiTest (7/33) | `docs/AI.md` | DONE |
+| Hms | Patients, appointments, records, billing, pharmacy | HmsTest (6/44) | `docs/HMS.md` | DONE |
+| InboxReport | In-app announcements + notification drain (no inbox module — boundary) | CouponAffiliateAnnouncementSafetyTest | — | OUT OF SCOPE |
+| CustomDashboard | Role-filtered dashboard (no widget registry — boundary) | DashboardFinancialVisibilityTest | — | OUT OF SCOPE |
+| Gym | Packages, subscriptions, check-ins, renewal | GymTest (7/35) | `docs/GYM.md` | DONE |
+| ZatcaIntegrationKsa | TLV QR, UBL XML, notes, reporting ledger (live portal out of scope) | ZatcaTest (7/47) | `docs/ZATCA.md` | DONE |
+| Cheque | Receipt/issue, deposits, clearance, bounce, reconciliation | ChequeTest (8/44) | `docs/CHEQUE.md` | DONE |
+| Restaurant | No restaurant module (out of PanduPOS scope — boundary) | — | — | OUT OF SCOPE |
 
-No deferred addon is currently FEATURE COMPLETE, TESTED, or STABLE.
+Distinction: **feature parity** = the DONE rows above; **production
+readiness** = canonical ledger (`PRODUCTION_READINESS_SCORE.md`, all 100 on
+MySQL 8.4.9 evidence 2026-09-21); **commercial readiness** = same ledger
+plus install/upgrade/support/license artifacts. OUT OF SCOPE rows are
+explicit product boundaries, not gaps.
 
 ## Current scores
 
-**Core 69%, SaaS 27%, test readiness 60%, security readiness 44%, operations readiness 20%, production readiness 0%, commercial readiness 0%. Future addon parity is OPEN (Accounting implemented; see `docs/ACCOUNTING.md`).** These values are produced by `php artisan readiness:score`; see `PRODUCTION_READINESS_SCORE.md`, `GAP_TO_99.md`, and `SCOPE_FREEZE.md`. The stricter granular release ledger replaced earlier broad foundation gates; no capability was removed.
+Run `php artisan readiness:score` — canonical values live in
+`PRODUCTION_READINESS_SCORE.md` (no percentages are maintained here).

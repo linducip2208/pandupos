@@ -10,7 +10,7 @@ a self-hosted instance. Reference the executable checklist in
 | Component | Requirement |
 |---|---|
 | PHP | 8.3+ (project tested on 8.3.30) |
-| Database | MySQL 8 / PostgreSQL 15 (SQLite accepted for small installs & drills) |
+| Database | MySQL 8 (required for production, staging and all readiness evidence; SQLite is never accepted as production evidence) |
 | Node | 20+ (build-time only) |
 | Cache/Queue | Redis recommended for production (`CACHE_STORE`, `QUEUE_CONNECTION`) |
 | Web | Nginx + PHP-FPM (TLS at LB/proxy; `deploy/nginx.conf`) |

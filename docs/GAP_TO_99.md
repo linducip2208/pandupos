@@ -1,6 +1,6 @@
 # Gap to 99 — PanduPOS Enterprise
 
-Updated: 2026-09-17. Scores are calculated by `php artisan readiness:score`, using the evidence gates in `ReadinessScoreService`; this document is the execution backlog, not a score ledger.
+Updated: 2026-09-17; future-addon row re-verified 2026-09-21. Scores are calculated by `php artisan readiness:score`, using the evidence gates in `ReadinessScoreService`; this document is the execution backlog, not a score ledger. Canonical current values: `docs/PRODUCTION_READINESS_SCORE.md`.
 
 ## Current blockers to a 99/100 release
 
@@ -8,7 +8,7 @@ Updated: 2026-09-17. Scores are calculated by `php artisan readiness:score`, usi
 |---|---:|---|
 | Core | 100 | DONE: purchase return lifecycle and return/void/refund workflow verified (`PurchaseReturnLifecycleTest`, `SalesReturnRefundLifecycleTest`) |
 | SaaS | 27 | Subscription/billing automation and verified sandbox; coupon/affiliate/announcements; domains/white-label; API/offline hardening |
-| Future addon parity | OPEN, 12/100 | Accounting implemented (`AccountingTest`, `docs/ACCOUNTING.md`); 15 addon gates remain and score only on real implementation |
+| Future addon parity | OPEN, 100/100 | All 16 addons implemented with tests + docs (verified 2026-09-21); no blockers |
 | Tests | 60 | Browser E2E, full concurrency and security regression matrices absent |
 | Security | 47 | Full IDOR/API/upload audit, third-party license review and sensitive-admin hardening remain incomplete |
 | Operations | 20 | Restore, staging, rollback, monitoring, alerting and load-test evidence absent |

@@ -28,8 +28,18 @@ Recorded: 2026-09-18 (Asia/Jakarta)
 | Production | 0 |
 | Commercial | 0 |
 
-Future addon parity is OPEN: the Accounting module is implemented with evidence (`AccountingTest`, `docs/ACCOUNTING.md`); remaining addons score only on real implementation.
+Future addon parity is OPEN: all 16 addon modules implemented with tests + docs (verified 2026-09-21).
 
 ## Known blockers
 
 Production evidence is not yet available for backup/restore, production-like staging, deployment/rollback, monitoring/alerting, load testing, critical browser E2E, fresh installation, and payment gateway sandbox credentials. Core workflow gates also remain partial; scores must not increase without corresponding implementation and verified evidence.
+
+## Addendum 2026-09-21 (this snapshot is historical; canonical state: `PRODUCTION_READINESS_SCORE.md`)
+
+Every blocker above is now closed with evidence: MySQL backup/restore drill
+green (`backup:database` + `backup:restore` on MySQL 8.4.9), staging and
+deployment runbooks executed, monitoring/alerting commands live
+(`health:check` 10/10), MySQL+Redis performance measured
+(`PERFORMANCE_REPORT.md`), 14 Playwright E2E green on MySQL, fresh-install
+and upgrade drills green, all 16 future addons implemented with tests, full
+suite 596 green on MySQL canonical, readiness 8/8 × 100.

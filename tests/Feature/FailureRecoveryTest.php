@@ -179,11 +179,12 @@ class FailureRecoveryTest extends TestCase
         $scratch = tempnam(sys_get_temp_dir(), 'pandupos-drill-').'.sqlite';
         @unlink($scratch);
         touch($scratch);
-        // Use an isolated connection name so RefreshDatabase's transacted
-        // :memory: connection is never disturbed by the drill.
+        // Use an isolated connection name so the suite's transacted default
+        // connection is never disturbed by the drill.
         config(['database.connections.scratch' => [
             'driver' => 'sqlite', 'database' => $scratch, 'prefix' => '', 'foreign_key_constraints' => true,
         ]]);
+        $previousDefault = config('database.default');
         config(['database.default' => 'scratch']);
 
         try {
@@ -206,7 +207,7 @@ class FailureRecoveryTest extends TestCase
 
             $disk->deleteDirectory('backups');
         } finally {
-            config(['database.default' => 'sqlite']);
+            config(['database.default' => $previousDefault]);
             DB::purge('scratch');
             @unlink($scratch);
         }
@@ -223,6 +224,7 @@ class FailureRecoveryTest extends TestCase
         $pdo->exec('DROP DATABASE IF EXISTS `pandupos_drill`');
         $pdo->exec('CREATE DATABASE `pandupos_drill` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
         config(['database.connections.scratch' => array_merge($base, ['database' => 'pandupos_drill'])]);
+        $previousDefault = config('database.default');
         config(['database.default' => 'scratch']);
         $disk = Storage::disk('local');
         $before = collect($disk->files('backups'));
@@ -246,7 +248,7 @@ class FailureRecoveryTest extends TestCase
 
             $disk->delete($fresh->all());
         } finally {
-            config(['database.default' => 'mysql']);
+            config(['database.default' => $previousDefault]);
             DB::purge('scratch');
             $pdo->exec('DROP DATABASE IF EXISTS `pandupos_drill`');
         }

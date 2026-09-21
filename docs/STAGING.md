@@ -3,7 +3,7 @@
 ## Configuration (required)
 
 - PHP 8.3 (prod version, matches `composer.json ^8.3` + CI `setup-php 8.3`).
-- MySQL 8.x prod (sqlite used locally for drill; `backup:database` supports both).
+- MySQL 8.x for prod, staging and drills (`backup:database` keeps a sqlite file-copy path only as a local fallback; sqlite results are never production evidence).
 - Redis for `CACHE_STORE`/`QUEUE_CONNECTION` in prod (`config/cache.php`,
   `config/queue.php` redis connections present; local default `database`).
 - Queue worker: `deploy/supervisor.conf` (`queue:work --sleep=3 --tries=3`, 2 procs).
@@ -31,6 +31,6 @@ php artisan test --filter=<security+concurrency+recovery>  # 50+ PASS
 
 ## Gaps noted
 
-- Redis/MySQL versions in prod must match operator docs; local drill used
-  sqlite+database cache/queue (same code paths, different driver).
+- Redis/MySQL versions in prod must match operator docs; drills must run on
+  MySQL 8 — sqlite outcomes are not accepted as staging evidence.
 - HTTPS cert provisioning is operator-side (LB), not in repo.

@@ -1,8 +1,30 @@
 # Performance and load report
 
-Measured: 2026-09-19 (Asia/Jakarta), single-threaded local box (Windows, PHP 8.3.30, Laravel 13.32.0, SQLite file DB). Numbers are warm-process means of two runs. These are the release calibration numbers; the SAME benchmarks must be re-run in the staging environment on the production driver (MySQL 8 / Redis) before any v1 cut.
+## MySQL 8 + Redis measurement (production driver) — 2026-09-21
 
-## Measurements (Benchmark CLI)
+Environment: Windows, PHP 8.3.30, Laravel 13.32.0, MySQL 8.4.9 (InnoDB, utf8mb4),
+Redis reachable on 127.0.0.1:6379 via predis (pure-PHP client; default
+`REDIS_CLIENT=predis` so no phpredis extension is required). Single-threaded,
+scratch database `pandupos_bench` created/migrated/seeded then dropped by the
+harness — production and test databases untouched.
+
+| Metric | Result | Notes |
+|---|---:|---|
+| MySQL version | 8.4.9 | InnoDB |
+| 2000 products + 2000 variants inserts (Eloquent) | 9194.7 ms | ~435 rows/s ORM inserts; batch inserts would be faster, this is the honest ORM path |
+| 1000 indexed `sku` lookups | 723.9 ms | 0.72 ms/read on tenant+sku index |
+| `json_encode` of 5000-row dataset | 607.8 ms | report/export payload shape |
+| 20 full sale checkouts (invoice+payment+stock, transactional) | 707.7 ms | 35.4 ms/checkout end-to-end service path |
+| Redis 1000 put+get roundtrips | 232.7 ms | 0.23 ms/op; cache path viable for hot reads |
+| Sales/stock aggregate report queries | 1.7 ms | grouped daily totals + variant balances |
+
+Interpretation: checkout (the heaviest transactional path) holds at ~35 ms;
+indexed reads and aggregates are sub-millisecond; Redis roundtrips are
+~0.2 ms, confirming the cache layer is usable for hot report data. The
+previous sqlite floor (serialized writer, ~410 writes/s) is superseded by
+these MySQL numbers — sqlite figures below are retained only as history.
+
+## SQLite history (NOT production evidence) — 2026-09-19
 
 | Metric | Run 1 | Run 2 | Notes |
 |---|---:|---:|---|
@@ -12,7 +34,7 @@ Measured: 2026-09-19 (Asia/Jakarta), single-threaded local box (Windows, PHP 8.3
 | Full HTTP cycle `/docs` | 4.1 ms | 4.6 ms | minimal view/route |
 | `json_encode` of 5000-row dataset × 20 | 100 ms | 135 ms | report/export shape throughput |
 
-## Interpretation
+## Interpretation (sqlite history — superseded by MySQL numbers above)
 
 - Interactive pages land in the 4–27 ms band — comfortably within a <500 ms p75 budget; headroom for queue/redis overhead.
 - The DB write path on sqlite is the calibration floor (serialized writer). Production MySQL with batch inserts and InnoDB buffers dominates this. Re-measure on staging before accepting SLOs.
@@ -26,4 +48,13 @@ Measured: 2026-09-19 (Asia/Jakarta), single-threaded local box (Windows, PHP 8.3
 ## SLOs used for v1 acceptance
 
 - p95 page latency < 500 ms (local band 4–27 ms, see above). Measured, not assumed.
-- Checkout checkout path is covered by `BusinessFlowTest`/`RegisterSessionWorkflowTest` atomically; no pathological latency signalling in suite runs (whole suite 462 tests < 65 s on sqlite).
+- Checkout checkout path is covered by `BusinessFlowTest`/`RegisterSessionWorkflowTest` atomically; no pathological latency signalling in suite runs (whole suite 596 tests green on MySQL 8.4.9).
+
+## Production Redis note (verified 2026-09-21)
+
+With no phpredis extension installed, Laravel's Redis connector fatals on the
+`Redis` facade alias. The repo therefore defaults to `predis/predis`
+(`REDIS_CLIENT=predis`, MIT) — verified with a live read/write roundtrip
+against Redis on 127.0.0.1:6379. `CACHE_STORE`/`QUEUE_CONNECTION` remain
+`database` by default in `.env.example`; operators switching to Redis need
+no extension, only a reachable server.

@@ -17,6 +17,7 @@ Scope: `composer.json`, `composer.lock`, `package.json`, `package-lock.json`,
 | picqer/php-barcode-generator | ^3.2.0 | LGPL-3.0+ | yes (library use) |
 | spatie/laravel-permission | ^8.3 | MIT | yes |
 | bacon/bacon-qr-code | ^3.1 | BSD-2-Clause | yes (library use, ZATCA QR SVG) |
+| predis/predis | ^3.6 | MIT | yes (pure-PHP Redis client; default client so Redis works without the phpredis extension) |
 | fakerphp/faker (dev) | ^1.23 | MIT | yes (dev only) |
 | laravel/pint (dev) | ^1.27 | MIT | yes (dev only) |
 | phpunit/phpunit (dev) | ^12.5 | BSD-3-Clause | yes (dev only) |
