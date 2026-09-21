@@ -11,6 +11,7 @@ use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\SupplierInvoice;
 use App\Models\SupplierPayment;
+use App\Services\StockService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -164,6 +165,7 @@ final class AccountingService
             foreach ($locked->lines as $line) {
                 $reversal->lines()->create([
                     'tenant_id' => $locked->tenant_id, 'account_id' => $line->account_id,
+                    'product_variant_id' => $line->product_variant_id,
                     'debit' => $line->credit, 'credit' => $line->debit,
                     'description' => 'Reversal: '.($line->description ?? $locked->entry_no),
                 ]);
@@ -198,6 +200,110 @@ final class AccountingService
             $lines[] = ['account_code' => '2200', 'debit' => 0, 'credit' => $tax];
         }
         $entry = $this->createDraft($tenantId, $invoice->created_at->toDateString(), 'Penjualan '.$invoice->invoice_no, $lines, SalesInvoice::class, $invoice->id, $actorId);
+
+        return $this->post($entry, $actorId);
+    }
+
+    /**
+     * Post cost-of-goods for a finalized sale. Idempotent via a distinct source
+     * reference (invoice id + COGS_SOURCE_SUFFIX) so the revenue entry and the
+     * COGS entry never collide on lookup. Each line carries its variant so the
+     * ledger is traceable back to the sold product. Uses weighted-average unit
+     * cost from the stock ledger, never selling price.
+     */
+    public function postSaleCogs(SalesInvoice $invoice, ?int $actorId = null): ?JournalEntry
+    {
+        $tenantId = $invoice->tenant_id;
+        $sourceType = SalesInvoice::class . self::COGS_SOURCE_SUFFIX;
+        $existing = $this->existingPosted($tenantId, $sourceType, $invoice->id);
+        if ($existing) {
+            return $existing;
+        }
+        $this->ensureDefaultChart($tenantId);
+        $stock = app(StockService::class);
+        $lines = [];
+        $cogsTotal = 0.0;
+        $invoice->loadMissing('lines.variant');
+        foreach ($invoice->lines as $line) {
+            if (! $line->variant || ! $line->variant->product || ! $line->variant->product->track_inventory) {
+                continue;
+            }
+            if ($line->variant->product->product_type === 'service') {
+                continue;
+            }
+            $unitCost = $stock->weightedAverageCost($tenantId, (int) $invoice->warehouse_id, (int) $line->product_variant_id);
+            if ($unitCost <= 0) {
+                continue;
+            }
+            $cost = round((float) $line->quantity * $unitCost, 2);
+            if ($cost <= 0) {
+                continue;
+            }
+            $cogsTotal = round($cogsTotal + $cost, 2);
+            $lines[] = [
+                'account_code' => '5100', 'debit' => $cost, 'credit' => 0,
+                'variant_id' => (int) $line->product_variant_id,
+                'description' => 'COGS '.$line->variant->name.' x '.(float) $line->quantity,
+            ];
+        }
+        if ($lines === [] || $cogsTotal <= 0) {
+            return null;
+        }
+        // Credit inventory for the cost of goods sold.
+        $lines[] = ['account_code' => '1400', 'debit' => 0, 'credit' => $cogsTotal, 'description' => 'COGS reversal persediaan '.$invoice->invoice_no];
+        $entry = $this->createDraft($tenantId, $invoice->created_at->toDateString(), 'Harga Pokok Penjualan '.$invoice->invoice_no, $lines, $sourceType, $invoice->id, $actorId);
+
+        return $this->post($entry, $actorId);
+    }
+
+    /**
+     * Reverse COGS for a posted sales return. Idempotent via the return id
+     * suffixed with COGS_SOURCE_SUFFIX. Debits inventory, credits COGS so the
+     * ledger mirrors the physical stock restoration already performed by
+     * SaleService::return.
+     */
+    public function postSalesReturnCogs(SalesReturn $salesReturn, ?int $actorId = null): ?JournalEntry
+    {
+        $tenantId = $salesReturn->tenant_id;
+        $sourceType = SalesReturn::class . self::COGS_SOURCE_SUFFIX;
+        $existing = $this->existingPosted($tenantId, $sourceType, $salesReturn->id);
+        if ($existing) {
+            return $existing;
+        }
+        $this->ensureDefaultChart($tenantId);
+        $stock = app(StockService::class);
+        $lines = [];
+        $cogsTotal = 0.0;
+        $salesReturn->loadMissing('lines.salesLine.variant');
+        foreach ($salesReturn->lines as $returnLine) {
+            $salesLine = $returnLine->salesLine;
+            if (! $salesLine || ! $salesLine->variant || ! $salesLine->variant->product || ! $salesLine->variant->product->track_inventory) {
+                continue;
+            }
+            if ($salesLine->variant->product->product_type === 'service') {
+                continue;
+            }
+            $unitCost = $stock->weightedAverageCost($tenantId, (int) $salesReturn->salesInvoice->warehouse_id, (int) $salesLine->product_variant_id);
+            if ($unitCost <= 0) {
+                continue;
+            }
+            $cost = round((float) $returnLine->quantity * $unitCost, 2);
+            if ($cost <= 0) {
+                continue;
+            }
+            $cogsTotal = round($cogsTotal + $cost, 2);
+            $lines[] = [
+                'account_code' => '1400', 'debit' => $cost, 'credit' => 0,
+                'variant_id' => (int) $salesLine->product_variant_id,
+                'description' => 'COGS reversal return '.$salesLine->variant->name.' x '.(float) $returnLine->quantity,
+            ];
+        }
+        if ($lines === [] || $cogsTotal <= 0) {
+            return null;
+        }
+        // Credit COGS to reverse the expense.
+        $lines[] = ['account_code' => '5100', 'debit' => 0, 'credit' => $cogsTotal, 'description' => 'COGS reversal return '.$salesReturn->id];
+        $entry = $this->createDraft($tenantId, $salesReturn->created_at->toDateString(), 'COGS reversal return '.$salesReturn->id, $lines, $sourceType, $salesReturn->id, $actorId);
 
         return $this->post($entry, $actorId);
     }

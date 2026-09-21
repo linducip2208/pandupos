@@ -13,6 +13,7 @@ use App\Models\SalesReturn;
 use App\Models\SerialNumber;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Services\AccountingService;
 use App\Support\TenantContext;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -322,6 +323,9 @@ final class SaleService
                     'sales_invoice_id' => $invoice->id, 'total' => $return->total,
                     'reason' => filled($reason) ? trim($reason) : 'Direct service invocation',
                 ]);
+                if (app(ModuleRegistry::class)->isEnabled($invoice->tenant_id, 'accounting')) {
+                    app(AccountingService::class)->postSalesReturnCogs($return, $actorId ?? auth()->id());
+                }
 
                 return $return->load('lines');
             });
@@ -467,6 +471,7 @@ final class SaleService
         $accounting = app(AccountingService::class);
         $actorId = auth()->id();
         $accounting->postSalesInvoice($invoice, $actorId);
+        $accounting->postSaleCogs($invoice, $actorId);
         foreach ($payments as $payment) {
             $accounting->recordCustomerReceipt($payment, $actorId);
         }

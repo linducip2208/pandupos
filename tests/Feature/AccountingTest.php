@@ -192,10 +192,17 @@ class AccountingTest extends TestCase
         ], [['method' => 'cash', 'amount' => 220]], 'acct-sale-1', null, 20);
 
         $entries = JournalEntry::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('status', 'posted')->get();
-        // Invoice (AR/Revenue/Tax) + cash receipt (Cash/AR).
-        $this->assertSame(2, $entries->count());
+        // Invoice (AR/Revenue/Tax) + cash receipt (Cash/AR) + COGS (COGS/Inventory).
+        $this->assertSame(3, $entries->count());
         $inv = JournalEntry::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('source_type', SalesInvoice::class)->firstOrFail();
         $this->assertTrue($inv->isBalanced());
+        $cogs = JournalEntry::withoutGlobalScopes()->where('tenant_id', $tenant->id)
+            ->where('source_type', SalesInvoice::class . AccountingService::COGS_SOURCE_SUFFIX)->firstOrFail();
+        $this->assertTrue($cogs->isBalanced());
+        // COGS = 2 units x weighted-average unit cost (50) = 100.
+        $cogsLines = $cogs->load('lines.account');
+        $cogsDebit = round((float) $cogsLines->lines->filter(fn ($l) => $l->account && $l->account->code === '5100')->sum('debit'), 2);
+        $this->assertSame(100.0, $cogsDebit);
         $tb = app(AccountingService::class)->trialBalance($tenant->id, now()->toDateString());
         $this->assertTrue($tb['balanced']);
         // AR nets to zero (220 invoiced, 220 received) so it leaves the trial
@@ -203,10 +210,13 @@ class AccountingTest extends TestCase
         $byCode = collect($tb['rows'])->keyBy('code');
         $this->assertFalse(isset($byCode['1300']));
         $this->assertSame(220.0, $byCode['1100']['debit']);
+        $this->assertSame(100.0, $byCode['5100']['debit']); // COGS expense
+        $this->assertSame(100.0, $byCode['1400']['credit']); // inventory credited
 
         // Re-posting the same invoice is idempotent: no duplicate entry.
         app(AccountingService::class)->postSalesInvoice($invoice->refresh(), $owner->id);
-        $this->assertSame(2, JournalEntry::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('status', 'posted')->count());
+        app(AccountingService::class)->postSaleCogs($invoice->refresh(), $owner->id);
+        $this->assertSame(3, JournalEntry::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('status', 'posted')->count());
     }
 
     public function test_sale_skips_accounting_when_module_disabled(): void
@@ -265,12 +275,12 @@ class AccountingTest extends TestCase
         $to = now()->toDateString();
         $pnl = $svc->profitLoss($tenant->id, $from, $to);
         $this->assertSame(1000.0, $pnl['total_income']);
-        $this->assertSame(1000.0, $pnl['net_income']);
+        $this->assertSame(950.0, $pnl['net_income']); // revenue 1000 - COGS 50
 
         $bs = $svc->balanceSheet($tenant->id, $to);
         $this->assertTrue($bs['balanced']);
-        $this->assertSame(1100.0, $bs['total_assets']); // cash 1100
-        $this->assertSame(1000.0, $bs['current_earnings']);
+        $this->assertSame(1050.0, $bs['total_assets']); // cash 1100 - inventory credit 50
+        $this->assertSame(950.0, $bs['current_earnings']);
 
         $tax = $svc->taxSummary($tenant->id, $from, $to);
         $this->assertSame(100.0, $tax['output_tax']);
