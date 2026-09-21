@@ -167,7 +167,7 @@ class RepairTest extends TestCase
     {
         [$tenantA] = $this->context('Toko Repair A');
         [$tenantB, $ownerB] = $this->context('Toko Repair B');
-        [, $warehouseA] = $this->stocked('IA', $tenantA);
+        [$warehouseA] = $this->stocked('IA', $tenantA);
         $orderA = app(RepairService::class)->intake($tenantA->id, ['complaint' => 'Rahasia A', 'warehouse_id' => $warehouseA->id], null);
 
         TenantContext::setId($tenantB->id);
