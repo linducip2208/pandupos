@@ -107,13 +107,17 @@ final class AiService
         return $findings;
     }
 
-    /** @return array{used:int,cap:?int} */
+    /** @return array{used:int,cap:?int,by_feature:array,anomalies:array} */
     public function budget(int $tenantId): array
     {
         $config = AiProviderConfig::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('is_active', true)->orderBy('id')->first();
         $used = (int) AiUsage::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('created_at', '>=', now()->startOfMonth())->sum(DB::raw('tokens_in + tokens_out'));
+        $byFeature = AiUsage::withoutGlobalScopes()->where('tenant_id', $tenantId)
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->groupBy('feature')->selectRaw('feature, SUM(tokens_in + tokens_out) AS tokens')->get()
+            ->pluck('tokens', 'feature')->all();
 
-        return ['used' => $used, 'cap' => $config?->monthly_token_cap];
+        return ['used' => $used, 'cap' => $config?->monthly_token_cap, 'by_feature' => $byFeature, 'anomalies' => $this->detectAnomalies($tenantId)];
     }
 
     public function buildProvider(AiProviderConfig $config, ?AiProviderInterface $fake = null): AiProviderInterface
