@@ -7,6 +7,8 @@ use App\Models\CrmActivity;
 use App\Models\CrmLead;
 use App\Models\CrmOpportunity;
 use App\Models\SalesQuotation;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -121,6 +123,9 @@ final class CrmService
         $before = $opp->toArray();
         $opp->update(['stage' => $to]);
         $this->audit->log($opp->tenant_id, $actorId, 'crm.opportunity.advanced', CrmOpportunity::class, $opp->id, $before, $opp->fresh()->toArray());
+        if ($to === CrmOpportunity::WON) {
+            $this->postWonToAccounting($opp->fresh(), $actorId);
+        }
 
         return $opp->fresh();
     }
@@ -136,6 +141,42 @@ final class CrmService
         $this->audit->log($opp->tenant_id, $actorId, 'crm.opportunity.quotation_linked', CrmOpportunity::class, $opp->id, $before, $opp->fresh()->toArray());
 
         return $opp->fresh();
+    }
+
+    /**
+     * Record a won opportunity as a committed revenue estimate. Idempotent
+     * via the opportunity id as source reference; posts Dr Piutang / Cr
+     * Pendapatan when accounting is enabled so the pipeline feeds the ledger.
+     */
+    public function postWonToAccounting(CrmOpportunity $opp, ?int $actorId = null): ?\App\Models\JournalEntry
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($opp->tenant_id, 'accounting')) {
+            return null;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($opp->tenant_id);
+        $value = round((float) $opp->value, 2);
+        if ($value <= 0) {
+            return null;
+        }
+        $existing = \App\Models\JournalEntry::withoutGlobalScopes()->where('tenant_id', $opp->tenant_id)
+            ->where('source_type', CrmOpportunity::class)->where('source_id', $opp->id)
+            ->where('status', \App\Models\JournalEntry::POSTED)->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        return DB::transaction(function () use ($accounting, $opp, $actorId, $value) {
+            $entry = $accounting->createDraft(
+                $opp->tenant_id, now()->toDateString(), 'Peluang menang '.$opp->title,
+                [
+                    ['account_code' => '1300', 'debit' => $value, 'credit' => 0],
+                    ['account_code' => '4100', 'debit' => 0, 'credit' => $value],
+                ], CrmOpportunity::class, $opp->id, $actorId
+            );
+
+            return $accounting->post($entry, $actorId);
+        });
     }
 
     public function logActivity(int $tenantId, array $data, ?int $actorId = null): CrmActivity

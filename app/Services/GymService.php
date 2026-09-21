@@ -8,6 +8,8 @@ use App\Models\GymMembership;
 use App\Models\GymPackage;
 use App\Models\GymTrainer;
 use App\Models\User;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -102,6 +104,7 @@ final class GymService
         $paid = round((float) $locked->paid + $amount, 2);
         $locked->update(['paid' => $paid, 'balance' => round((float) $locked->price - $paid, 2)]);
         $this->audit->log($locked->tenant_id, $actorId, 'gym.payment.recorded', GymMembership::class, $locked->id, $before, $locked->fresh()->toArray());
+        $this->postPaymentToAccounting($locked, $actorId);
 
         return $locked->fresh();
     }
@@ -152,6 +155,38 @@ final class GymService
     private function locked(int $id): GymMembership
     {
         return GymMembership::withoutGlobalScopes()->lockForUpdate()->findOrFail($id);
+    }
+
+    /** Post Dr Kas / Cr Pendapatan when accounting is enabled and fully paid. */
+    private function postPaymentToAccounting(GymMembership $membership, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($membership->tenant_id, 'accounting')) {
+            return;
+        }
+        if ((float) $membership->balance > 0) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($membership->tenant_id);
+        $amount = round((float) $membership->price, 2);
+        if ($amount <= 0) {
+            return;
+        }
+        $sourceType = GymMembership::class;
+        $existing = \App\Models\JournalEntry::withoutGlobalScopes()->where('tenant_id', $membership->tenant_id)
+            ->where('source_type', $sourceType)->where('source_id', $membership->id)
+            ->where('status', \App\Models\JournalEntry::POSTED)->first();
+        if ($existing) {
+            return;
+        }
+        $entry = $accounting->createDraft(
+            $membership->tenant_id, $membership->starts_on->toDateString(), 'Pembelian paket gym '.$membership->id,
+            [
+                ['account_code' => '1100', 'debit' => $amount, 'credit' => 0],
+                ['account_code' => '4100', 'debit' => 0, 'credit' => $amount],
+            ], $sourceType, $membership->id, $actorId
+        );
+        $accounting->post($entry, $actorId);
     }
 
     private function nextCode(int $tenantId): string

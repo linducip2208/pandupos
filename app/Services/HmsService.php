@@ -9,6 +9,8 @@ use App\Models\HmsPatient;
 use App\Models\HmsRecord;
 use App\Models\ProductVariant;
 use App\Models\Warehouse;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -186,9 +188,43 @@ final class HmsService
             $before = $locked->toArray();
             $locked->update(['paid' => $paid, 'balance' => max(0, $balance), 'status' => $fullyPaid ? 'paid' : 'partial']);
             $this->audit->log($locked->tenant_id, $actorId, 'hms.invoice.paid', HmsInvoice::class, $locked->id, $before, $locked->fresh()->toArray());
+            $this->postInvoiceToAccounting($locked, $actorId);
 
             return $locked->fresh('lines');
         });
+    }
+
+    /** Post Dr Kas / Cr Pendapatan when accounting is enabled and paid in full. */
+    private function postInvoiceToAccounting(HmsInvoice $invoice, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($invoice->tenant_id, 'accounting')) {
+            return;
+        }
+        if ((float) $invoice->balance > 0) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($invoice->tenant_id);
+        $amount = round((float) $invoice->total, 2);
+        if ($amount <= 0) {
+            return;
+        }
+        $sourceType = HmsInvoice::class;
+        $existing = \App\Models\JournalEntry::withoutGlobalScopes()->where('tenant_id', $invoice->tenant_id)
+            ->where('source_type', $sourceType)->where('source_id', $invoice->id)
+            ->where('status', \App\Models\JournalEntry::POSTED)->first();
+        if ($existing) {
+            return;
+        }
+        $entry = $accounting->createDraft(
+            $invoice->tenant_id, $invoice->created_at?->toDateString() ?? now()->toDateString(),
+            'Pembayaran invoice HMS '.$invoice->number,
+            [
+                ['account_code' => '1100', 'debit' => $amount, 'credit' => 0],
+                ['account_code' => '4100', 'debit' => 0, 'credit' => $amount],
+            ], $sourceType, $invoice->id, $actorId
+        );
+        $accounting->post($entry, $actorId);
     }
 
     private function nextPatientCode(int $tenantId): string
