@@ -75,7 +75,7 @@ class AccountingTest extends TestCase
 
         $this->actingAs($owner)->get('/accounting')->assertOk()->assertSeeText('Piutang Usaha');
         $this->actingAs($owner)->getJson('/api/v1/accounting/accounts', ['X-Tenant-ID' => $tenant->id])
-            ->assertOk()->assertJsonCount(18, 'data');
+            ->assertOk()->assertJsonCount(19, 'data');
     }
 
     public function test_unbalanced_journal_is_rejected(): void

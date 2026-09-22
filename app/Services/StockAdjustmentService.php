@@ -8,6 +8,8 @@ use App\Models\SerialNumber;
 use App\Models\StockAdjustment;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -99,9 +101,48 @@ final class StockAdjustmentService
             }
             $locked->update(['status' => 'posted', 'posted_by' => $actorId, 'posted_at' => now()]);
             $this->audit->log($locked->tenant_id, $actorId, 'inventory.adjustment.posted', StockAdjustment::class, $locked->id, $before, $locked->fresh('lines')->toArray());
+            $this->postAdjustmentToAccounting($locked, $actorId);
 
             return $locked->fresh('lines');
         });
+    }
+
+    /** Post Dr/Kr beban persediaan when accounting is on. Idempotent via the adjustment id. */
+    private function postAdjustmentToAccounting(StockAdjustment $adjustment, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($adjustment->tenant_id, 'accounting')) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($adjustment->tenant_id);
+        $existing = \App\Models\JournalEntry::withoutGlobalScopes()->where('tenant_id', $adjustment->tenant_id)
+            ->where('source_type', StockAdjustment::class)->where('source_id', $adjustment->id)
+            ->where('status', \App\Models\JournalEntry::POSTED)->first();
+        if ($existing) {
+            return;
+        }
+        $net = 0.0;
+        foreach ($adjustment->lines as $line) {
+            $net += (float) $line->quantity_change * (float) ($line->unit_cost ?? 0);
+        }
+        $net = round($net, 2);
+        if ($net == 0.0) {
+            return;
+        }
+        $lines = $net > 0
+            ? [
+                ['account_code' => '1400', 'debit' => $net, 'credit' => 0],
+                ['account_code' => '5400', 'debit' => 0, 'credit' => $net],
+            ]
+            : [
+                ['account_code' => '5400', 'debit' => abs($net), 'credit' => 0],
+                ['account_code' => '1400', 'debit' => 0, 'credit' => abs($net)],
+            ];
+        $entry = $accounting->createDraft(
+            $adjustment->tenant_id, $adjustment->posted_at?->toDateString() ?? now()->toDateString(),
+            'Penyesuaian stok '.$adjustment->reason, $lines, StockAdjustment::class, $adjustment->id, $actorId
+        );
+        $accounting->post($entry, $actorId);
     }
 
     private function lock(StockAdjustment $adjustment): StockAdjustment

@@ -5,13 +5,14 @@ namespace App\Services;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\SubscriptionEvent;
+use App\Services\BillingService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /** Trial / upgrade / downgrade / cancel / renew with immutable history. */
 final class SubscriptionService
 {
-    public function __construct(private EntitlementService $entitlements) {}
+    public function __construct(private EntitlementService $entitlements, private BillingService $billing) {}
 
     public function subscribe(int $tenantId, int $planId, string $cycle = 'monthly'): Subscription
     {
@@ -36,6 +37,11 @@ final class SubscriptionService
 
             $this->log($tenantId, $sub->id, 'subscribed', ['plan_id' => $planId, 'cycle' => $cycle]);
             $this->entitlements->forget($tenantId);
+            if ($plan->trial_days <= 0) {
+                $this->billing->createInvoice($tenantId, $sub->id, (float) $plan->price, 0, [
+                    ['description' => $plan->name.' ('.$cycle.')', 'quantity' => 1, 'unit_price' => (float) $plan->price],
+                ]);
+            }
 
             return $sub;
         });

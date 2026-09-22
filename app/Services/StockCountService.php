@@ -4,9 +4,12 @@ namespace App\Services;
 
 use App\Models\SerialNumber;
 use App\Models\StockCount;
+use App\Models\StockCountLine;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -119,9 +122,50 @@ final class StockCountService
             }
             $locked->update(['status' => 'posted', 'posted_by' => $actorId, 'posted_at' => now()]);
             $this->audit->log($locked->tenant_id, $actorId, 'inventory.count.posted', StockCount::class, $locked->id, $before, $locked->fresh('lines')->toArray());
+            $this->postCountToAccounting($locked, $actorId);
 
             return $locked->fresh('lines');
         });
+    }
+
+    /** Post Dr/Kr beban persediaan when accounting is on. Idempotent via the count id. */
+    private function postCountToAccounting(StockCount $count, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($count->tenant_id, 'accounting')) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($count->tenant_id);
+        $existing = \App\Models\JournalEntry::withoutGlobalScopes()->where('tenant_id', $count->tenant_id)
+            ->where('source_type', StockCount::class)->where('source_id', $count->id)
+            ->where('status', \App\Models\JournalEntry::POSTED)->first();
+        if ($existing) {
+            return;
+        }
+        $net = 0.0;
+        foreach ($count->lines as $line) {
+            $variance = (float) $line->variance_quantity;
+            $cost = $this->stock->weightedAverageCost($count->tenant_id, $count->warehouse_id, $line->product_variant_id);
+            $net += $variance * $cost;
+        }
+        $net = round($net, 2);
+        if ($net == 0.0) {
+            return;
+        }
+        $lines = $net > 0
+            ? [
+                ['account_code' => '1400', 'debit' => $net, 'credit' => 0],
+                ['account_code' => '5400', 'debit' => 0, 'credit' => $net],
+            ]
+            : [
+                ['account_code' => '5400', 'debit' => abs($net), 'credit' => 0],
+                ['account_code' => '1400', 'debit' => 0, 'credit' => abs($net)],
+            ];
+        $entry = $accounting->createDraft(
+            $count->tenant_id, $count->posted_at?->toDateString() ?? now()->toDateString(),
+            'Hasil stock count '.$count->reference, $lines, StockCount::class, $count->id, $actorId
+        );
+        $accounting->post($entry, $actorId);
     }
 
     private function transition(StockCount $count, array $from, string $to, array $values, string $action, ?int $actorId): StockCount

@@ -6,6 +6,8 @@ use App\Models\ApprovalRequest;
 use App\Models\Purchase;
 use App\Models\SalesInvoice;
 use App\Models\SystemSetting;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 
 final class ApprovalService
@@ -56,13 +58,28 @@ final class ApprovalService
                     'amount' => $payment['amount'], 'reference' => $payment['reference'] ?? null,
                 ]);
             }
-            $paid = collect($payments)->sum('amount');
+$paid = collect($payments)->sum('amount');
             $invoice->update(['status' => 'final', 'fulfillment_status' => 'fulfilled', 'payment_status' => $paid >= (float) $invoice->total ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid')]);
             $approval->update(['status' => 'approved', 'decided_by' => $actorId, 'decided_at' => now()]);
             app(AuditService::class)->log($invoice->tenant_id, $actorId, 'transaction.approved', SalesInvoice::class, $invoice->id, null, ['amount' => $invoice->total]);
+            $this->postApprovedSaleToAccounting($invoice, $actorId);
 
             return $approval->refresh();
         });
+    }
+
+    /** Post revenue + COGS + receipts for an approved sale when accounting is on. */
+    private function postApprovedSaleToAccounting(SalesInvoice $invoice, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($invoice->tenant_id, 'accounting')) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->postSalesInvoice($invoice, $actorId);
+        $accounting->postSaleCogs($invoice, $actorId);
+        foreach ($invoice->payments as $payment) {
+            $accounting->recordCustomerReceipt($payment, $actorId);
+        }
     }
 
     public function reject(ApprovalRequest $approval, int $actorId, string $reason): ApprovalRequest

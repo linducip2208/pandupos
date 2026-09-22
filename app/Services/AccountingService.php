@@ -53,6 +53,7 @@ final class AccountingService
             ['code' => '5210', 'name' => 'Beban Gaji', 'type' => 'expense', 'is_cash' => false],
             ['code' => '5300', 'name' => 'Beban Penyusutan', 'type' => 'expense', 'is_cash' => false],
             ['code' => '5310', 'name' => 'Beban Rugi disposal aset', 'type' => 'expense', 'is_cash' => false],
+            ['code' => '5400', 'name' => 'Beban Penyesuaian Persediaan', 'type' => 'expense', 'is_cash' => false],
             ['code' => '4200', 'name' => 'Laba Penyusutan Aset', 'type' => 'income', 'is_cash' => false],
             ['code' => '4300', 'name' => 'Laba disposal aset', 'type' => 'income', 'is_cash' => false],
         ];

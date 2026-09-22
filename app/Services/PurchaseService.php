@@ -11,6 +11,8 @@ use App\Models\Purchase;
 use App\Models\SystemSetting;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -228,9 +230,38 @@ final class PurchaseService
             $status = $totalReceived <= 0 ? $purchase->status : ($totalReceived < $totalOrdered ? 'partial' : 'received');
             $purchase->update(['status' => $status]);
             $this->audit->log($purchase->tenant_id, $actorId, 'purchase.goods_receipt.posted', GoodsReceipt::class, $receipt->id, null, $receipt->fresh('lines')->toArray());
+            $this->postReceiptToAccounting($purchase, $receipt, $actorId);
 
             return $purchase;
         });
+    }
+
+    /** Post Dr Persediaan / Cr Hutang when accounting is on. Idempotent via the GRN id. */
+    private function postReceiptToAccounting(Purchase $purchase, GoodsReceipt $receipt, ?int $actorId): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($purchase->tenant_id, 'accounting')) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($purchase->tenant_id);
+        $existing = \App\Models\JournalEntry::withoutGlobalScopes()->where('tenant_id', $purchase->tenant_id)
+            ->where('source_type', GoodsReceipt::class)->where('source_id', $receipt->id)
+            ->where('status', \App\Models\JournalEntry::POSTED)->first();
+        if ($existing) {
+            return;
+        }
+        $total = round((float) $receipt->lines()->sum(DB::raw('quantity * unit_cost')), 2);
+        if ($total <= 0) {
+            return;
+        }
+        $entry = $accounting->createDraft(
+            $purchase->tenant_id, $receipt->received_at->toDateString(), 'Penerimaan barang Purchase '.$purchase->id,
+            [
+                ['account_code' => '1400', 'debit' => $total, 'credit' => 0],
+                ['account_code' => '2100', 'debit' => 0, 'credit' => $total],
+            ], GoodsReceipt::class, $receipt->id, $actorId
+        );
+        $accounting->post($entry, $actorId);
     }
 
     /**

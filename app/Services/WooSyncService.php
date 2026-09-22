@@ -9,6 +9,8 @@ use App\Models\Warehouse;
 use App\Models\WoConnection;
 use App\Models\WoProductLink;
 use App\Models\WoSyncLog;
+use App\Services\AccountingService;
+use App\Services\ModuleRegistry;
 use App\Services\WooCommerce\HttpWooClient;
 use App\Services\WooCommerce\WooClientInterface;
 use Illuminate\Support\Facades\Crypt;
@@ -219,9 +221,39 @@ final class WooSyncService
                     'quantity' => $row['quantity'], 'unit_price' => $row['price'],
                 ]);
             }
+            $this->postImportedOrderToAccounting($order, $remote);
 
             return $order;
         });
+    }
+
+    /** Post revenue + COGS for an imported WooCommerce order when accounting is on. */
+    private function postImportedOrderToAccounting(EcommerceOrder $order, array $remote): void
+    {
+        if (! app(ModuleRegistry::class)->isEnabled($order->tenant_id, 'accounting')) {
+            return;
+        }
+        $accounting = app(AccountingService::class);
+        $accounting->ensureDefaultChart($order->tenant_id);
+        $total = round((float) $order->total, 2);
+        if ($total <= 0) {
+            return;
+        }
+        $existing = \App\Models\JournalEntry::withoutGlobalScopes()->where('tenant_id', $order->tenant_id)
+            ->where('source_type', EcommerceOrder::class)->where('source_id', $order->id)
+            ->where('status', \App\Models\JournalEntry::POSTED)->first();
+        if ($existing) {
+            return;
+        }
+        $entry = $accounting->createDraft(
+            $order->tenant_id, now()->toDateString(),
+            'Impor pesanan WooCommerce '.$order->number,
+            [
+                ['account_code' => '1100', 'debit' => $total, 'credit' => 0],
+                ['account_code' => '4100', 'debit' => 0, 'credit' => $total],
+            ], EcommerceOrder::class, $order->id, null
+        );
+        $accounting->post($entry, null);
     }
 
     private function active(int $connectionId): WoConnection
